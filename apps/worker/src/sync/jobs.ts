@@ -9,6 +9,7 @@
 import { isPurgeServerJob, runPurgeJob } from '../servers/purge';
 import type { Env } from '../platform/env';
 import type { Logger } from '../platform/logger';
+import { ROTATION_TABLES, runRotationStep } from '../vault/rotation';
 import { createSyncDeps, type JobMessage, type SyncDeps } from './deps';
 import { runRetention } from './retention';
 import { handleSyncMessage } from './run';
@@ -43,9 +44,7 @@ export async function handleJob(deps: SyncDeps, job: JobMessage, log: Logger): P
       });
       return;
     case 'reencrypt':
-      // Owned by the credential-rotation task; acknowledged so it does not loop through
-      // the retry and dead-letter path before that handler lands.
-      log.warn('queue.job_not_handled', { kind: job.kind });
+      await handleReencrypt(deps, job, log);
       return;
   }
 }
@@ -94,4 +93,30 @@ export async function handleQueue(
       message.retry();
     }
   }
+}
+
+/**
+ * One slice of a master-key rotation (SR-07). It rewrites a bounded number of batches, then
+ * enqueues the continuation, so a large vault never runs against the Worker's time limit and an
+ * interrupted job resumes from the "not on the current key" selection. A retry after a crash
+ * repeats at most one batch, and the compare-and-set makes that harmless.
+ */
+async function handleReencrypt(
+  deps: SyncDeps,
+  job: Extract<JobMessage, { kind: 'reencrypt' }>,
+  log: Logger,
+): Promise<void> {
+  const keyring = await deps.keyring();
+  const table = job.table !== undefined && ROTATION_TABLES.includes(job.table) ? job.table : null;
+  const step = await runRotationStep(
+    deps.db,
+    keyring,
+    table ? { table, after: Math.max(0, Math.floor(Number(job.after) || 0)) } : undefined,
+  );
+  log.info('vault.rotate.step', {
+    reencrypted: step.reencrypted,
+    failed: step.failed,
+    done: step.next === null,
+  });
+  if (step.next) await deps.queue.send({ kind: 'reencrypt', ...step.next });
 }

@@ -6,6 +6,10 @@ All notable changes to Cinewren are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Master-key rotation (SR-07, DR-002).** `POST /api/v1/admin/vault/rotate` queues a `reencrypt` job that moves server credentials, cached service tokens, play-session credentials and sealed idempotency responses to `CREDENTIAL_KEY_CURRENT` in batches, resumably and idempotently. `GET /api/v1/admin/vault/status` reports rows per key version and whether an old key can be removed. Rotation is audited as `vault.rotate`. The procedure is in the self-host and setup guides.
+
 ## [0.1.0] - 2026-10-04
 
 First tagged release: the work of milestones M0 to M5 so far. This is a pre-1.0 release; the v1.0

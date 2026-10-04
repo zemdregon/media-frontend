@@ -20,6 +20,7 @@ import type {
 import { DEFAULT_SYNC_CONFIG, type SyncConfig } from '../../src/sync/config';
 import type { JobMessage, OpenedServer, SyncDeps } from '../../src/sync/deps';
 import { handleJob } from '../../src/sync/jobs';
+import { loadKeyring } from '../../src/vault/vault';
 
 export const db = env.DB;
 
@@ -63,6 +64,7 @@ export function makeHarness(
     newId: () =>
       `T${String(++counter).padStart(8, '0')}${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
     logger: createLogger({}, () => undefined),
+    keyring: () => loadKeyring(env),
     openServer: (server): Promise<OpenedServer> => {
       const origin = origins.get(server.id);
       if (!origin) return Promise.reject(new Error(`No fake origin for ${server.id}`));

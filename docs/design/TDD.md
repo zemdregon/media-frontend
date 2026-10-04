@@ -74,7 +74,7 @@ Non-secret settings are Wrangler `vars`, defined per environment. Secrets are se
 | `RP_NAME` | var | `Cinewren` | Name shown by authenticators. |
 | `SETUP_TOKEN` | **secret** | — | One-time bootstrap token for `/setup` (FR-USR-002). It is ignored once any operator exists, so it can be left set; the guide recommends deleting it after setup. For that reason it is **not** listed in `secrets.required`; only `CREDENTIAL_KEYS` is. At least 32 random bytes; compared in constant time. |
 | `CREDENTIAL_KEYS` | **secret** | — | JSON object mapping key version to a base64-encoded 32-byte AES key, for example `{"1":"…","2":"…"}` (DR-002, [LLD-TOKEN](LLD.md#lld-token--credential-vault--playback-credentials)). The operator generates the key locally and keeps an offline copy, such as in a password manager, before running `wrangler secret put`. Secrets cannot be read back from Cloudflare. If the key is lost, server credentials must be re-entered; the catalog and other primary data are not affected. |
-| `CREDENTIAL_KEY_CURRENT` | var | — | Key version used for new encryptions. It must exist in `CREDENTIAL_KEYS`; the Worker checks this on the first request and fails closed. |
+| `CREDENTIAL_KEY_CURRENT` | var | — | Key version used for new encryptions. It must exist in `CREDENTIAL_KEYS`; the Worker checks this on the first request and fails closed. Rotation procedure: [self-host guide](../operations/self-host.md#rotate-the-master-key-dr-002-wf-11). |
 | `ALLOW_INSECURE_ORIGINS` | var | `false` | Allows `http://` base URLs (FR-SRV-007). It is ignored, and an error is logged, unless `ENVIRONMENT=local`. |
 | `SYNC_INCREMENTAL_INTERVAL_MIN` | var | `60` *(proposed)* | FR-SYNC-001. |
 | `SYNC_FULL_INTERVAL_H` | var | `24` *(proposed)* | FR-SYNC-001. |

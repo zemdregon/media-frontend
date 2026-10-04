@@ -91,9 +91,22 @@ With the **Deploy button**, paste the same two values into the secret fields the
 
 ### Back up `CREDENTIAL_KEYS` offline (DR-002)
 
-Copy `credential-keys.json` into a password manager or other offline storage **before the first deploy**, then delete the local file and `setup-token.txt`. Cloudflare cannot return a secret once stored. If the key is lost, the encrypted origin credentials cannot be recovered and you must re-enter every server's credentials; your catalog and other primary data are unaffected. When rotating, add version `n+1` to the map, set `CREDENTIAL_KEY_CURRENT=n+1`, keep old versions, and back up the new map.
+Copy `credential-keys.json` into a password manager or other offline storage **before the first deploy**, then delete the local file and `setup-token.txt`. Cloudflare cannot return a secret once stored. If the key is lost, the encrypted origin credentials cannot be recovered and you must re-enter every server's credentials; your catalog and other primary data are unaffected. To rotate the key, follow the procedure below, which includes backing up the new map.
 
 `CREDENTIAL_KEYS` is listed in `secrets.required`, so a deploy fails if it is missing. `SETUP_TOKEN` is deliberately not required, so you can delete it afterwards.
+
+### Rotate the master key (DR-002, WF-11)
+
+Do this when a key may have leaked, or on your own schedule. Origin credentials, cached service tokens and in-flight play credentials are all sealed under a versioned key, and rotation moves every one of them to the new version while old and new keys are both available.
+
+1. **Create and back up the new key.** Generate it (`openssl rand -base64 32`) and add it to the map under version `n+1`, keeping every old version: `{"1":"<old>","2":"<new>"}`. Save the **whole new map offline** (password manager) before you store it, because Cloudflare cannot return a secret (DR-002).
+2. **Store the secret and switch the current version.** `pnpm exec wrangler secret put CREDENTIAL_KEYS --config ../../wrangler.jsonc` (from `apps/worker`), then set `CREDENTIAL_KEY_CURRENT` to `n+1` in `wrangler.jsonc` (a plain variable, not a secret).
+3. **Deploy.** From now on every new write is sealed under version `n+1`, and reads of older rows keep working because the old key is still present.
+4. **Start the job.** As an operator, in the signed-in browser console or with your session cookie: `POST /api/v1/admin/vault/rotate` (JSON, same-origin). It answers `202 {"currentKeyVersion":2,"pendingRows":N,"enqueued":true}` and writes a `vault.rotate` audit row. The queue consumer re-encrypts in batches and continues by itself; it is safe to call again at any time.
+5. **Wait for completion.** `GET /api/v1/admin/vault/status` lists the rows per key version. Wait for `"complete": true` (`pendingRows` is 0). It reports key versions and counts only, never key material. A version listed under `missingKeyVersions` has rows that no configured key can read; it means an old key was removed too early. Put that key back and run step 4 again.
+6. **Only then remove the old key.** Check that status still says complete (a deploy that was still rolling out during step 4 can leave a few late rows), and that the version is listed in `removableKeyVersions`. Store `CREDENTIAL_KEYS` without it, deploy, and keep the offline backup of the old key for as long as you keep database backups from before the rotation, since a restore brings old-version rows back.
+
+Catalog list cursors are also sealed with the key but live only minutes and hold no secret, so they are not re-encrypted. A client that holds one across the removal simply restarts its listing.
 
 ## 6. First run
 

@@ -9,12 +9,15 @@ import type { Env } from '../platform/env';
 import { ulid } from '../platform/ids';
 import { buildProviderContext, getProvider } from '../providers/registry';
 import type { MediaProvider, ProviderContext, ServerSecret } from '../providers/types';
+import type { RotationTable } from '../vault/rotation';
 import { decrypt, encrypt, loadKeyring, VaultError, type Keyring } from '../vault/vault';
 import { getSyncConfig, type SyncConfig } from './config';
 
 /** Typed queue messages (LLD-SYNC "Triggers and queues"). */
 export type JobMessage =
-  { kind: 'sync'; runId: string; leaseToken?: string } | { kind: 'reencrypt' };
+  | { kind: 'sync'; runId: string; leaseToken?: string }
+  /** Master-key rotation (LLD-TOKEN "Rotation"); the cursor lets a job continue across messages. */
+  | { kind: 'reencrypt'; table?: RotationTable; after?: number };
 
 export interface OpenedServer {
   provider: MediaProvider;
@@ -30,6 +33,8 @@ export interface SyncDeps {
   random(): number;
   newId(): string;
   logger: Logger;
+  /** The credential vault's keys (rotation job). */
+  keyring(): Promise<Keyring>;
   /** Decrypts the credential, loads the cached service token and builds the provider context. */
   openServer(server: SyncServerRow): Promise<OpenedServer>;
 }
@@ -128,6 +133,7 @@ export function createSyncDeps(
     random: Math.random,
     newId: () => ulid(),
     logger,
+    keyring: () => loadKeyring(env),
     openServer: (server) => openProviderContext(env, server, fetchImpl, now, logger),
   };
 }
