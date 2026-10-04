@@ -108,7 +108,10 @@ it.each(REASON_CODES)('renders the plain-language sentence for reason code %s', 
 it('renders reasons in order, ignores unknown codes and has a fallback without any', () => {
   const { rerender } = render(
     <WhyCallout
-      copy={copyRow({ sourceId: 'x', reasons: ['future_code', 'direct_play', 'failover'] as unknown as ItemCopy['reasons'] })}
+      copy={copyRow({
+        sourceId: 'x',
+        reasons: ['future_code', 'direct_play', 'failover'] as unknown as ItemCopy['reasons'],
+      })}
     />,
   );
   expect(

@@ -1,7 +1,12 @@
 /** Playback, progress and next-episode calls (LLD-API; FR-PLAY-001, FR-PROG-001 to FR-PROG-004). */
 import type { ItemCard } from '@cinewren/shared';
 import { api } from './index';
-import type { PlaybackEvent, PlayRequest, PlaybackDescriptor, ProgressResponse } from '@cinewren/shared';
+import type {
+  PlaybackEvent,
+  PlayRequest,
+  PlaybackDescriptor,
+  ProgressResponse,
+} from '@cinewren/shared';
 
 const enc = encodeURIComponent;
 

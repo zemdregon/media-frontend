@@ -14,7 +14,7 @@ export const copyKey = (c: Pick<ItemCopy, 'sourceId' | 'versionId'>) =>
   `${c.sourceId}:${c.versionId}`;
 
 function serverLine(c: ItemCopy): string {
-  const type = c.serverType ? c.serverType.toUpperCase() : 'SERVER';
+  const type = c.serverType.toUpperCase();
   const state =
     c.serverStatus === 'active'
       ? 'Online'
@@ -101,7 +101,7 @@ export function CopiesPicker({
                 </span>
                 <span className="mono-value">
                   <span className="sr-only">Video </span>
-                  {c.resolution?.label ?? 'Unknown'}
+                  {c.resolution.label || 'Unknown'}
                 </span>
                 <span className="mono-value copy-muted">
                   <span className="sr-only">HDR </span>

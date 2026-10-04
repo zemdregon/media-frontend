@@ -7,7 +7,6 @@
 // covered for stop, unstarted expiry, idle expiry and replacement below.
 import { must } from './util';
 import type {
-  ContinueWatchingCard,
   HomeResponse,
   ItemDetailWithCopies,
   PlaybackDescriptor,
@@ -813,7 +812,7 @@ describe('progress (FR-PROG-001 to FR-PROG-004, BR-7) and "Continue watching" (F
     const home = await json<HomeResponse>(
       await call('GET', '/api/v1/home', { app, cookie: alice.cookie }),
     );
-    const cw = home.continueWatching as ContinueWatchingCard[];
+    const cw = home.continueWatching;
     expect(cw.map((c) => c.id)).toEqual(['m-heat']);
     expect(cw[0]?.progress).toEqual({ positionMs: 600_000, runtimeMs: HOURS2 });
     // A title the viewer may no longer see disappears from the row (BR-1).

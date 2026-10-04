@@ -1342,6 +1342,22 @@ a.button-outline {
   color: #cfc7b8;
 }
 
+/* The panel is dark in both themes, so its headings and outline buttons must not take the light theme's ink. */
+.player-panel .h-card {
+  color: #f2ede3;
+}
+
+.player-panel .button-outline,
+.player-panel a.button-outline {
+  border-color: #756d5a;
+  color: #f2ede3;
+}
+
+.player-panel .button-outline:hover {
+  background: #262219;
+  color: #f2ede3;
+}
+
 .player-menu {
   position: absolute;
   right: clamp(12px, 3vw, 32px);

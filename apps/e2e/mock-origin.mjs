@@ -9,8 +9,19 @@
 // library item pages (with credits), box sets and their members. Where a recording is missing,
 // a clearly named synthetic_* fixture stands in (see test-fixtures/providers/README.md).
 //
-// Extra endpoints for tests: GET /__requests returns the log of origin requests the Worker made,
-// and DELETE /__requests clears it. No credential value is ever logged.
+// Playback (M3): the mock also plays the part of a Jellyfin origin for a viewing session. It mints
+// a per-session token on `POST /Users/AuthenticateByName` when the DeviceId is `cinewren-ps-*`
+// (the service account's own sign-in still comes from the recordings), answers PlaybackInfo with a
+// token-gated HLS TranscodingUrl, serves a tiny real HLS stream (master, variant, init segment
+// and three 4 s fMP4 segments of a 160x90 VP9 test pattern, apps/e2e/fixtures/hls), takes the
+// session telemetry (`/Sessions/Playing*`) and revokes the token on `POST /Sessions/Logout`. A
+// stream request without a live token is refused with 401, as a real origin does. CORS allows
+// any origin, as Jellyfin does for HLS (fixtures cors_hls_*). VP9 in fMP4 is used because
+// headless Chromium has no H.264 decoder; the stream is synthetic and says so in its own codecs.
+//
+// Extra endpoints for tests: GET /__requests returns the log of origin requests the Worker made
+// (and, for the stream, the browser), and DELETE /__requests clears it. GET /__sessions returns
+// the session tokens by state (never their values). No credential value is ever logged.
 import { readdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
@@ -18,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const FIXTURE_DIR = join(here, '..', '..', 'test-fixtures', 'providers', 'jellyfin');
+export const HLS_DIR = join(here, 'fixtures', 'hls');
 
 // Paging and sorting differ between recordings, so they never decide a match.
 const IGNORED = new Set(['startindex', 'limit', 'enabletotalrecordcount', 'sortby', 'sortorder']);
@@ -77,13 +89,205 @@ function pick(fixtures, method, url) {
   return best?.f ?? null;
 }
 
+const CORS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-headers': '*',
+  'access-control-allow-methods': 'GET, HEAD, OPTIONS',
+};
+const SEGMENT_COUNT = 3;
+const SEGMENT_SECONDS = 4;
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      resolve(Buffer.concat(chunks).toString('utf8'));
+    });
+    req.on('error', () => {
+      resolve('');
+    });
+  });
+}
+
+const headerParam = (header, name) =>
+  new RegExp(`${name}="([^"]*)"`, 'i').exec(header ?? '')?.[1] ?? null;
+
+function json(res, status, body, headers = {}) {
+  const payload = JSON.stringify(body);
+  res.writeHead(status, { 'content-type': 'application/json', ...headers });
+  res.end(payload);
+}
+
+/** The stateful playback part of the mock: session tokens, PlaybackInfo, HLS, telemetry. */
+function createPlayback(fixtures) {
+  const tokens = new Map(); // token -> 'active' | 'revoked'
+  let minted = 0;
+  const fixture = (name) => fixtures.find((f) => f.file === name)?.fixture.response.body;
+  const live = (token) => token !== null && tokens.get(token) === 'active';
+
+  const assetBytes = (name) => readFileSync(join(HLS_DIR, name));
+
+  /** The URL's own query, so each playlist hands the token on to what it references. */
+  const carry = (url) => {
+    const q = new URLSearchParams();
+    for (const k of ['ApiKey', 'PlaySessionId', 'MediaSourceId']) {
+      const v = url.searchParams.get(k);
+      if (v !== null) q.set(k, v);
+    }
+    return q.toString();
+  };
+
+  return {
+    sessions: () => ({
+      active: [...tokens.values()].filter((s) => s === 'active').length,
+      revoked: [...tokens.values()].filter((s) => s === 'revoked').length,
+    }),
+
+    /** Returns true when the request was a playback request and has been answered. */
+    async handle(req, res, url, method, log) {
+      const auth = req.headers.authorization;
+      const bearer = headerParam(auth, 'Token');
+
+      if (method === 'OPTIONS') {
+        res.writeHead(204, CORS);
+        res.end();
+        return true;
+      }
+
+      if (method === 'POST' && /^\/Users\/AuthenticateByName$/i.test(url.pathname)) {
+        const deviceId = headerParam(auth, 'DeviceId') ?? '';
+        if (!deviceId.startsWith('cinewren-ps-')) return false; // the service account: recordings
+        await readBody(req); // the password is neither read nor logged
+        const base = fixture('auth_svc.json');
+        const token = `e2e-session-token-${String(++minted)}-${deviceId.slice(-8)}`;
+        tokens.set(token, 'active');
+        log.push(`POST ${url.pathname} (session ${deviceId})`);
+        json(res, 200, { ...base, AccessToken: token });
+        return true;
+      }
+
+      if (method === 'POST' && /^\/Items\/[^/]+\/PlaybackInfo$/i.test(url.pathname)) {
+        const body = JSON.parse((await readBody(req)) || '{}');
+        log.push(`POST ${url.pathname}`);
+        if (!live(bearer)) {
+          json(res, 401, { error: 'invalid token' });
+          return true;
+        }
+        const itemId = decodeURIComponent(url.pathname.split('/')[2] ?? '');
+        const template = fixture('playbackinfo_h264_mkv.json');
+        const source = structuredClone(template.MediaSources[0]);
+        const mediaSourceId = body.MediaSourceId ?? itemId;
+        const playSessionId = `e2e-play-${String(minted)}-${Date.now().toString(36)}`;
+        source.Id = mediaSourceId;
+        source.SupportsDirectPlay = false;
+        source.SupportsDirectStream = false;
+        source.SupportsTranscoding = true;
+        source.TranscodingSubProtocol = 'hls';
+        source.TranscodingContainer = 'mp4';
+        // A remux of the file for token-gated HLS, the way Jellyfin answers; VideoCodec names what
+        // the synthetic stream really contains.
+        source.TranscodingUrl =
+          `/videos/${itemId}/master.m3u8?DeviceId=${encodeURIComponent(headerParam(auth, 'DeviceId') ?? '')}` +
+          `&MediaSourceId=${encodeURIComponent(mediaSourceId)}&VideoCodec=vp9&AudioCodec=copy` +
+          `&SegmentContainer=mp4&PlaySessionId=${playSessionId}&ApiKey=${encodeURIComponent(bearer)}` +
+          '&TranscodeReasons=ContainerNotSupported';
+        json(res, 200, { MediaSources: [source], PlaySessionId: playSessionId });
+        return true;
+      }
+
+      if (method === 'POST' && /^\/Sessions\/Playing(\/Progress|\/Stopped)?$/i.test(url.pathname)) {
+        const body = JSON.parse((await readBody(req)) || '{}');
+        const ticks = typeof body.PositionTicks === 'number' ? body.PositionTicks : 0;
+        log.push(`POST ${url.pathname} (position ${String(Math.round(ticks / 10_000))} ms)`);
+        res.writeHead(live(bearer) ? 204 : 401);
+        res.end();
+        return true;
+      }
+
+      if (method === 'POST' && /^\/Sessions\/Logout$/i.test(url.pathname)) {
+        req.resume();
+        log.push(`POST ${url.pathname}`);
+        if (bearer !== null && tokens.has(bearer)) tokens.set(bearer, 'revoked');
+        res.writeHead(bearer !== null && tokens.has(bearer) ? 204 : 401);
+        res.end();
+        return true;
+      }
+
+      // HLS: /videos/{id}/master.m3u8 -> /Videos/{id}/main.m3u8 -> init.mp4 and seg{n}.m4s.
+      const hls = /^\/videos\/([^/]+)\/(master\.m3u8|main\.m3u8|init\.mp4|seg(\d+)\.m4s)$/i.exec(
+        url.pathname,
+      );
+      if (method === 'GET' && hls) {
+        const name = hls[2].toLowerCase();
+        const logged = `GET ${url.pathname.replace(/[^/]+$/, name.startsWith('seg') ? 'seg{n}.m4s' : name)}`;
+        // The credential is the session token in the URL, as with a real origin (ADR-0013).
+        if (!live(url.searchParams.get('ApiKey'))) {
+          log.push(`${logged} (401, no live token)`);
+          res.writeHead(401, CORS);
+          res.end();
+          return true;
+        }
+        log.push(logged);
+        const q = carry(url);
+        if (name === 'master.m3u8') {
+          res.writeHead(200, { ...CORS, 'content-type': 'application/vnd.apple.mpegurl' });
+          res.end(
+            '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=60000,CODECS="vp09.00.10.08",RESOLUTION=160x90,FRAME-RATE=10\n' +
+              `main.m3u8?${q}\n`,
+          );
+        } else if (name === 'main.m3u8') {
+          let out = `#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:${String(SEGMENT_SECONDS)}\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-MAP:URI="init.mp4?${q}"\n`;
+          for (let i = 0; i < SEGMENT_COUNT; i++) {
+            out += `#EXTINF:${SEGMENT_SECONDS}.000000,\nseg${String(i)}.m4s?${q}\n`;
+          }
+          res.writeHead(200, { ...CORS, 'content-type': 'application/vnd.apple.mpegurl' });
+          res.end(`${out}#EXT-X-ENDLIST\n`);
+        } else {
+          const file = name === 'init.mp4' ? 'init.mp4' : `seg${hls[3]}.m4s`;
+          let bytes;
+          try {
+            bytes = assetBytes(file);
+          } catch {
+            res.writeHead(404, CORS);
+            res.end();
+            return true;
+          }
+          res.writeHead(200, {
+            ...CORS,
+            'content-type': name === 'init.mp4' ? 'video/mp4' : 'video/iso.segment',
+            'content-length': bytes.length,
+          });
+          res.end(bytes);
+        }
+        return true;
+      }
+      return false;
+    },
+  };
+}
+
 export function createMockOrigin({ fixtureDir = FIXTURE_DIR } = {}) {
   const fixtures = loadFixtures(fixtureDir);
   const log = [];
+  const playback = createPlayback(fixtures);
 
   const server = createServer((req, res) => {
+    void route(req, res).catch(() => {
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
+    });
+  });
+
+  async function route(req, res) {
     const url = new URL(req.url ?? '/', 'http://mock-origin.invalid');
     const method = (req.method ?? 'GET').toUpperCase();
+
+    if (url.pathname === '/__sessions') {
+      json(res, 200, playback.sessions());
+      return;
+    }
+    if (await playback.handle(req, res, url, method, log)) return;
 
     if (url.pathname === '/__requests') {
       if (method === 'DELETE') log.length = 0;
@@ -122,7 +326,7 @@ export function createMockOrigin({ fixtureDir = FIXTURE_DIR } = {}) {
     }
     res.writeHead(status, outHeaders);
     res.end(payload);
-  });
+  }
 
   return {
     server,

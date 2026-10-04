@@ -498,6 +498,7 @@ Pagination uses cursors. `Page<T> = { items: T[], nextCursor: string | null }`. 
 |---|---|---|
 | `direct_play` | Container, video and audio codecs play as stored | selected, copy |
 | `direct_stream_container` | Container is unsupported; the origin repackages without re-encoding video | selected, copy |
+| `remux_for_token_auth` | The file would play as stored, but the origin's static stream cannot be revoked (Jellyfin, ADR-0013), so it is repackaged into token-gated HLS with the codecs copied | selected, copy |
 | `audio_transcoded` | Only the audio is re-encoded (unsupported codec) | selected, copy |
 | `transcode_video_codec` | The video codec, profile or level is unsupported, so video is re-encoded | selected, copy |
 | `subtitle_burn_in` | An image-based subtitle was chosen, so it is burned in (FR-PLAY-006) | selected, copy |
@@ -537,7 +538,8 @@ export interface MediaProvider {
   getItem(ctx: ProviderContext, providerItemId: string): Promise<NormalizedItem | null>;
   getArtworkRequest(ctx: ProviderContext, ref: ArtworkRef, kind: ArtworkKind): Request;  // FR-CAT-009
   probe(ctx: ProviderContext): Promise<{ ok: boolean; latencyMs: number; errorCode?: string }>; // FR-OPS-001
-  createSessionCredential(ctx: ProviderContext, sessionId: string): Promise<SessionCredential>; // FR-PLAY-007
+  readonly streamDevices?: 'per_session' | 'pooled';                    // M3: how stream credentials get a DeviceId
+  createSessionCredential(ctx: ProviderContext, sessionId: string, lease?: { slot: number }): Promise<SessionCredential>; // FR-PLAY-007
   revokeSessionCredential(ctx: ProviderContext, cred: SessionCredential): Promise<void>;
   negotiatePlayback(ctx: ProviderContext, req: {
     providerItemId: string; providerVersionId: string; caps: DeviceCapabilities;
@@ -545,7 +547,7 @@ export interface MediaProvider {
     startPositionMs?: number; cred: SessionCredential;
   }): Promise<NegotiatedStream>;                                       // FR-PLAY-001, FR-PLAY-006
   reportPlayback(ctx: ProviderContext, cred: SessionCredential,
-    ev: { type: 'start' | 'progress' | 'stop'; positionMs: number; stream: NegotiatedStream }): Promise<void>; // FR-PLAY-009: telemetry only
+    ev: { type: 'start' | 'progress' | 'stop'; positionMs: number; stream: NegotiatedStream; paused?: boolean }): Promise<void>; // FR-PLAY-009: telemetry only
 }
 
 export type NormalizedItem = {
@@ -584,7 +586,8 @@ export type NegotiatedStream = {
   url: string;                              // MUST be on ctx.server.baseUrl host (asserted by caller)
   subtitleUrls: Record<number, string>; providerSessionRef?: string;
 };
-export type SessionCredential = { kind: 'session_token' | 'delegated_token' | 'shared_restricted'; token: string; ref?: string; expiresAt?: number };
+export type SessionCredential = { kind: 'session_token' | 'delegated_token' | 'shared_restricted'; token: string; ref?: string; expiresAt?: number;
+  deviceId?: string; accountId?: string };   // M3: the DeviceId the token was minted under, and the origin account it belongs to
 ```
 
 Adapters throw `ProviderError { code: 'AUTH' | 'NOT_FOUND' | 'UNAVAILABLE' | 'TIMEOUT' | 'PROTOCOL' | 'UNSUPPORTED', retryable: boolean }`. No provider-specific type crosses the interface (IR-002; lint-enforced, TDD §1).
@@ -1059,6 +1062,28 @@ The service account's **API token** (used for sync, health and negotiation) is c
 - An open conflict flag is closed automatically when its subject later matches cleanly.
 - Run counters may under-report `added` after a mid-page kill. Counts commit with the page checkpoint, items per item. This is accepted.
 - `Retry-After` is not honoured yet.
+
+### M3 implementation notes (agent decisions, 2026-10-04)
+
+**LLD-SEL, Viewer 2 under forced Jellyfin HLS.** The worked example above ranks A (Server A, Jellyfin) first for Viewer 2 as `direct_play`. Jellyfin never yields `direct_play` (ADR-0013 Jellyfin amendment: its static streams are not token-gated), so A's mode is `direct_stream`, a copy-codec HLS remux with reason `remux_for_token_auth`. Rule 1 (mode) then ranks B (Plex, `direct_play`, 1080p SDR) first and A second; the 2160p HDR copy wins only if the viewer asks for it (FR-PLAY-005) or B is unavailable. C stays third. The example table was written before the amendment and is kept as the rule illustration; the implementation follows the ranking in this paragraph.
+
+**LLD-API, reason codes.** `remux_for_token_auth` is new (see the reasons table). It is emitted instead of `direct_play` when the file would play as stored but the origin is Jellyfin. The UI renders it in plain language ("repackaged without re-encoding because the server ties the stream to your viewing session"). Clients ignore unknown codes, so older clients are unaffected. `ItemDetail.copies[].serverType` (`jellyfin`, `emby`, `plex`) was added for the copy list's "TYPE · network" line.
+
+**LLD-API, progress and idempotency.**
+- `PUT /progress/{itemId}` with `{positionMs}` sets the position and leaves the `watched` flag as it was (it neither sets it at the 90 % mark nor clears it). Only `{watched}` changes the flag, and it resets the position to 0. Positions reported by session events still apply BR-7's threshold.
+- A `POST /play` whose `Idempotency-Key` is still being processed by an earlier request returns `429 RATE_LIMITED` with `retryAfterS: 1`, not a second descriptor. A claim older than 30 s with no response is treated as dead and retaken.
+
+**LLD-SCHEMA, Emby DeviceId leases (migration `0003_stream_device_leases.sql`).** Emby returns the same token when the same DeviceId signs in again and keeps device entries after logout, so a unique DeviceId per session would grow Emby's device list without bound. Emby stream credentials therefore use a bounded pool of DeviceIds per server (`cinewren-ps-00` to `NN`). Table `stream_device_leases(server_id, slot, session_id, leased_at)`, primary key `(server_id, slot)`, leases a slot to one playback session from before the token is minted until the token has been revoked; the key makes a double lease impossible, and the sweep releases leases of ended sessions. Jellyfin uses one DeviceId per session and never leases. The migration is expand-only.
+
+**LLD-TOKEN, accepted residual risk.** If the Worker dies after a Jellyfin token has been minted at the origin but before the session row records it, Cinewren has no record of the token and cannot revoke it. It stays valid until Jellyfin's own token lifetime ends. It is scoped to the restricted, non-administrator service account and carries no ability to change anything, so the risk is accepted; the window is the few milliseconds between the origin's reply and the row update, and the unused session itself expires under BR-9. The mitigation is operational: keep the service account restricted (FR-SRV-002 refuses an administrator).
+
+**LLD-PROV, interface additions.**
+- `SessionCredential` gains `deviceId` (the DeviceId the token was minted under, needed to revoke it) and `accountId` (the origin account, which some negotiation calls name).
+- `PlaybackProvider` is split out of `MediaProvider` (the playback half: `createSessionCredential`, `revokeSessionCredential`, `negotiatePlayback`, `reportPlayback`), so Emby can ship playback before its catalog half. `MediaProvider extends PlaybackProvider`.
+- `PlaybackProvider.streamDevices` is `'per_session'` (default; Jellyfin) or `'pooled'` (Emby), and `createSessionCredential` takes an optional `lease: {slot}` for pooled adapters.
+- `reportPlayback`'s event carries `paused?` and `stream` of which only `mode`, `streamType` and `providerSessionRef` are read.
+
+**LLD-API, NFR-SEC-003.** The CSP is built from the `servers` table for HTML document responses (the SPA); JSON and image responses carry the `'self'`-only policy, so API responses never list origin hostnames. For documents: `media-src 'self' blob:` and `connect-src 'self'`, each followed by the `scheme://host[:port]` of every server whose status is `active`, `degraded` or `unreachable` (not `pending_validation`, `disabled` or `removing`). The list is cached per isolate for 15 s and dropped when that isolate handles a write to `/admin/servers`; other isolates catch up within the TTL. `script-src` stays `'self'`. The list cannot depend on the session because the SPA stays loaded across sign-in, so anyone who can load the app can read the hostnames (not secrets; the credentials are, NFR-SEC-001). If the lookup fails the policy falls back to `'self'` only. The `servers_version` counter in TDD §6.1 is not used: the short TTL covers it with no extra write path.
 
 ## LLD-ERR — Error handling, retries, idempotency & concurrency
 

@@ -144,7 +144,20 @@ function player(
   });
 }
 const video = () => document.querySelector('video') as HTMLVideoElement;
-const ready = () => screen.findByLabelText('Seek');
+/**
+ * Waits for the player surface. The stream attach and the session reporter are passive effects
+ * that React flushes after the commit that renders the controls, and `findBy*` can resolve in
+ * between (on the DOM mutation, before the effects run). A test that fires media events or reads
+ * `src` right after would then race the reporter that does not exist yet. Flushing the effects
+ * here makes "ready" mean "attached and reporting".
+ */
+const ready = async () => {
+  const seek = await screen.findByLabelText('Seek');
+  await act(async () => {
+    await Promise.resolve();
+  });
+  return seek;
+};
 
 // ---- player: start ----
 it('direct play: requests play with capabilities and an idempotency key, then plays the descriptor URL', async () => {
@@ -381,8 +394,22 @@ it('a copy that never starts fails over after the start timeout', async () => {
 const withTracks = () =>
   descriptor({
     audioTracks: [
-      { index: 1, label: 'English 5.1 (AAC)', language: 'en', codec: 'aac', channels: 6, selected: true },
-      { index: 2, label: 'Deutsch 2.0 (AAC)', language: 'de', codec: 'aac', channels: 2, selected: false },
+      {
+        index: 1,
+        label: 'English 5.1 (AAC)',
+        language: 'en',
+        codec: 'aac',
+        channels: 6,
+        selected: true,
+      },
+      {
+        index: 2,
+        label: 'Deutsch 2.0 (AAC)',
+        language: 'de',
+        codec: 'aac',
+        channels: 2,
+        selected: false,
+      },
     ],
     subtitleTracks: [
       {
@@ -739,9 +766,7 @@ it('home shows continue-watching hero cards with progress, Resume and Choose ano
     'aria-valuenow',
     '74',
   );
-  expect(
-    within(hero).getByText(/26 min left · resuming from 1:14:00/),
-  ).toBeInTheDocument();
+  expect(within(hero).getByText(/26 min left · resuming from 1:14:00/)).toBeInTheDocument();
   expect(within(hero).getByRole('link', { name: 'Resume' })).toHaveAttribute(
     'href',
     '/watch/m1?resume=1',
