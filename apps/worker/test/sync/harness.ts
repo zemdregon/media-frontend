@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- test fixtures: the rows asserted on were just written */
 /**
  * Test harness for sync and matching (T2.1 to T2.3, T2.9, T2.10): a fake provider whose catalog
  * the test edits between runs, an in-memory queue that can be drained like the real consumer,
@@ -118,6 +119,7 @@ export class FakeOrigin {
   }
 
   provider(): MediaProvider {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const origin = this;
     const unsupported = () =>
       Promise.reject(new ProviderError('UNSUPPORTED', 'not in the fake', false));
@@ -433,9 +435,6 @@ export async function syncOnce(
   const r = await enqueueRun(h.deps, serverId, type, 'manual', options);
   if (!r.ok) throw new Error('a run is already active');
   await h.drain();
-  const run = (await one<Record<string, unknown>>(
-    'SELECT * FROM sync_runs WHERE id = ?',
-    r.runId,
-  ))!;
+  const run = (await one('SELECT * FROM sync_runs WHERE id = ?', r.runId))!;
   return { runId: r.runId, status: String(run.status), run };
 }

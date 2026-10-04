@@ -14,12 +14,13 @@ function stable(value: unknown): string {
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
     return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stable(v)}`).join(',')}}`;
   }
-  return JSON.stringify(value) ?? 'null';
+  return JSON.stringify(value);
 }
 
 export async function contentHash(item: NormalizedItem, libraryId: string): Promise<string> {
-  const { providerUpdatedAt: _ignored, ...rest } = item;
-  const bytes = new TextEncoder().encode(stable({ ...rest, libraryId }));
+  const fields: Record<string, unknown> = { ...item, libraryId };
+  delete fields.providerUpdatedAt;
+  const bytes = new TextEncoder().encode(stable(fields));
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }

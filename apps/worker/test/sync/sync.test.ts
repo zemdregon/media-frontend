@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- test fixtures: the rows asserted on were just written */
 // T2.1, T2.2 and M2 exit checks (a) and (c): the sync orchestrator, normalization, upsert, missing
 // marking and retention, through the real consumer and local D1 with a fake provider.
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -227,7 +228,7 @@ describe('T2.1 sync orchestrator', () => {
     if (!r.ok) throw new Error('enqueue failed');
     const handled = await h.drain();
     expect(handled).toBeGreaterThan(3); // one message per page, continuation messages included
-    const run = await one<Record<string, unknown>>('SELECT * FROM sync_runs WHERE id = ?', r.runId);
+    const run = await one('SELECT * FROM sync_runs WHERE id = ?', r.runId);
     expect(run?.status).toBe('succeeded');
     expect(run?.added).toBe(7);
     expect(await count('media_items')).toBe(7);
@@ -342,7 +343,7 @@ describe('T2.2 normalization, upsert and idempotency (FR-SYNC-003, FR-SYNC-004)'
       }),
     ]);
     await syncOnce(h, 'A');
-    const item = await one<Record<string, unknown>>('SELECT * FROM media_items');
+    const item = await one('SELECT * FROM media_items');
     expect(item).toMatchObject({
       type: 'movie',
       title: 'Interstellar',
@@ -362,7 +363,7 @@ describe('T2.2 normalization, upsert and idempotency (FR-SYNC-003, FR-SYNC-004)'
       'SELECT * FROM media_versions ORDER BY provider_version_id',
     );
     expect(versions.map((v) => v.provider_version_id)).toEqual(['v1', 'v2']);
-    expect(JSON.parse(String(versions[0]?.subtitle_tracks))[0]).toMatchObject({
+    expect((JSON.parse(String(versions[0]?.subtitle_tracks)) as unknown[])[0]).toMatchObject({
       kind: 'text',
       external: true,
     });

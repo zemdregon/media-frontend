@@ -6,6 +6,8 @@
  * message per sync run; each message is handled in isolation so one server's failure retries on
  * its own and never blocks another's (FR-SYNC-007).
  */
+import { isPurgeServerJob, runPurgeJob } from '../servers/purge';
+import type { Env } from '../platform/env';
 import type { Logger } from '../platform/logger';
 import { createSyncDeps, type JobMessage, type SyncDeps } from './deps';
 import { runRetention } from './retention';
@@ -40,10 +42,9 @@ export async function handleJob(deps: SyncDeps, job: JobMessage, log: Logger): P
         ...(job.leaseToken ? { leaseToken: job.leaseToken } : {}),
       });
       return;
-    case 'purge_server':
     case 'reencrypt':
-      // Owned by T2.6 (server removal) and the credential-rotation task; acknowledged so they do
-      // not loop through the retry and dead-letter path before those handlers land.
+      // Owned by the credential-rotation task; acknowledged so it does not loop through
+      // the retry and dead-letter path before that handler lands.
       log.warn('queue.job_not_handled', { kind: job.kind });
       return;
   }
@@ -52,15 +53,30 @@ export async function handleJob(deps: SyncDeps, job: JobMessage, log: Logger): P
 function isJob(body: unknown): body is JobMessage {
   if (typeof body !== 'object' || body === null) return false;
   const kind = (body as { kind?: unknown }).kind;
-  return kind === 'sync' || kind === 'purge_server' || kind === 'reencrypt';
+  return kind === 'sync' || kind === 'reencrypt';
 }
 
 export async function handleQueue(
   batch: MessageBatch,
-  env: Parameters<typeof createSyncDeps>[0],
+  env: Env,
   deps: SyncDeps = createSyncDeps(env),
 ): Promise<void> {
   for (const message of batch.messages) {
+    // Server removal is typed `{type:'purge_server'}` by T2.6; everything else is `{kind}`.
+    if (isPurgeServerJob(message.body)) {
+      try {
+        await runPurgeJob(env, message.body);
+        message.ack();
+      } catch (err) {
+        deps.logger.error('queue.job_failed', {
+          type: 'purge_server',
+          attempts: message.attempts,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        message.retry();
+      }
+      continue;
+    }
     if (!isJob(message.body)) {
       deps.logger.warn('queue.unknown_message', { queue: batch.queue });
       message.ack();

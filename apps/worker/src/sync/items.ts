@@ -24,7 +24,6 @@ import type { IdSet, Override } from '../match/items';
 import { sortKey } from '../match/names';
 import type { NormalizedItem, NormalizedVersion } from '../providers/types';
 import { runBatch } from './batch';
-import type { SyncDeps } from './deps';
 import { contentHash } from './hash';
 import { planCredits } from './people';
 import {
@@ -254,8 +253,7 @@ async function processOne(
       ? null
       : {
           itemId: currentItemId,
-          method: (row?.match_method ?? 'new') as
-            'external_id' | 'episode_position' | 'new' | 'manual',
+          method: row?.match_method ?? 'new',
           orphan: currentOrphan,
         };
 
@@ -295,7 +293,7 @@ async function processOne(
       dateAdded: item.dateAdded ?? null,
       now,
     }),
-    ...versionStmts(deps.db, sourceId, item.versions.map(versionWrite), deps.newId),
+    ...versionStmts(deps.db, sourceId, item.versions.map(versionWrite), () => deps.newId()),
     ...settleStmts(pc, placement, input, row?.media_item_id ?? null, { rematched: !keepAsIs }),
   ];
   if (item.type === 'movie' || item.type === 'series') {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- test fixtures: the rows asserted on were just written */
 // T2.1 (service-token cache), T2.9 and T2.10 adapter additions, and a full sync through the real
 // Jellyfin adapter over the recorded T1.1 exchanges (no network).
 import { env } from 'cloudflare:workers';

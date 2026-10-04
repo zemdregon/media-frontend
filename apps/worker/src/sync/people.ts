@@ -23,6 +23,7 @@ import {
   type PersonLinkRow,
 } from '../db/catalog-write';
 import { nameKey, sortKey } from '../match/names';
+import type { Override } from '../match/items';
 import { decidePerson, type PersonCandidate, type PersonLinkInfo } from '../match/people';
 import type { NormalizedCredit } from '../providers/types';
 import type { SyncDeps } from './deps';
@@ -85,7 +86,9 @@ export async function planCredits(
       ? await getPersonLinks(db, server.id, providerIds)
       : new Map<string, PersonLinkRow>();
   const overrides =
-    providerIds.length > 0 ? await loadOverrides(db, 'person', server.id, providerIds) : new Map();
+    providerIds.length > 0
+      ? await loadOverrides(db, 'person', server.id, providerIds)
+      : new Map<string, Override>();
   const resolved = new Map<string, { linkId: string; personId: string }>();
 
   for (const [providerPersonId, person] of unique) {

@@ -236,8 +236,8 @@ export function settleStmts(
   previousItemId: string | null,
   options: { rematched: boolean },
 ): D1PreparedStatement[] {
-  const { db, now: clock, newId } = pc.deps;
-  const now = clock();
+  const { db } = pc.deps;
+  const now = pc.deps.now();
   const stmts: D1PreparedStatement[] = [availabilityStmt(db, placement.itemId, pc.library.id)];
   const moved = previousItemId !== null && previousItemId !== placement.itemId;
   if (moved) {
@@ -256,7 +256,7 @@ export function settleStmts(
     stmts.push(
       flagStmt(
         db,
-        newId(),
+        pc.deps.newId(),
         {
           kind: 'item',
           sourceId: input.sourceId,

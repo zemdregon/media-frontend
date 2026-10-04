@@ -14,9 +14,7 @@ import { getSyncConfig, type SyncConfig } from './config';
 
 /** Typed queue messages (LLD-SYNC "Triggers and queues"). */
 export type JobMessage =
-  | { kind: 'sync'; runId: string; leaseToken?: string }
-  | { kind: 'purge_server'; serverId: string }
-  | { kind: 'reencrypt' };
+  { kind: 'sync'; runId: string; leaseToken?: string } | { kind: 'reencrypt' };
 
 export interface OpenedServer {
   provider: MediaProvider;

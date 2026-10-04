@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- test fixtures: the rows asserted on were just written */
 // T2.3, T2.9, T2.10 and M2 exit check (a): matching through the real sync, with two mock servers.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ProviderError } from '../../src/providers/errors';
@@ -89,7 +90,9 @@ describe('M2 exit (a) and T2.3: title matching (FR-CAT-001, BR-2)', () => {
       source_id: string;
     }>('SELECT * FROM match_conflicts');
     expect(conflict).toMatchObject({ reason: 'conflicting_ids', status: 'open' });
-    expect(JSON.parse(conflict!.details).candidates[0]).toMatchObject({
+    expect(
+      (JSON.parse(conflict!.details) as { candidates: unknown[] }).candidates[0],
+    ).toMatchObject({
       sharedIds: ['imdb:tt1160419'],
       conflictingIds: ['tmdb:999!=438631'],
     });
