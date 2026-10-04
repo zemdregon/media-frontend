@@ -18,13 +18,14 @@ describe('GET /api/v1/health', () => {
 });
 
 describe('error envelope', () => {
-  it('returns NOT_FOUND in the LLD-API envelope for unknown API routes', async () => {
+  // Unknown API routes need a session first (FR-USR-001); the signed-in 404 is in auth.test.ts.
+  it('returns AUTH_REQUIRED in the LLD-API envelope for API routes without a session', async () => {
     const res = await appWith().request('/api/v1/nope');
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
     const body = await res.json<{ error: Record<string, unknown> }>();
     expect(Object.keys(body)).toEqual(['error']);
     expect(body.error).toEqual({
-      code: 'NOT_FOUND',
+      code: 'AUTH_REQUIRED',
       message: expect.any(String) as string,
       requestId: res.headers.get('x-request-id'),
     });

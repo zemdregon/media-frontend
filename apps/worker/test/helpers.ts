@@ -20,6 +20,7 @@ export function appWith(overrides: Partial<Env> = {}) {
           new Response('<html></html>', { headers: { 'content-type': 'text/html' } }),
         ),
     },
+    RL_AUTH: { limit: () => Promise.resolve({ success: true }) },
     ENVIRONMENT: 'local',
     APP_ORIGIN: 'http://localhost:8787',
     ...overrides,
