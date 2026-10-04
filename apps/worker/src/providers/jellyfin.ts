@@ -8,7 +8,7 @@
  * The password is the only stored secret; the token is never persisted by Cinewren.
  */
 import { ProviderError } from './errors';
-import { asRec, normalizeItem } from './jellyfin-normalize';
+import { asRec, normalizeCollection, normalizeItem } from './jellyfin-normalize';
 import { statusError } from './origin-fetch';
 import type {
   ArtworkKind,
@@ -16,6 +16,7 @@ import type {
   ItemsPage,
   ListItemsRequest,
   MediaProvider,
+  NormalizedCollection,
   NormalizedItem,
   NormalizedLibrary,
   ProbeResult,
@@ -32,7 +33,7 @@ const MIN_VERSION_PARTS = [12, 1];
 const CLIENT =
   'MediaBrowser Client="Cinewren", Device="Cinewren Sync", DeviceId="cinewren-svc-main", Version="0.0.1"';
 const ITEM_FIELDS =
-  'ProviderIds,MediaSources,MediaStreams,Overview,Genres,DateCreated,DateLastSaved,Path,SortName,OriginalTitle,ProductionYear,RunTimeTicks,ParentId,Etag';
+  'ProviderIds,MediaSources,MediaStreams,Overview,Genres,DateCreated,DateLastSaved,Path,SortName,OriginalTitle,ProductionYear,RunTimeTicks,ParentId,Etag,People';
 const MAX_PAGE_SIZE = 200;
 
 interface Session {
@@ -302,6 +303,69 @@ async function listItems(ctx: ProviderContext, req: ListItemsRequest): Promise<I
   return { items, nextCursor: raw.length > 0 && next < total ? String(next) : null };
 }
 
+/**
+ * Box sets (FR-SYNC-008, spike section 4b): `GET /Items?IncludeItemTypes=BoxSet&Recursive=true`
+ * lists them server-wide (a box set is not inside a movie library, so `libraryId` is not used),
+ * and `GET /Items?ParentId=<boxSetId>` lists its members. The cursor is an offset into the box
+ * set list; each page also fetches the members of the box sets on it.
+ */
+async function listCollections(
+  ctx: ProviderContext,
+  req: { libraryId?: string; cursor?: string; pageSize: number },
+): Promise<{ collections: NormalizedCollection[]; nextCursor: string | null }> {
+  if (req.cursor !== undefined && !/^\d{1,9}$/.test(req.cursor)) {
+    throw new ProviderError('PROTOCOL', 'Invalid page cursor.', false);
+  }
+  const start = req.cursor === undefined ? 0 : Number(req.cursor);
+  const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(req.pageSize)));
+  const body = await okJson(
+    await call(ctx, (userId) => {
+      const q = new URLSearchParams({
+        userId,
+        IncludeItemTypes: 'BoxSet',
+        Recursive: 'true',
+        Fields: 'ProviderIds,Overview,DateLastSaved,ChildCount',
+        StartIndex: String(start),
+        Limit: String(limit),
+        EnableTotalRecordCount: 'true',
+      });
+      return `/Items?${q.toString()}`;
+    }),
+  );
+  const raw = Array.isArray(body.Items) ? (body.Items as unknown[]) : [];
+  const total = typeof body.TotalRecordCount === 'number' ? body.TotalRecordCount : 0;
+  const collections: NormalizedCollection[] = [];
+  for (const entry of raw) {
+    const setId = text(asRec(entry)?.Id);
+    if (!setId) continue;
+    const members: unknown[] = [];
+    for (let at = 0; ;) {
+      const page = await okJson(
+        await call(ctx, (userId) => {
+          const q = new URLSearchParams({
+            userId,
+            ParentId: setId,
+            Fields: 'ProviderIds',
+            StartIndex: String(at),
+            Limit: String(MAX_PAGE_SIZE),
+            EnableTotalRecordCount: 'true',
+          });
+          return `/Items?${q.toString()}`;
+        }),
+      );
+      const items = Array.isArray(page.Items) ? (page.Items as unknown[]) : [];
+      members.push(...items);
+      at += items.length;
+      const memberTotal = typeof page.TotalRecordCount === 'number' ? page.TotalRecordCount : 0;
+      if (items.length === 0 || at >= memberTotal) break;
+    }
+    const normalized = normalizeCollection(entry, members);
+    if (normalized) collections.push(normalized);
+  }
+  const next = start + raw.length;
+  return { collections, nextCursor: raw.length > 0 && next < total ? String(next) : null };
+}
+
 async function getItem(
   ctx: ProviderContext,
   providerItemId: string,
@@ -361,7 +425,7 @@ export const jellyfinProvider: MediaProvider = {
   getItem,
   getArtworkRequest,
   probe,
-  listCollections: notYet('Collections (M2, FR-SYNC-008)'),
+  listCollections,
   // M3. Per the owner decision of 2026-10-04, Jellyfin will always stream through token-gated
   // HLS and never `static=true` direct play, which the origin does not authenticate.
   createSessionCredential: notYet('Session credentials (M3)'),

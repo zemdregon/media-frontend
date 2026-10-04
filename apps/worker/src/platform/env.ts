@@ -23,6 +23,10 @@ export interface Env {
   CREDENTIAL_KEY_CURRENT?: string | undefined;
   /** `true` allows `http://` origin base URLs. Honoured only when `ENVIRONMENT=local` (FR-SRV-007). */
   ALLOW_INSECURE_ORIGINS?: string | undefined;
+  /** Incremental sync interval in minutes (FR-SYNC-001, proposed 60). */
+  SYNC_INCREMENTAL_INTERVAL_MIN?: string | undefined;
+  /** Full sync interval in hours (FR-SYNC-001, proposed 24). */
+  SYNC_FULL_INTERVAL_H?: string | undefined;
   /** Secret. One-time bootstrap token; deliberately not in `secrets.required` (ADR-0014). */
   SETUP_TOKEN?: string | undefined;
 }

@@ -1,19 +1,21 @@
 import { createApp } from './api/app';
-import { createLogger } from './platform/logger';
 import type { Env } from './platform/env';
+import { createSyncDeps } from './sync/deps';
+import { handleQueue, handleScheduled } from './sync/jobs';
 
 const app = createApp();
 
 export default {
   fetch: app.fetch,
 
-  // Placeholders so the cron and queue entries in wrangler.jsonc have handlers.
-  // The scheduler (LLD-SYNC) and job consumers arrive in later milestones.
-  scheduled(controller: ScheduledController): void {
-    createLogger().info('scheduled.tick', { cron: controller.cron });
+  // Scheduler tick and retention job (LLD-SYNC); `sweepPlaybackSessions`, `sweepAuth` and health
+  // probing join the tick in their own tasks.
+  async scheduled(controller: ScheduledController, env: Env): Promise<void> {
+    await handleScheduled(createSyncDeps(env), controller.cron);
   },
-  queue(batch: MessageBatch): void {
-    createLogger().warn('queue.unhandled', { queue: batch.queue, size: batch.messages.length });
-    batch.retryAll();
+
+  // One message is one sync run (or a purge or re-encryption job); failures retry per message.
+  async queue(batch: MessageBatch, env: Env): Promise<void> {
+    await handleQueue(batch, env);
   },
 } satisfies ExportedHandler<Env>;
