@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1, 2026-10-04. Agent-authored under delegation; not owner-reviewed. Nothing described here is implemented. |
+| **Status** | Draft v0.1, 2026-10-04. Agent-authored under delegation; not owner-reviewed. Nothing described here is implemented. Updated 2026-10-04 for owner decisions Q-7/Q-8. |
 | **Owns** | Concrete engineering choices and their tradeoffs: language and tooling, D1 access and migrations, configuration and secrets, environments, the passkey authentication implementation, cross-cutting concerns (security headers and CSP, CSRF, logging and metrics, rate limiting), testing strategy, CI/CD, versioned releases and the self-host install and upgrade path, release and rollback, backup and restore, the browser playback approach, performance budgets, and how the design leaves room for future changes. |
 | **Does not own** | Requirements ([SRS](../requirements/SRS.md)), components and data flows ([HLD](HLD.md)), module structure ([SDD](SDD.md)), schemas, contracts and algorithms ([LLD](LLD.md)), architecture decisions ([ADRs](../adr/0001-record-architecture-decisions.md); authentication model in [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)), sequencing ([ROADMAP](../ROADMAP.md)). |
 
-Provenance: everything in this document is an **Agent decision (delegated, 2026-10-04; not yet owner-reviewed)** unless it is labelled otherwise. Two items are **Owner direction (2026-10-04)**: passkey-only authentication with operator invite links (ADR-0014, which supersedes ADR-0007), and packaging Cinewren so that other operators can self-host their own single-operator instance (FR-OPS-008). Cloudflare Access is not part of the design. An operator *may* put Access in front of their deployment as an optional extra layer; that option is neither designed nor required (see §6.5 for one side-effect). Cloudflare facts that were checked against the Cloudflare documentation on 2026-10-04 carry a URL. Anything not checked is marked "to verify in M0" (platform) or "to verify in M1 spike" (providers).
+Provenance: everything in this document is an **Agent decision (delegated, 2026-10-04; not yet owner-reviewed)** unless it is labelled otherwise. Dark and light themes are **Owner decision Q-8 (2026-10-04)**, and collections plus people and collection search are **Owner decision Q-7 (2026-10-04)**; the theming and font approach below is an agent decision. Two items are **Owner direction (2026-10-04)**: passkey-only authentication with operator invite links (ADR-0014, which supersedes ADR-0007), and packaging Cinewren so that other operators can self-host their own single-operator instance (FR-OPS-008). Cloudflare Access is not part of the design. An operator *may* put Access in front of their deployment as an optional extra layer; that option is neither designed nor required (see §6.5 for one side-effect). Cloudflare facts that were checked against the Cloudflare documentation on 2026-10-04 carry a URL. Anything not checked is marked "to verify in M0" (platform) or "to verify in M1 spike" (providers).
 
 ## 1. Stack and tooling
 
@@ -60,7 +60,7 @@ Rules:
    - *Contract* (release N+1 or later): code stops using the old shape; a later migration drops it.
 3. **Order of operations in CI:** apply migrations, then deploy the Worker. Because of rule 2, the old Worker still works against the new schema while the deploy happens, and also after a code rollback (§9).
 4. **Destructive steps** (`DROP`, table rebuilds) need their own PR, labelled `migration:contract`, and a note in the PR description naming the release that stopped using the old shape.
-5. **The FTS table is derived.** It can be dropped and rebuilt from `media_items` by a job (`rebuildSearchIndex`). This matters for exports (§10).
+5. **The FTS table is derived.** It can be dropped and rebuilt from `media_items`, `people` and `collections` by a job (`rebuildSearchIndex`). This matters for exports (§10).
 
 ## 4. Configuration and secrets
 
@@ -175,6 +175,24 @@ ADR-0012 uses the Workers **Cache API** (`caches.default`). The Cache API docs s
 
 The Cache API is per data centre and does not use tiered caching (same page). At this scale that is acceptable.
 
+### 6.6 Theming and fonts (NFR-UX-001, NFR-PRIV-001)
+
+**Theming approach (Owner decision Q-8; mechanism is an agent decision).** The design tokens come from [UX](UX.md), which owns their names and values. The SPA implements them as CSS custom properties in `apps/web/src/theme/tokens.css`:
+- The dark and light token sets are two blocks of the same property names. Components reference only `var(--…)`; lint (a Stylelint rule banning colour literals outside `theme/`) enforces this.
+- The default follows the browser: the light values sit under `@media (prefers-color-scheme: light)` and the dark values are the base, or the other way round if UX.md says so.
+- An explicit choice sets `data-theme="dark"` or `data-theme="light"` on `<html>`. Those blocks come after the media query and override it, so a user override wins in either direction. `system` removes the attribute. `color-scheme` is set with the theme so native controls match.
+- The choice is stored as `users.theme_preference` and changed through `PATCH /me/preferences` ([LLD-API](LLD.md#lld-api--platform-http-api-contracts)). To avoid a flash of the wrong theme, the last applied value is also cached in `localStorage` (in try/catch; the page works without it) and applied by a tiny external script, `theme-init.js`, loaded in `<head>` before the styles. It is a separate file because the CSP allows no inline script (§6.1); the value from `GET /me` replaces the cached one after load.
+
+**Contrast checks (NFR-A11Y-001, NFR-UX-001).** Both themes must meet contrast independently.
+- The Playwright journeys run an `@axe-core/playwright` scan on each main screen (browse, search results, title detail, person page, collection page, player, sign-in, admin) **once per theme**, by setting `data-theme` before the scan. Any `color-contrast` violation fails CI.
+- A unit test reads `tokens.css` and checks the declared text and surface token pairs against the WCAG ratios in NFR-A11Y-001 for each theme, so a bad token fails before a page is rendered.
+- The `prefers-color-scheme` path is covered by running one journey with Playwright's `colorScheme: 'light'` and `'dark'` contexts and no override.
+
+**Fonts (agent decision).** The UX.md type system uses Bricolage Grotesque, Instrument Sans and JetBrains Mono.
+- They are **self-hosted**: WOFF2 files bundled into the SPA build and served by Workers Static Assets with hashed names and long-lived caching. The page loads no Google Fonts or other font CDN, so no third-party request is made and no visitor IP or Referer reaches a third party (NFR-PRIV-001). The CSP already restricts `font-src 'self'` and `style-src 'self'` (§6.1), and the CSP test fails if a third-party font request appears.
+- Only the needed weights and the Latin subset are shipped *(proposed)*, as variable fonts where available, with `font-display: swap` and system fallbacks, to respect the NFR-PERF-003 budget. Fonts are not part of the 250 KB initial JS budget but are preloaded sparingly (body font only).
+- **Licenses must be checked (to verify in M0):** confirm that each font's license (all three are expected to be SIL Open Font License, but this has not been checked) permits self-hosting and redistribution with the build, and keep the license files in the repository and in the build output.
+
 ## 7. Testing strategy (NFR-TEST-001)
 
 | Layer | Tooling | Scope | Covers SRS method |
@@ -182,7 +200,7 @@ The Cache API is per data centre and does not use tiered caching (same page). At
 | Unit | Vitest (Node) | Pure modules: matching ([LLD-MATCH](LLD.md#lld-match--matching--curation-algorithm)), selection ([LLD-SEL](LLD.md#lld-sel--source-selection-algorithm)), BR-7 thresholds, envelope crypto, CSP builder, cursor codec, redaction, capability-to-device-profile mapping | T |
 | Workers integration | `@cloudflare/vitest-pool-workers` with local D1 and Queues | Full Hono app through `SELF.fetch` with session cookies from the test fixture (§5.1); migrations applied; the scheduled and queue handlers called directly. Covers BR-1 filtering for every catalog endpoint (FR-CAT-006), role enforcement (FR-USR-003), the auth flows (setup disabled after the first operator, single-use and expired invites, CSRF `Origin` rejection, session idle and absolute expiry, session revocation on disable; FR-USR-001 to FR-USR-007, NFR-SEC-007), the sync lock (FR-SYNC-002), idempotency (FR-SYNC-004), missing marking (FR-SYNC-005), cascades (DR-005) and retention (DR-003) | T |
 | Provider contract | Vitest plus recorded fixtures | Each adapter runs against fixtures served by the **mock origin server**, a small Hono app in `test/mock-origin/` that replays recorded responses for each provider and version and can inject faults (timeouts, 5xx, redirects to a foreign host, truncated pages). The same contract suite runs against every adapter (NFR-MAINT-001, IR-002 to IR-005). Fixtures are recorded from real servers during the M1 spike and M4, then scrubbed of tokens, hostnames and personal data by a script that CI re-checks. | T |
-| End-to-end | Playwright against `wrangler dev` plus the mock origin (from M2) | Journeys J-1 to J-6 (PRD) with seeded data. Playback uses tiny test media (H.264/AAC MP4 and an HLS variant) served by the mock origin. CSP violations are collected and fail the test. axe-core checks feed NFR-A11Y-001. | T, part of A |
+| End-to-end | Playwright against `wrangler dev` plus the mock origin (from M2) | Journeys J-1 to J-6 (PRD) with seeded data. Playback uses tiny test media (H.264/AAC MP4 and an HLS variant) served by the mock origin. CSP violations are collected and fail the test. axe-core checks feed NFR-A11Y-001 and run in both themes (§6.6). | T, part of A |
 | Docs checks | Node script in CI | Relative links resolve. Every `FR-/NFR-/IR-/DR-` ID cited in `docs/` exists in the SRS. LLD and PRD headings match the expected IDs. ADR filenames follow the pattern (NFR-MAINT-002). | I |
 | Static and security checks | `tsc --noEmit`, ESLint, `pnpm audit --prod`, GitHub secret scanning or gitleaks, Dependabot | NFR-SEC-006, IR-002 import boundaries | I |
 | Bundle budget | `size-limit` or a Vite manifest check | NFR-PERF-003 | T |
@@ -251,7 +269,7 @@ Both paths share these steps:
 |---|---|---|
 | D1 Time Travel | Whole database, restorable to any minute within 30 days (Workers Paid) or 7 days (Free). `wrangler d1 time-travel restore <db> --timestamp=…` or `--bookmark=…`. The restore **overwrites the database in place**. | https://developers.cloudflare.com/d1/reference/time-travel/ (checked 2026-10-04). Meets RPO ≤ 24 h (proposed). Before restoring, run `wrangler d1 time-travel info` and record the current bookmark, so the restore itself can be undone. |
 | Application export (FR-OPS-006) | Primary data as JSON, no secrets ([LLD-API](LLD.md#lld-api--platform-http-api-contracts)) | A portable copy the operator controls. It works with any schema version that has an importer. |
-| `wrangler d1 export` | SQL dump | **Not supported while virtual tables exist.** The workaround is to drop them, export and recreate them (https://developers.cloudflare.com/d1/best-practices/import-export-data/). Because the FTS table is derived (§3, rule 5), the runbook is: drop `media_items_fts`, export, then run `rebuildSearchIndex`. Search is degraded until the rebuild finishes. |
+| `wrangler d1 export` | SQL dump | **Not supported while virtual tables exist.** The workaround is to drop them, export and recreate them (https://developers.cloudflare.com/d1/best-practices/import-export-data/). Because the FTS table is derived (§3, rule 5), the runbook is: drop `search_fts`, export, then run `rebuildSearchIndex`. Search is degraded until the rebuild finishes. |
 
 Restore rehearsal (M5, NFR-REL-003): on staging, write marker data, record a bookmark, mutate the data, restore to the bookmark, then check primary data and the RTO stopwatch (target ≤ 4 h, proposed). After the restore, run a full sync so derived catalog data reconciles with the origins. Write the results into the runbook.
 
@@ -337,3 +355,5 @@ There is no legacy system to migrate from. The design keeps these future changes
 | TDD-D11 | `@simplewebauthn/server` and `browser` for WebAuthn (§1) | No (Workers compatibility to verify in M0) |
 | TDD-D12 | Session cookie `__Host-` prefix, hashed IDs, `Origin` check for CSRF, tokens carried in the URL fragment (§5.1) | No: implements NFR-SEC-007 |
 | TDD-D13 | Self-host packaging: Deploy button and Wrangler paths, `SCHEMA_VERSION_REQUIRED` skew guard, major-only contract migrations (§9) | No: implements FR-OPS-008 |
+| TDD-D14 | Theming: CSS custom properties from the UX.md tokens, `prefers-color-scheme` plus a `data-theme` override, per-user preference stored server-side, axe contrast checks in both themes (§6.6) | No: implements NFR-UX-001 |
+| TDD-D15 | Fonts self-hosted through Static Assets; no third-party font requests; font licenses to verify in M0 (§6.6) | No: implements NFR-PRIV-001 |

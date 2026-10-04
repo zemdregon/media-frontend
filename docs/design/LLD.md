@@ -342,7 +342,7 @@ Notes:
 |---|---|
 | Delete user | One `batch`: `UPDATE audit_log SET target_id = NULL WHERE target_type='user' AND target_id=?`, then `DELETE FROM users`. FK cascades remove `library_grants`, `watch_progress`, `playback_sessions`, `passkey_credentials`, `sessions` (so access ends immediately, FR-USR-008) and their invites. `idempotency_keys` are deleted explicitly, since that table has no FK. `invites.created_by` is set to NULL on invites the user issued. `audit_log.actor_user_id` is set to NULL. Audit `details` reference users by ID only, never by display name, so no rewrite is needed. Before the batch runs, any live sessions are revoked (LLD-TOKEN). BR-8: the delete fails with `LAST_OPERATOR` if it would leave no active operator, checked by a conditional statement in the same batch. |
 | Remove server | Set `status='removing'`, which hides its sources immediately, delete `server_credentials`, and enqueue `purge_server`. The job deletes `media_versions` and `sources` in chunks of 500 *(proposed)* to stay inside D1 query limits, then deletes the `servers` row (cascades: libraries, grants, sync_runs, health_probes, overrides, `person_provider_links` and `collection_provider_links`). Deleting a source cascades its `credits` and `collection_members`. Orphaned items are then removed as below. Revoking open sessions comes first. This refines the FRD's "removed" state with a short transitional `removing` status. |
-| Orphan people and collections | After credits or links are removed, delete `person_provider_links` that no `credits` row references and `collection_provider_links` that belong to a removed server or were not seen by the last completed full pass of their server (LLD-SYNC). Then delete `people` and `collections` that have no links left, together with their `search_fts` rows. Cascades remove their `credits`, `collection_members` and `curation_overrides` of kind person or collection and any `match_conflicts` on their links. A person who merely has no visible credits stays (it is hidden by BR-1, not deleted). |
+| Orphan people and collections | After credits or links are removed, delete `person_provider_links` that no `credits` row references and `collection_provider_links` that were not seen by the last completed full pass of their server (LLD-SYNC). Then delete `people` and `collections` that have no links left, together with their `search_fts` rows. Cascades remove their `credits`, `collection_members` and `curation_overrides` of kind person or collection and any `match_conflicts` on their links. A person who merely has no visible credits stays (it is hidden by BR-1, not deleted). |
 | Orphan items | After any source purge, `DELETE FROM media_items WHERE id IN (… items of the affected set with no sources …)`, children first. Cascades remove `external_ids`, `curation_overrides`, `match_conflicts`, `item_availability`, `watch_progress`, `credits` and `collection_members`. |
 
 ### Migration practice
@@ -373,19 +373,24 @@ Conventions (IR-001):
 | POST | `/api/v1/auth/login/options` | *public* | — | `{challengeId, options}` (no `allowCredentials`: discoverable) | 429 | FR-USR-001 |
 | POST | `/api/v1/auth/login/verify` | *public* | `{challengeId, response}` | `{user}` + session cookie | 401 `WEBAUTHN_VERIFICATION_FAILED` (unknown credential, disabled user and bad signature look the same), 429 | FR-USR-001, IR-006 |
 | POST | `/api/v1/auth/logout` | user | — | `204`, session row deleted, cookie cleared | — | FR-USR-006 |
-| GET | `/api/v1/me` | user | — | `{id, displayName, role}` | 401 | FR-USR-003 |
+| GET | `/api/v1/me` | user | — | `{id, displayName, role, preferences:{theme}}` | 401 | FR-USR-003, NFR-UX-001 |
+| PATCH | `/api/v1/me/preferences` | user | `{theme:"system"\|"dark"\|"light"}` | `{theme}`. Writes `users.theme_preference`; idempotent; not audited (it is not an operator mutation). | 400 `VALIDATION_FAILED`, 401 | NFR-UX-001 |
 | GET | `/api/v1/me/passkeys` | user | — | `[{id, label, createdAt, lastUsedAt, backedUp}]` | — | FR-USR-006 |
 | POST | `/api/v1/me/passkeys/options` · `/verify` | user | `{label?}` · `{challengeId, response}` | `{challengeId, options}` · `201 {passkey}` | 400 | FR-USR-006 |
 | PATCH / DELETE | `/api/v1/me/passkeys/{id}` | user | `{label}` / — | `{passkey}` / `204` (its sessions end) | 404, 409 `LAST_PASSKEY` | FR-USR-006 |
 | GET / DELETE | `/api/v1/me/sessions` · `/{id}` | user | — | list / `204` | 404 | FR-USR-006 |
 | GET | `/api/v1/home` | user | — | `{recentlyAdded:[ItemCard], continueWatching:[ItemCard+progress]}` | — | FR-CAT-008 |
 | GET | `/api/v1/items` | user | `type=movie\|series`, `sort=title\|year\|added`, `order`, `genre`, `yearFrom`, `yearTo`, `minHeight`, `cursor`, `limit` (≤100, default 50) | `Page<ItemCard>` | 400 | FR-CAT-002, FR-CAT-003, FR-CAT-006 |
-| GET | `/api/v1/search` | user | `q` (1–100 chars), `cursor`, `limit` | `Page<ItemCard>` ranked by bm25, then title | 400 | FR-CAT-004 |
-| GET | `/api/v1/items/{id}` | user | — | `ItemDetail` (metadata, artwork URLs, `versionsSummary` e.g. `["4K HDR","1080p"]`, `serverCount`, progress, children summary) | 404 | FR-CAT-005, FR-CAT-006 |
+| GET | `/api/v1/search` | user | `q` (1–100 chars), `kind?=title\|person\|collection`, `cursor` (only with `kind`), `limit` (default 8 per group, ≤ 50) | **Grouped by kind:** `{titles:Page<ItemCard>, people:Page<PersonCard>, collections:Page<CollectionCard>}`. Each group is ranked by bm25, then name, and holds only hits visible under BR-1. With `kind`, only that group is returned and `cursor` pages it; without it each group is its first page. A group with no hits is `{items:[],nextCursor:null}`. No total counts. | 400 | FR-CAT-004, FR-CAT-011, FR-CAT-012 |
+| GET | `/api/v1/people/{id}` | user | `cursor`, `limit` | `{id, name, artworkUrl, credits:Page<{item:ItemCard, role, character?}>}`. Only credits on titles visible under BR-1, ordered by year descending then title. No count of hidden credits. | 404 (unknown, or no visible credit: indistinguishable) | FR-CAT-011, BR-1, BR-10 |
+| GET | `/api/v1/collections` | user | `cursor`, `limit` (default 50) | `Page<CollectionCard>` sorted by name. Only collections with at least one visible member. | 400 | FR-CAT-012, BR-1 |
+| GET | `/api/v1/collections/{id}` | user | `cursor`, `limit` | `{id, name, overview, artworkUrl, members:Page<ItemCard>}`. Members are the union over the merged provider collections, filtered by BR-1, ordered by year ascending then title. No count of hidden members. | 404 (unknown or no visible member: indistinguishable) | FR-CAT-012, BR-1, BR-10 |
+| GET | `/api/v1/items/{id}` | user | optional header `X-Device-Caps` (base64url JSON, the device capabilities below, ≤ 2 KB) | `ItemDetail` (metadata, artwork URLs, `versionsSummary` e.g. `["4K HDR","1080p"]`, `serverCount`, progress, children summary, `cast:[{person:{id,name,artworkUrl}, role, character?}]` (first 12 *(proposed)*, only people with a visible credit), `collections:[{id,name}]` (visible only), and `copies`, the copy table below) | 404 | FR-CAT-005, FR-CAT-006, FR-CAT-011, FR-CAT-012, FR-CAT-013 |
 | GET | `/api/v1/items/{id}/children` | user | `cursor`, `limit` | `Page<ItemCard>` (seasons of a series; episodes of a season) | 404 | FR-CAT-005 |
 | GET | `/api/v1/items/{id}/versions` | user | — | `[{sourceId, versionId, label, height, hdr, videoCodec, serverName, serverStatus}]` (visible only) | 404 | FR-PLAY-005 |
 | GET | `/api/v1/items/{id}/next-episode` | user | — | `ItemCard \| null` | 404 | FR-PROG-004 |
 | GET | `/api/v1/artwork/{itemId}/{kind}` | user | `kind=poster\|backdrop\|thumb`, `v` (tag) | image bytes, `Cache-Control: private, max-age=604800, immutable` | 404, 502 | FR-CAT-009 |
+| GET | `/api/v1/artwork/people/{id}` · `/artwork/collections/{id}` | user | `v` (tag) | image bytes, same caching and permission rule as above (the entity must have a visible title for the caller) | 404, 502 | FR-CAT-009, FR-CAT-011, FR-CAT-012 |
 | POST | `/api/v1/play` | user | `PlayRequest` (below) | `201 PlaybackDescriptor` | 400, 404, 409 `NO_PLAYABLE_SOURCE`, 429, 502/504 | FR-PLAY-001–008, FR-OPS-002 |
 | POST | `/api/v1/play/{sessionId}/events` | user (owner) | `{seq, type:"start"\|"progress"\|"pause"\|"stop"\|"error", positionMs, errorCode?}` | `204` | 404, 410 `SESSION_EXPIRED`, 429 | FR-PROG-001, FR-PLAY-009, BR-9 |
 | PUT | `/api/v1/progress/{itemId}` | user | `{watched:boolean}` or `{positionMs}` | `{positionMs, watched}` | 404 | FR-PROG-003 |
@@ -409,12 +414,12 @@ Conventions (IR-001):
 | PATCH | `/api/v1/admin/users/{id}` | operator | `{role?, status?:"active"\|"disabled", displayName?}` (disable also deletes the user's sessions) | `User` | 409 `LAST_OPERATOR` | FR-USR-008, BR-8 |
 | DELETE | `/api/v1/admin/users/{id}` | operator | — | `204` | 409 `LAST_OPERATOR` | FR-USR-008, DR-005 |
 | PUT | `/api/v1/admin/users/{id}/grants` | operator | `{libraryIds:[…]}` (viewers only) | `{libraryIds}` | 409 `GRANTS_NOT_APPLICABLE` for operators | FR-USR-005 |
-| POST | `/api/v1/admin/curation/merge` | operator | `{intoItemId, fromItemId}` | `{itemId}` | 409 `TYPE_MISMATCH` | FR-CAT-007 |
-| POST | `/api/v1/admin/curation/split` | operator | `{itemId, sourceId}` | `{newItemId}` | 409 `LAST_SOURCE` | FR-CAT-007 |
+| POST | `/api/v1/admin/curation/merge` | operator | `{entityKind?:"item"\|"person"\|"collection" (default item), intoId, fromId}` (`intoItemId`/`fromItemId` are accepted as aliases for items) | `{id}` | 409 `TYPE_MISMATCH` (items) | FR-CAT-007, FR-CAT-010 |
+| POST | `/api/v1/admin/curation/split` | operator | `{entityKind?, id, sourceId \| linkId}` (`sourceId` for items, `linkId` for a person or collection provider link) | `{newId}` | 409 `LAST_SOURCE` (also when it is the entity's only link) | FR-CAT-007 |
 | GET | `/api/v1/admin/curation/overrides` | operator | `cursor` | `Page<Override>` | — | FR-CAT-007 |
 | DELETE | `/api/v1/admin/curation/overrides/{id}` | operator | — | `204` (item rematched on next sync of that source) | 404 | FR-CAT-007, BR-3 |
-| GET | `/api/v1/admin/curation/conflicts` | operator | `status=open\|resolved\|dismissed`, `cursor` | `Page<{id, source:{id,title,year,serverName,externalIds}, candidates:[{itemId,title,year,externalIds}], reason, detectedAt}>` | — | FR-CAT-010 |
-| POST | `/api/v1/admin/curation/conflicts/{id}/resolve` | operator | `{action:"merge", intoItemId}` \| `{action:"keep_separate"}` \| `{action:"dismiss"}` | `{itemId}` | 404, 409 | FR-CAT-010, FR-CAT-007 |
+| GET | `/api/v1/admin/curation/conflicts` | operator | `status=open\|resolved\|dismissed`, `entityKind?`, `cursor` | `Page<{id, entityKind, source:{id,title,year,serverName,externalIds}, candidates:[{itemId,title,year,externalIds}], reason, detectedAt}>`. For a person or collection, `source` is the provider link `{linkId, name, serverName, externalIds}` and `candidates` are `{id, name, externalIds}`. | — | FR-CAT-010 |
+| POST | `/api/v1/admin/curation/conflicts/{id}/resolve` | operator | `{action:"merge", intoId}` \| `{action:"keep_separate"}` \| `{action:"dismiss"}` | `{itemId}` | 404, 409 | FR-CAT-010, FR-CAT-007 |
 | GET | `/api/v1/admin/audit-log` | operator | `cursor`, `action?`, `from?`, `to?` | `Page<AuditEntry>` | — | FR-OPS-005 |
 | GET | `/api/v1/admin/export` | operator | — | `application/json` attachment: `{schemaVersion, exportedAt, users, grants, progress, curationOverrides, servers:[{id,type,name,baseUrl,priority,libraries}]}`, with no credentials (NFR-SEC-001) | — | FR-OPS-006 |
 
@@ -447,6 +452,26 @@ Pagination uses cursors. `Page<T> = { items: T[], nextCursor: string | null }`. 
   "excludeSourceIds": [], "replacesSessionId": null }
 ```
 
+### Card shapes and the copy table (FR-CAT-013)
+
+`PersonCard = {id, name, artworkUrl}`. `CollectionCard = {id, name, artworkUrl, serverLabel?}`; `serverLabel` is set only when another collection visible to the caller has the same normalized name, and then names a server that the caller can see (ADR-0015: unmerged same-name collections are labelled with their server).
+
+`ItemDetail.copies` has one row per visible `(source, version)` of a movie or episode, and is `[]` for series and seasons (their copies are those of their episodes):
+
+```json
+{ "sourceId": "01J9…src", "versionId": "01J9…ver", "serverName": "Server B", "serverStatus": "active",
+  "resolution": { "width": 1920, "height": 1080, "label": "1080p" }, "hdr": "none", "videoCodec": "h264", "container": "mp4",
+  "audio": [{ "codec": "aac", "channels": 6, "language": "en" }],
+  "sizeBytes": 6400000000,
+  "expectedPlayability": "direct_play", "reasons": ["direct_play"], "selected": true }
+```
+
+- `sizeBytes` is `media_versions.size_bytes`, or `null`.
+- `expectedPlayability` is `direct_play`, `transcode` or `unavailable`. It is a prediction from `predictMode` (LLD-SEL) against the capabilities in `X-Device-Caps`; `direct_stream` is reported as `direct_play` here because both avoid a video transcode. The origin's negotiation at play time stays authoritative. Without the header it is `null` and `reasons` is `[]`.
+- `unavailable` means the copy is visible but cannot be played now (`reasons` contains `server_unreachable`). Copies on `disabled`, `removing` or `pending_validation` servers are not visible at all (BR-1), so they never appear.
+- `selected` is true on exactly the copy that `select` (LLD-SEL) would pick with default preferences, so the list and the Play button agree.
+- `reasons` uses the codes in the table below. Rows are ordered like the selection ranking. Only the caller's visible copies are returned, so a count of hidden copies cannot be inferred (BR-1); `serverCount` follows the same rule.
+
 ### Playback descriptor (FR-PLAY-001)
 
 ```json
@@ -460,10 +485,32 @@ Pagination uses cursors. `Page<T> = { items: T[], nextCursor: string | null }`. 
   "subtitleTracks": [{ "index": 3, "label": "English", "language": "en", "kind": "text",
                        "url": "https://media-b.example.net/…vtt…", "selected": false }],
   "resume": { "positionMs": 3605000 },
+  "reasons": ["direct_play", "highest_playable_resolution"],
   "alternatives": 2 }
 ```
 
 `streamUrl` and subtitle URLs always point at the selected server's own host (FR-PLAY-008). The query string carries only the session-scoped credential (FR-PLAY-007; pending ADR-0013 / M1 spike). `alternatives` is the number of other candidates the user may see; it is used to decide whether to offer a replacement (FR-PLAY-004).
+
+`reasons: string[]` (FR-PLAY-010) explains the selection. The first entry is the primary reason; the order is stable. It is never empty on a successful play. Clients map each code to a one-sentence explanation and ignore codes they do not know, so codes can be added without a breaking change. The same vocabulary is used for the per-copy `reasons` in `ItemDetail.copies`.
+
+| Code | Meaning | Where emitted |
+|---|---|---|
+| `direct_play` | Container, video and audio codecs play as stored | selected, copy |
+| `direct_stream_container` | Container is unsupported; the origin repackages without re-encoding video | selected, copy |
+| `audio_transcoded` | Only the audio is re-encoded (unsupported codec) | selected, copy |
+| `transcode_video_codec` | The video codec, profile or level is unsupported, so video is re-encoded | selected, copy |
+| `subtitle_burn_in` | An image-based subtitle was chosen, so it is burned in (FR-PLAY-006) | selected, copy |
+| `hdr_unsupported` | The copy is HDR and the device cannot display it | copy; selected when no SDR copy exists |
+| `hdr_match` | The copy's HDR format is supported by the device | selected |
+| `resolution_exceeds_device` | The copy is taller than the device or the user's maximum allows | copy |
+| `highest_playable_resolution` | Chosen for the best resolution within the limit (BR-5 rule 2) | selected |
+| `server_priority` | Tied on the keys above; the server with higher operator priority won (rule 5) | selected |
+| `server_latency` | Tied on priority too; the faster server won (rule 6) | selected |
+| `server_degraded` | The server is `degraded`, so it ranks below healthy ones | copy, selected |
+| `server_unreachable` | The server is `unreachable`; the copy cannot be played now (BR-5) | copy |
+| `user_selected` | The user chose this version or server (FR-PLAY-005) | selected |
+| `failover` | An earlier candidate was excluded or failed, so this one was used (FR-PLAY-004) | selected |
+| `origin_changed_mode` | The origin's negotiation returned a different mode than predicted | selected |
 
 ## LLD-PROV — MediaProvider interface & adapters
 
@@ -484,6 +531,8 @@ export interface MediaProvider {
   listLibraries(ctx: ProviderContext): Promise<NormalizedLibrary[]>;   // FR-SRV-003
   listItems(ctx: ProviderContext, req: { libraryId: string; cursor?: string; pageSize: number; since?: number })
     : Promise<{ items: NormalizedItem[]; nextCursor: string | null }>; // FR-SYNC-003; since = incremental
+  listCollections(ctx: ProviderContext, req: { libraryId?: string; cursor?: string; pageSize: number })
+    : Promise<{ collections: NormalizedCollection[]; nextCursor: string | null }>; // FR-SYNC-008; members as provider item IDs
   getItem(ctx: ProviderContext, providerItemId: string): Promise<NormalizedItem | null>;
   getArtworkRequest(ctx: ProviderContext, ref: ArtworkRef, kind: ArtworkKind): Request;  // FR-CAT-009
   probe(ctx: ProviderContext): Promise<{ ok: boolean; latencyMs: number; errorCode?: string }>; // FR-OPS-001
@@ -505,11 +554,29 @@ export type NormalizedItem = {
   externalIds: { tmdb?: string; imdb?: string; tvdb?: string };
   artwork: Partial<Record<ArtworkKind, ArtworkRef>>; dateAdded?: number; providerUpdatedAt?: number;
   versions: NormalizedVersion[];           // empty for series/season
+  credits: NormalizedCredit[];             // movies and series only; empty otherwise; capped per item (proposed: 40) in the adapter
+};
+export type NormalizedPerson = {           // FR-SYNC-008
+  providerPersonId: string; name: string;
+  externalIds: { tmdb?: string; imdb?: string };   // only if the origin reports them (to verify in M1 spike); never guessed
+  artwork?: ArtworkRef;
+};
+export type NormalizedCredit = {
+  person: NormalizedPerson; role: 'actor' | 'director' | 'writer' | 'producer' | 'other';
+  character?: string; order: number;       // billing order within the origin's list, 0-based
+};
+export type NormalizedCollection = {       // Plex collection; Jellyfin or Emby box set
+  providerCollectionId: string; name: string; overview?: string;
+  externalIds: { tmdb?: string };          // TMDB collection ID, the only cross-server merge key (ADR-0015)
+  artwork: Partial<Record<ArtworkKind, ArtworkRef>>;
+  memberProviderItemIds: string[];         // movies and series only; resolved to sources by sync
+  providerUpdatedAt?: number;
 };
 export type NormalizedVersion = {
   providerVersionId: string; container?: string; videoCodec?: string; videoProfile?: string;
   width?: number; height?: number; hdr: 'none' | 'hdr10' | 'hdr10plus' | 'hlg' | 'dolby_vision';
-  bitrate?: number; runtimeMs?: number; audio: AudioTrack[]; subtitles: SubtitleTrack[];
+  bitrate?: number; runtimeMs?: number; sizeBytes?: number;   // sizeBytes feeds FR-CAT-013
+  audio: AudioTrack[]; subtitles: SubtitleTrack[];
 };
 export type NegotiatedStream = {
   mode: 'direct_play' | 'direct_stream' | 'transcode'; streamType: 'progressive' | 'hls';
@@ -548,7 +615,9 @@ The checks run in order, and the first failure is reported with its check name:
 | Libraries | `GET /UserViews?userId=` (CollectionType `movies`/`tvshows`) | `GET /Users/{id}/Views` | `GET /library/sections` (type `movie`/`show`) |
 | Paged items | `GET /Items?ParentId=&Recursive=true&IncludeItemTypes=Movie,Series,Season,Episode&Fields=ProviderIds,MediaSources,MediaStreams,Overview,Genres,DateCreated&StartIndex=&Limit=`; incremental filter by last-modified date (parameter name to verify) | Similar | `GET /library/sections/{id}/all?type=…&includeGuids=1` with `X-Plex-Container-Start/Size`; incremental via `updatedAt>=` filter (to verify) |
 | External IDs | `ProviderIds.{Tmdb,Imdb,Tvdb}` | Same | `Guid[]` entries `tmdb://…`, `imdb://…`, `tvdb://…` |
-| Versions/tracks | `MediaSources[]` → `Container`, `MediaStreams[]` (Type Video/Audio/Subtitle, `Codec`, `VideoRangeType`, `IsTextSubtitleStream`) | Same | `Media[]` → `Part[]` → `Stream[]` (`streamType` 1/2/3) |
+| Versions/tracks | `MediaSources[]` → `Container`, `Size` (bytes), `MediaStreams[]` (Type Video/Audio/Subtitle, `Codec`, `VideoRangeType`, `IsTextSubtitleStream`) | Same | `Media[]` → `Part[]` (`size` bytes) → `Stream[]` (`streamType` 1/2/3) |
+| People and credits (FR-SYNC-008) | Add `People` to `Fields`: `People[]` → `Id`, `Name`, `Role` (character), `Type` (Actor, Director, Writer, Producer, others), `PrimaryImageTag`. List order is billing order. Whether entries carry person `ProviderIds` (TMDB or IMDb) is unknown, and a separate `GET /Persons/{id}` per person would be too many calls: if absent, people merge by name only (ADR-0015) | Same lineage; person `ProviderIds` availability unknown | Item metadata carries `Role[]` (cast: `tag`, `role` character, `id`, `thumb`), `Director[]` and `Writer[]` (`tag`, `id`). Tag IDs are server-local and their stability across rescans is unknown; person TMDB or IMDb IDs are probably absent, so name-only merging is the expected path |
+| Collections (FR-SYNC-008) | Box sets: `GET /Items?IncludeItemTypes=BoxSet&Recursive=true&Fields=ProviderIds,Overview`, members via `GET /Items?ParentId=<boxSetId>`. `ProviderIds.Tmdb` on a box set is the TMDB collection ID if the metadata plugin sets it | Same (`BoxSet`) | `GET /library/sections/{id}/collections` and `GET /library/collections/{ratingKey}/children`. Collection `Guid` or TMDB IDs are probably not exposed; unmerged collections then show separately per server (ADR-0015). Smart collections may need a different members call |
 | Negotiation | `POST /Items/{id}/PlaybackInfo` with a DeviceProfile built from capabilities → `SupportsDirectPlay`/`SupportsDirectStream`/`TranscodingUrl` | Same | `GET /video/:/transcode/universal/decision` then `start.m3u8`; direct play via part URL |
 | Stream URL | Direct: `/Videos/{id}/stream?static=true&MediaSourceId=…&api_key=<session token>`; HLS: `/Videos/{id}/master.m3u8?…` | Similar | Part URL or `start.m3u8` with `X-Plex-Token` query |
 | Text subtitles | `/Videos/{id}/{msId}/Subtitles/{idx}/Stream.vtt` | Similar | Transcoder subtitle option or stream URL with `format=vtt` (to verify) |
@@ -628,6 +697,7 @@ Writing the checkpoint in the same `batch` as the page's data makes them atomic.
 
 `upsertPage` handles each item in the page:
 - `INSERT INTO sources … ON CONFLICT(server_id, provider_item_id) DO UPDATE SET …, status='present', missing_since=NULL, last_seen_sync_id=:run WHERE …`. The `content_hash` comparison decides whether `updated` is incremented and whether item metadata, versions and FTS are rewritten.
+- Credits and collection membership (FR-SYNC-008). The `content_hash` covers an item's normalized credits. When it changed, the item's `credits` rows for that source are replaced in the same batch: each credit's person link is upserted by `(server_id, provider_person_id)` and goes through LLD-MATCH (`matchPerson`) only when the link is new or its IDs or name changed. After the last page of a library, `listCollections` runs and, for each collection, the link is upserted and passed to `matchCollection`, and its `collection_members` rows are replaced by resolving `memberProviderItemIds` through `(server_id, provider_item_id)` to sources. A completed full pass deletes links of that server that it did not see, with their members (derived data, DR-001), and then the orphan cleanup in LLD-SCHEMA runs. Incremental runs re-list collections whose `providerUpdatedAt` changed, or all of them if the provider cannot filter by date. `search_fts` rows are written in the same batch.
 - New sources and sources whose external IDs changed go through LLD-MATCH, which needs one read per page for candidate lookup by external ID.
 - `item_availability` rows are inserted with `INSERT OR IGNORE`.
 - Parents (series, then season) are processed before children within a page. A child whose parent source is not yet known is deferred to the end of the library pass. This handles providers that page children before parents.
@@ -674,6 +744,8 @@ Progress is not touched directly (DR-003). It is deleted only with its user, or 
 
 ## LLD-MATCH — Matching & curation algorithm
 
+This section covers items first, then people and collections (ADR-0015, BR-10).
+
 Inputs: a normalized source `S` (type, external IDs, season and episode numbers, parent source). Outputs: `S.media_item_id`, `match_method`, and possibly a `match_conflicts` row. Implements BR-2, BR-3, FR-CAT-001, FR-CAT-007 and FR-CAT-010.
 
 ```
@@ -714,6 +786,47 @@ flag(S, reason, C): UPSERT match_conflicts(source_id=S.id, status='open', reason
 
 **Series merge cascades to children.** When two series items merge, their seasons and episodes are re-keyed by `(series, season #)` and `(season, episode #)`, which merges children with the same numbers. This runs in the same batch, chunked.
 
+### People and collections (FR-CAT-011, FR-CAT-012, ADR-0015, BR-10)
+
+People and collections are matched by link, not by item. A link `L` is a row in `person_provider_links` or `collection_provider_links`, identified by `(server_id, provider_person_id)` or `(server_id, provider_collection_id)`. An existing link keeps its canonical entity across syncs unless an override applies or its external IDs changed (so merges do not flip-flop). Names are compared by `name_key`: lowercase, diacritics removed, punctuation dropped and whitespace collapsed.
+
+```
+matchPerson(L):                                    # L: server, provider_person_id, name, {tmdb, imdb}
+  o = override(entity_kind='person', L.server_id, L.provider_person_id)
+  if o.kind == 'pin':      return attachPerson(L, o.person_id, 'manual')                # BR-3 wins
+  if o.kind == 'separate': return L.person_id ?? newPerson(L, 'manual')
+  P = people with a link sharing L.tmdb or L.imdb (non-null values only), minus people L is 'separate'-d from
+  if |P| > 1:  flag(L, 'multiple_candidates', P); return keepCurrentOrNew(L)
+  if |P| == 1:
+      if idConflict(L, P[0]): flag(L, 'conflicting_ids', P[0]); return keepCurrentOrNew(L)
+      return attachPerson(L, P[0], 'external_id')
+  # no shared external ID: exact-name rule, for links with or without IDs of their own
+  N = people with name_key == key(L.name), minus separated,
+      minus people that already have a link from L.server_id          # two origin people on one server are distinct people
+      minus people with a link whose tmdb/imdb differs from L's      # idConflict: stay separate, no flag (two different "Chris Evans")
+  if |N| == 1: return attachPerson(L, N[0], 'name')
+  if |N| > 1:  flag(L, 'ambiguous_name', N); return keepCurrentOrNew(L)          # ambiguous cases stay separate
+  return keepCurrentOrNew(L)                                                       # newPerson(L, 'new')
+
+idConflict(L, P): for scheme in {tmdb, imdb}: L and a link of P both have a value for it and the values differ
+
+matchCollection(L):                                # L: server, provider_collection_id, name, tmdb_collection_id
+  o = override(entity_kind='collection', L.server_id, L.provider_collection_id)
+  if o.kind == 'pin':      return attachCollection(L, o.collection_id, 'manual')
+  if o.kind == 'separate': return L.collection_id ?? newCollection(L, 'manual')
+  if L.tmdb_collection_id is null: return keepCurrentOrNew(L)                      # never merged by name (Favourites, Kids)
+  C = collections with a link whose tmdb_collection_id == L's, minus separated
+  if |C| == 0: return keepCurrentOrNew(L)
+  if |C| > 1:  flag(L, 'multiple_candidates', C); return keepCurrentOrNew(L)       # only after an operator split
+  return attachCollection(L, C[0], 'external_id')
+```
+
+- `attachPerson` and `attachCollection` set the link's entity, re-key the denormalized `credits.person_id` (by `link_id`) or recompute collection links' canonical entity, and recompute derived fields: the shown name, portrait or artwork and overview come from the link on the highest-priority server, as for item metadata. An entity left without links is deleted (DR-005), together with its `search_fts` row.
+- `keepCurrentOrNew` returns the link's current entity if it has one, else creates a new entity. A conflict flag is raised with `flag(...)`, which has the same semantics as for items, using `person_link_id` or `collection_link_id`.
+- Same-name collections that do not merge stay as separate collections. The API labels them with their server when a caller can see more than one with the same name (LLD-API `serverLabel`).
+- **Membership** is not matched. A canonical collection's members are the union of `collection_members` over its links, filtered by BR-1 at read time. When items merge or split (above), `credits.media_item_id` and `collection_members.media_item_id` are re-keyed from their `source_id` in the same batch.
+- **Volume.** `ambiguous_name` flags may be frequent for common names. The conflicts list shows people and collections under their own `entityKind` filter, and the M2 data decides whether flagging name ambiguity stays on or only the ID conflicts are flagged (ADR-0015 revisit trigger).
+
 ### Curation operations (FR-CAT-007)
 
 | Operation | Effect |
@@ -723,11 +836,11 @@ flag(S, reason, C): UPSERT match_conflicts(source_id=S.id, status='open', reason
 | Delete override | Remove the row. The next sync that touches the source re-runs `match` (the operator can trigger an incremental sync). |
 | Resolve conflict (FR-CAT-010) | `merge` → as Merge, with `into` = the chosen candidate; `keep_separate` → `separate` override on the source; `dismiss` → status `dismissed`, no override, and not re-flagged unless the details change. |
 
-Overrides are keyed by `(server_id, provider_item_id)`, so they survive re-sync and the re-creation of canonical items (BR-3). They are deleted with their item when it becomes sourceless (DR-005).
+Merge, split, delete-override and conflict resolution work the same way for `entityKind` person and collection: merge pins every link of `from` to `into` and re-keys credits or links; split moves one provider link (`linkId`) out into a new entity and records a `separate` override on it (`LAST_SOURCE` if it is the entity's only link); a collection or person with no links left is deleted. Overrides are keyed by `(entity_kind, server_id, provider ID)`, so they survive re-sync and the re-creation of canonical items (BR-3). They are deleted with their item when it becomes sourceless (DR-005).
 
 ## LLD-SEL — Source selection algorithm
 
-Implements BR-5, FR-PLAY-003, FR-PLAY-004, FR-PLAY-005 and FR-OPS-002. Candidates are (source, version) pairs. In-request failover to the next candidate (the bounded loop below) and client replacement requests are FR-PLAY-004, delivered in M3; health-based exclusion is FR-OPS-002 (M5).
+Implements BR-5, FR-PLAY-003, FR-PLAY-004, FR-PLAY-005, FR-PLAY-010 and FR-OPS-002. Candidates are (source, version) pairs. In-request failover to the next candidate (the bounded loop below) and client replacement requests are FR-PLAY-004, delivered in M3; health-based exclusion is FR-OPS-002 (M5).
 
 ```
 select(user, item, caps, prefs, exclude):
@@ -740,25 +853,49 @@ select(user, item, caps, prefs, exclude):
   if cands empty → 409 NO_PLAYABLE_SOURCE {reason: anyUnreachable ? 'servers_unreachable' : 'none_available'}
   maxH = min(caps.maxHeight, prefs.maxHeight ?? ∞)
   for c in cands:
-    c.mode  = predictMode(c.v, caps, prefs)                 # direct_play=2, direct_stream=1, transcode=0
+    (c.mode, c.modeReasons) = predictMode(c.v, caps, prefs) # direct_play=2, direct_stream=1, transcode=0, plus reason codes
     c.res   = c.v.height <= maxH ? (1, c.v.height) : (0, -c.v.height)
     c.hdr   = (caps.hdr ∩ {c.v.hdr} ≠ ∅) or (c.v.hdr == 'none' and caps.hdr == ∅) ? 1 : 0
     c.health= server.status == 'active' ? 1 : 0
   sort cands by (mode desc, res desc, hdr desc, health desc, server.priority desc,
                  server.last_latency_ms asc NULLS LAST, s.id asc)        # rules 1–7, deterministic
-  for c in cands (at most 2 attempts, NFR-PERF-002):
-    try: return negotiate(c)                                # LLD-TOKEN; origin may return a different mode
+  for i, c in enumerate(cands) (at most 2 attempts, NFR-PERF-002):
+    try: r = negotiate(c)                                   # LLD-TOKEN; origin may return a different mode
+         return (r, reasons(c, cands, prefs, exclude, failedBefore=i>0 or exclude≠∅, actualMode=r.mode))
     except UNAVAILABLE/TIMEOUT: markProbeFailure(server); continue
   → 502 ORIGIN_UNAVAILABLE
 
-predictMode(v, caps, prefs):
+predictMode(v, caps, prefs):                                # returns (mode, reason codes)
   a = chosen audio track (prefs.audioLanguage, else default); sub = chosen subtitle
   videoOk = v.video_codec ∈ caps.video (respecting maxLevel/maxHeight per codec)
-  if sub.kind == 'image' → transcode                       # burn-in, FR-PLAY-006
-  if videoOk and v.container ∈ caps.containers and a.codec ∈ caps.audio → direct_play
-  if videoOk and (caps.nativeHls or caps.mse) → direct_stream   # remux; audio may be transcoded
-  → transcode
+  if sub.kind == 'image' → (transcode, ['subtitle_burn_in'])                          # burn-in, FR-PLAY-006
+  if videoOk and v.container ∈ caps.containers and a.codec ∈ caps.audio → (direct_play, ['direct_play'])
+  if videoOk and (caps.nativeHls or caps.mse):                                        # remux; audio may be transcoded
+      → (direct_stream, [container ∉ caps.containers ? 'direct_stream_container' : null,
+                         a.codec ∉ caps.audio ? 'audio_transcoded' : null].compact())
+  → (transcode, [videoOk ? null : 'transcode_video_codec'].compact())
 ```
+
+### Reason codes (FR-PLAY-010)
+
+`reasons(c, cands, …)` is a pure function that builds the `reasons: string[]` returned with the descriptor. The code vocabulary is the table in LLD-API (Playback descriptor). Order: first the mode reasons (`c.modeReasons`), then at most one resolution or HDR reason, then at most one tie-break reason, then status reasons.
+
+```
+reasons(c, cands, prefs, excluded, failedBefore, actualMode):
+  out = c.modeReasons
+  if c.v.hdr ≠ 'none': out += c.hdr == 1 ? 'hdr_match' : 'hdr_unsupported'
+  if c.v.height > maxH: out += 'resolution_exceeds_device'
+  elif c is top-ranked on key 2 and some other candidate is shorter within maxH: out += 'highest_playable_resolution'
+  if prefs.versionId or prefs.sourceId: out += 'user_selected'
+  else: t = first ranking key on which c beats the runner-up (the keys after 'health');
+        out += t == priority ? 'server_priority' : t == latency ? 'server_latency' : nothing
+  if c.server.status == 'degraded': out += 'server_degraded'
+  if failedBefore: out += 'failover'
+  if actualMode ≠ c.mode: out += 'origin_changed_mode'
+  return dedupe(out)                                         # never empty: falls back to the mode code
+```
+
+The same function, run without negotiation, produces the per-copy `reasons` and `expectedPlayability` for the copy table (`direct_play` and `direct_stream` map to `direct_play`; `transcode` to `transcode`; an `unreachable` server maps to `unavailable` with `server_unreachable`). Because both use one ranking, the copy marked `selected` is the one `select` returns. Unreachable servers are filtered from `cands` for playback (BR-5) but are still evaluated for the copy table, where they are shown as unavailable.
 
 The prediction only ranks candidates. The origin's negotiation result is authoritative. Both the predicted and the actual mode are stored in `playback_sessions.decision` so prediction accuracy can be measured (NFR-OBS-002). A replacement request (FR-PLAY-004) passes `excludeSourceIds` and `replacesSessionId`; the old session is ended and revoked first.
 

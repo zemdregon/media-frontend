@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1, 2026-10-04, agent-authored under delegation; not owner-reviewed. Nothing described here is implemented (the repository has no source code). Updated 2026-10-04 for owner decisions (ADR-0014, self-hosting). |
+| **Status** | Draft v0.1, 2026-10-04, agent-authored under delegation; not owner-reviewed. Nothing described here is implemented (the repository has no source code). Updated 2026-10-04 for owner decisions (ADR-0014, self-hosting). Updated 2026-10-04 for owner decisions Q-7/Q-8. |
 | **Owns** | Integrated software design: how subsystems collaborate per workflow, module and package structure, shared design patterns, interface ownership, cross-subsystem invariants, and the requirements-to-design satisfaction table. |
 | **Does not own** | System context, trust boundaries, deployment, threat model, capacity ([HLD](HLD.md)); field-level schemas, endpoint contracts and algorithms ([LLD](LLD.md)); test strategy and tooling practice ([TDD](TDD.md)); requirements ([SRS](../requirements/SRS.md)); workflow rules ([FRD](../requirements/FRD.md)); sequencing ([ROADMAP](../ROADMAP.md)). |
 
-All design choices here are **Agent decisions (delegated)**, not yet owner-reviewed, unless marked **Owner decision (2026-10-04)**. The owner decisions are those in [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) (passkeys only, invite-link-only signup) and [ADR-0011](../adr/0011-single-operator-deployment-model.md) (self-hosting); the ADR-0014 implementation details are agent decisions. The component IDs (`C-*`) are defined in the [HLD](HLD.md).
+All design choices here are **Agent decisions (delegated)**, not yet owner-reviewed, unless marked **Owner decision (2026-10-04)**. The owner decisions are those in [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) (passkeys only, invite-link-only signup) and [ADR-0011](../adr/0011-single-operator-deployment-model.md) (self-hosting); the ADR-0014 implementation details are agent decisions. Q-7 (collections, and search across people and collections) and Q-8 (dark and light themes) are **Owner decisions (2026-10-04)** recorded in the [ROADMAP](../ROADMAP.md); how people and collections are identified is [ADR-0015](../adr/0015-people-and-collection-identity.md), an agent decision with owner review pending, and all module, mechanism and satisfaction-table details below are agent decisions. The component IDs (`C-*`) are defined in the [HLD](HLD.md).
 
 ## 1. Design approach
 
@@ -23,7 +23,7 @@ One Worker, one TypeScript codebase, strict typing ([ADR-0005](../adr/0005-singl
 ├── pnpm-workspace.yaml
 ├── apps/
 │   ├── web/                    # C-WEB: React + Vite SPA, built into the Worker's assets dir
-│   │   └── src/{routes,components,player,api-client,state}
+│   │   └── src/{routes,components,player,api-client,state,theme}   # theme/: token CSS and theme switch (see below)
 │   └── worker/                 # the single deployable (wrangler.jsonc lives here)
 │       ├── migrations/         # forward-only D1 migrations (DR-004)
 │       ├── test/               # Workers-runtime integration tests + provider fixtures
@@ -35,8 +35,8 @@ One Worker, one TypeScript codebase, strict typing ([ADR-0005](../adr/0005-singl
 │           │   ├── sessions/       # create, hash, validate, revoke; the one session middleware
 │           │   ├── invites/        # invite, re-enrollment and setup tokens (hashed, single-use)
 │           │   └── users.ts        # user, role and grant resolution
-│           ├── catalog/            # C-CAT: query layer, search, home rows, visibility filter
-│           ├── match/              # C-MATCH: matching and curation
+│           ├── catalog/            # C-CAT: query layer, grouped search (titles, people, collections), person and collection pages, home rows, visibility filter
+│           ├── match/              # C-MATCH: matching and curation of items, people and collections (ADR-0015)
 │           ├── sync/               # C-SYNC: schedule, job handlers, retention purge
 │           ├── health/             # C-HEALTH: probe job, status derivation
 │           ├── playback/           # C-PLAY: selection, sessions, progress
@@ -65,6 +65,8 @@ Dependency rules (enforced by lint, design in [TDD](TDD.md)):
 | `apps/web` | `shared` only | `apps/worker/*` |
 
 The rule that nothing outside `providers/*` depends on provider-specific types is how IR-002 is made checkable (inspection plus lint).
+
+**Theme tokens (NFR-UX-001).** The design tokens (colour, type, spacing) for the dark and light themes live in `apps/web/src/theme/` as CSS custom properties. [UX](UX.md) owns the token set and its values; the SDD does not repeat them. Components use tokens only, never literal colours, so one component set serves both themes. The theme choice is `users.theme_preference` (`system`, `dark`, `light`), changed through `PATCH /me/preferences` (LLD-API); how it is applied in the browser is in the [TDD](TDD.md) (Theming).
 
 ## 3. Shared design patterns
 
@@ -277,16 +279,20 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). T
 | FR-SYNC-005 | C-SYNC | After a complete full pass, unseen sources set `missing`; reappearance restores | LLD-SYNC |
 | FR-SYNC-006 | C-SYNC, C-API | `sync_run` record with status and counters; read endpoint for operators | LLD-SCHEMA, LLD-API |
 | FR-SYNC-007 | C-SYNC | Per-server jobs and run records; failures caught per job; catalog reads independent of sync | LLD-SYNC, [ADR-0009](../adr/0009-pull-based-sync-cron-and-queues.md) |
+| FR-SYNC-008 | C-PROV, C-SYNC, C-MATCH, db | Adapters normalize credits (people with role, character, order) and `listCollections`; sync writes them in the same batch as the item, per supplying source, and hands person and collection links to `match`; both are derived data rebuilt by sync | LLD-PROV, LLD-SYNC, LLD-SCHEMA, [ADR-0015](../adr/0015-people-and-collection-identity.md) |
 | FR-CAT-001 | C-MATCH | Strong external ID matching under BR-2 produces canonical item with N sources | LLD-MATCH, [ADR-0010](../adr/0010-external-id-matching-with-manual-overrides.md) |
 | FR-CAT-002 | C-CAT | Keyset-paginated sorted list queries over canonical items | LLD-API, LLD-SCHEMA |
 | FR-CAT-003 | C-CAT | Filter predicates on genre, year, best resolution (denormalized best-resolution column) | LLD-API, LLD-SCHEMA |
-| FR-CAT-004 | C-CAT | FTS5 index on normalized titles (D1 FTS5 support verified 2026-10-04: https://developers.cloudflare.com/d1/sql-api/sql-statements/) | [ADR-0006](../adr/0006-d1-system-of-record.md), LLD-SCHEMA |
+| FR-CAT-004 | C-CAT | FTS5 index on normalized titles, shared with people and collections through a `kind` column (D1 FTS5 support verified 2026-10-04: https://developers.cloudflare.com/d1/sql-api/sql-statements/) | [ADR-0006](../adr/0006-d1-system-of-record.md), LLD-SCHEMA |
 | FR-CAT-005 | C-CAT | Detail query aggregates versions and server counts from visible sources only | LLD-API |
 | FR-CAT-006 | C-AUTH, C-CAT | INV-1 single visibility filter using the request's user context | LLD-API |
 | FR-CAT-007 | C-MATCH | Override records consulted before automatic matching; persist across syncs | LLD-MATCH, LLD-SCHEMA |
 | FR-CAT-008 | C-CAT | Home queries: recently added by date, continue watching from progress | LLD-API |
 | FR-CAT-009 | C-ART, C-API | Artwork endpoint by item ID; permission check, then cache, then origin fetch | [ADR-0012](../adr/0012-artwork-proxy-with-edge-cache.md), LLD-API |
-| FR-CAT-010 | C-MATCH, C-API | Conflict flags from matching are listed through an operator endpoint, and resolved through the FR-CAT-007 commands | LLD-MATCH, LLD-API |
+| FR-CAT-010 | C-MATCH, C-API | Conflict flags from matching are listed through an operator endpoint, and resolved through the FR-CAT-007 commands; the same list and commands cover people and collections (`entityKind`) | LLD-MATCH, LLD-API |
+| FR-CAT-011 | C-CAT, C-MATCH, db | Grouped search returns a people group from the shared FTS index; the person page lists credits on titles that pass INV-1; people merge across servers by the BR-10 rules (shared TMDB or IMDb ID, else exact normalized name with no conflicting ID) | LLD-API, LLD-MATCH, LLD-SCHEMA, [ADR-0015](../adr/0015-people-and-collection-identity.md) |
+| FR-CAT-012 | C-CAT, C-MATCH, db | Collection list and page, plus a collections group in search; members are the union over merged provider collections, filtered by INV-1, and a collection with no visible member is a 404 and absent from lists; merge only on a shared TMDB collection ID | LLD-API, LLD-MATCH, LLD-SCHEMA, [ADR-0015](../adr/0015-people-and-collection-identity.md) |
+| FR-CAT-013 | C-CAT, C-PLAY, C-WEB | Title detail returns one row per visible copy with server, resolution, HDR, audio, `size_bytes` and predicted playability from the same pure ranking function as selection, so the marked copy is the one Play would use; the client sends its capabilities with the request | LLD-API, LLD-SEL, LLD-SCHEMA, [UX](UX.md) |
 | FR-PLAY-001 | C-PLAY | `startPlayback` returns descriptor built from selection plus negotiation | LLD-API, LLD-SEL |
 | FR-PLAY-002 | C-WEB, C-API | Client probes `MediaSource`/`canPlayType` and sends capabilities with every request | LLD-API, LLD-SEL |
 | FR-PLAY-003 | C-PLAY | Pure deterministic ranking function per BR-5 | LLD-SEL |
@@ -296,6 +302,7 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). T
 | FR-PLAY-007 | C-PLAY, C-PROV, C-CRYPTO | Per-session origin credential minted at negotiation and revoked at end | [ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md), LLD-TOKEN |
 | FR-PLAY-008 | C-PLAY | Descriptor contains URLs only; no stream endpoint exists in the Worker (INV-4) | [ADR-0002](../adr/0002-cloudflare-control-plane-origins-deliver-media.md), [ADR-0003](../adr/0003-direct-to-origin-playback.md) |
 | FR-PLAY-009 | C-PROV, C-PLAY | Best-effort `reportPlayback` on start, progress, stop | LLD-PROV |
+| FR-PLAY-010 | C-PLAY, C-WEB | The selection function emits reason codes alongside its choice; the descriptor carries `reasons: string[]` from a fixed code vocabulary; the client maps codes to one-sentence explanations and ignores unknown codes | LLD-SEL, LLD-API, [UX](UX.md) |
 | FR-PROG-001 | C-PLAY, db | Progress upsert per `(user, canonical item)`; client reports on interval and events | LLD-SCHEMA, LLD-API |
 | FR-PROG-002 | C-WEB | Client reads stored position, prompts resume, passes position to player | LLD-API |
 | FR-PROG-003 | C-PLAY | BR-7 threshold evaluated on each report; manual toggle command | LLD-API |
@@ -356,6 +363,7 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). T
 | NFR-COST-001 | C-SYNC, C-PLAY | No stream bytes through Cloudflare; skip-unchanged writes limit D1 cost | [ADR-0002](../adr/0002-cloudflare-control-plane-origins-deliver-media.md), [HLD](HLD.md) |
 | NFR-COMP-001 | deployment | Origin hostnames must be non-proxied; documented in setup guide; no video routes | [ADR-0002](../adr/0002-cloudflare-control-plane-origins-deliver-media.md), [HLD](HLD.md) Section 8 |
 | NFR-A11Y-001 | C-WEB | Semantic components, keyboard-operable player, captions support | [TDD](TDD.md) |
+| NFR-UX-001 | C-WEB, C-API, db | One token set in `apps/web/src/theme/` (owned by [UX](UX.md)) drives dark and light themes; `prefers-color-scheme` by default and a per-user override stored as `users.theme_preference`; contrast checked per theme in CI | [TDD](TDD.md) (Theming), LLD-SCHEMA, LLD-API, [UX](UX.md) |
 | NFR-COMPAT-001 | C-WEB | Browser matrix in end-to-end tests; HLS fallback via hls.js | [TDD](TDD.md) |
 | NFR-OBS-001 | platform, C-API | Structured JSON logger with request ID and user ID; redaction | [TDD](TDD.md), LLD-ERR |
 | NFR-OBS-002 | platform | Metrics from structured logs or D1 counters (mechanism decided in TDD) | [TDD](TDD.md) |
