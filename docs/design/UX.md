@@ -287,6 +287,11 @@ Operator-facing copy may name server types, status codes and counts. Viewer-faci
 | (h) | Servers list shows a "Sign-in: API key / Plex account" stat | Same credential question as (a) | Label follows (a); never display secrets |
 | (i) | Nav shows Servers to everyone | Operator only (FR-USR-003) | Hide for viewers (section 4) |
 | (j) | Unselected radio ring, search and input borders under 3:1 | Section 3.4 | Use `--cw-border-control`; ask the owner to accept the change |
+| (k) | Library-home sidebar "Sources" list | No viewer-facing server endpoint (operators see servers on the Servers page) | Omitted | agent decision 2026-10-04 |
+| (l) | Poster cards show copy count or best-copy line | Card responses carry no copy data | Show neither; detail page shows copies from `GET /items/{id}/versions` | agent decision 2026-10-04 |
+| (m) | Continue watching shows progress | No progress data until M3 | Show a quiet placeholder | agent decision 2026-10-04 |
+| (n) | Genre filter | Input with dropdown menu | Text input with suggestions | agent decision 2026-10-04 |
+| (o) | Copies table with play actions | No actions until M3 (FR-CAT-013, FR-PLAY-005) | Plain table without play actions | agent decision 2026-10-04 |
 
 Identity of people and collections follows [ADR-0015](../adr/0015-people-and-collection-identity.md): the UI shows one person or collection even when several servers supply it, with no server label on person or collection pages.
 
