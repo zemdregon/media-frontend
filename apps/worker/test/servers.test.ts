@@ -40,7 +40,7 @@ import {
 } from './providers/jellyfin-routes';
 
 const db = env.DB;
-const PASSWORD = 'Sup3r-s3cret-pw-9f2';
+const PASSWORD = 'test-only-password';
 const BODY = {
   type: 'jellyfin',
   name: 'Basement NAS',
