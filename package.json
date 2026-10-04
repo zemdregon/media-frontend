@@ -20,7 +20,8 @@
     "check:upgrade": "node scripts/check-upgrade.mjs",
     "migrate": "pnpm --filter @cinewren/worker exec wrangler d1 migrations apply DB --remote --config ../../wrangler.jsonc",
     "deploy": "pnpm run migrate && pnpm --filter @cinewren/worker exec wrangler deploy --config ../../wrangler.jsonc",
-    "perf": "node scripts/perf/run.mjs"
+    "perf": "node scripts/perf/run.mjs",
+    "recover:operator": "node scripts/recover-operator.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

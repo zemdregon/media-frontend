@@ -19,6 +19,7 @@ import type { AppEnv } from '../api/context';
 import { AppError } from '../api/errors';
 import { expectKey, isString, openCursor, sealCursor } from '../catalog/cursor';
 import { currentUser } from '../auth/sessions';
+import { REENROLL_TTL_MS } from '@cinewren/shared';
 import { randomToken, sha256Hex } from '../auth/tokens';
 import {
   auditStmt,
@@ -46,8 +47,8 @@ import { ulid } from '../platform/ids';
 import { createPlaybackDeps } from '../playback/deps';
 import { revokeAllSessions } from '../playback/lifecycle';
 
-/** Re-enrollment link lifetime (FR-USR-007, proposed 24 h). */
-export const REENROLL_TTL_MS = 24 * 3_600_000;
+/** Re-enrollment link lifetime (FR-USR-007), shared with the recovery CLI. */
+export { REENROLL_TTL_MS };
 
 const notFound = () => new AppError('NOT_FOUND', 'Not found.');
 const lastOperator = () => new AppError('LAST_OPERATOR', 'At least one operator must remain.');

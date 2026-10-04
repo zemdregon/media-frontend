@@ -8,3 +8,5 @@ export * from './catalog-views';
 export * from './playback';
 export * from './ops';
 export * from './curation';
+export * from './tokens';
+export * from './recovery';

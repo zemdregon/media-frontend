@@ -108,4 +108,5 @@ These are agent additions that put the policy above into practice.
   - `pnpm lint`: ESLint (flat config). `pnpm format:check` checks Prettier; `pnpm format` fixes it.
   - `pnpm test`: Vitest in every package. The Worker tests run in the Workers runtime through `@cloudflare/vitest-pool-workers`.
   - `pnpm check:docs`: `node scripts/check-docs.mjs`; run it before committing doc changes.
+  - `pnpm recover:operator -- --config <wrangler config> (--remote|--local) --origin <APP_ORIGIN> [--user <name|id>] [--env <name>]`: issues a last-operator recovery link (FR-USR-007).
   - Local server: `pnpm --filter @cinewren/worker dev` (wrangler) serves the built SPA and the API on port 8787; build the SPA first. Copy `.dev.vars.example` to `apps/worker/.dev.vars` for secrets.

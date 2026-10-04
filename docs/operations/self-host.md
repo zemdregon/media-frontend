@@ -116,7 +116,7 @@ Catalog list cursors are also sealed with the key but live only minutes and hold
 4. Check `GET https://<host>/api/v1/health` returns `{"status":"ok"}`. `degraded` means D1 is unreachable or migrations are pending (§7).
 5. Register your servers (§8), then invite viewers with invite links from the operator UI.
 
-If the last operator loses every passkey, use the recovery command in [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) §4. It needs access to your Cloudflare account, which is the root of trust.
+If the last operator loses every passkey, run the recovery command from a checkout of your repository, signed in to Cloudflare with `wrangler login`: `pnpm recover:operator -- --config wrangler.jsonc --remote --origin https://<host>` (add `--user <display name or id>` if you have several operators). It writes a single-use, 24 h re-enrollment link for that operator straight to D1 and prints it; open it to add a new passkey. It needs access to your Cloudflare account, which is the root of trust ([ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) §4, FR-USR-007).
 
 ## 7. Upgrading to a new release
 

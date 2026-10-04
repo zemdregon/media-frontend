@@ -115,7 +115,7 @@ Its build token must be allowed to edit D1 so that migrations can run. Cinewren'
 3. **Delete the token:** `wrangler secret delete SETUP_TOKEN --env <env>`. It is ignored once an operator exists, but there is no reason to keep it.
 4. Register your servers (use the non-admin accounts from section 2), then invite viewers with invite links from the operator UI.
 
-If the last operator loses every passkey, the recovery command in ADR-0014 §4 issues a recovery link; it needs access to the Cloudflare account, which is the root of trust.
+If the last operator loses every passkey, `pnpm recover:operator -- --config apps/worker/wrangler.jsonc --env staging --remote --origin <APP_ORIGIN>` issues a single-use recovery link for an operator (ADR-0014 §4, FR-USR-007); it needs access to the Cloudflare account, which is the root of trust.
 
 ## 8. Rollback
 
