@@ -121,6 +121,24 @@ export function insertCredentialStmt(
     .bind(c.serverId, c.keyVersion, c.envelope, c.now);
 }
 
+/**
+ * Replaces a server's origin credential (FR-SRV-005): new envelope and key version, and the
+ * cached service token is dropped because it belongs to the old credential. Catalog rows are not
+ * touched.
+ */
+export function replaceCredentialStmt(
+  db: D1Database,
+  c: { serverId: string; keyVersion: number; envelope: string; now: number },
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `UPDATE server_credentials
+          SET key_version = ?, secret_envelope = ?, service_token_envelope = NULL, updated_at = ?
+        WHERE server_id = ?`,
+    )
+    .bind(c.keyVersion, c.envelope, c.now, c.serverId);
+}
+
 /** Library discovery: new libraries start disabled (FR-SRV-003); known ones keep their flag. */
 export function upsertLibraryStmt(
   db: D1Database,

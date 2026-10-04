@@ -443,6 +443,20 @@ describe('selection, failover and manual choice (BR-5, FR-PLAY-004, FR-PLAY-005)
     });
   });
 
+  it("a play-time origin failure counts toward the server's health at once, not at the next tick (FR-OPS-001)", async () => {
+    jf.failItems.add('prov-m-heat-jf');
+    await playOk(alice, { itemId: 'm-heat' });
+    const row = await db
+      .prepare("SELECT status, consecutive_failures, consecutive_ok FROM servers WHERE id = 'jf'")
+      .first<{ status: string; consecutive_failures: number; consecutive_ok: number }>();
+    expect(row).toEqual({ status: 'degraded', consecutive_failures: 1, consecutive_ok: 0 });
+    // The healthy server is untouched, and a degraded server still ranks below an active one.
+    const other = await db
+      .prepare("SELECT status, consecutive_failures FROM servers WHERE id = 'emby'")
+      .first<{ status: string; consecutive_failures: number }>();
+    expect(other).toEqual({ status: 'active', consecutive_failures: 0 });
+  });
+
   it('a replacement request excluding the failed source returns the next one, or NO_PLAYABLE_SOURCE', async () => {
     const first = await playOk(alice, { itemId: 'm-heat' });
     const next = await playOk(alice, {
