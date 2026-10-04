@@ -16,6 +16,9 @@ export interface ItemCard {
   type: CatalogType;
   title: string;
   year: number | null;
+  /** Set for seasons and episodes (the UI labels and orders them); null otherwise. */
+  seasonNumber: number | null;
+  episodeNumber: number | null;
   artworkUrl: string | null;
 }
 

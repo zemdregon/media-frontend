@@ -11,12 +11,10 @@ import {
 import type { CollectionCard, ItemCard, PersonCard } from '@cinewren/shared';
 import { Link } from '../lib/router';
 
-export function copiesLabel(n: number): string {
-  return n === 1 ? '1 copy' : `${String(n)} copies`;
-}
-
-export function runtimeLabel(min: number | null | undefined): string | null {
-  if (!min || min <= 0) return null;
+export function runtimeLabel(ms: number | null | undefined): string | null {
+  if (!ms || ms <= 0) return null;
+  const min = Math.round(ms / 60000);
+  if (min <= 0) return null;
   const h = Math.floor(min / 60);
   const m = min % 60;
   return h > 0 ? `${String(h)} h ${String(m)} min` : `${String(m)} min`;
@@ -145,34 +143,13 @@ export function Poster({
 }
 
 export function PosterCard({ item, extra }: { item: ItemCard; extra?: string | null }) {
-  const offline = item.bestCopy !== null && item.bestCopy.serverStatus !== 'active';
-  const label = [item.title, item.year ? String(item.year) : null, copiesLabel(item.copyCount)]
-    .filter(Boolean)
-    .join(', ');
+  const label = [item.title, item.year ? String(item.year) : null].filter(Boolean).join(', ');
   return (
-    <Link
-      to={`/items/${encodeURIComponent(item.id)}`}
-      className={`poster-card${offline ? ' poster-card-offline' : ''}`}
-      aria-label={label}
-    >
+    <Link to={`/items/${encodeURIComponent(item.id)}`} className="poster-card" aria-label={label}>
       <Poster title={item.title} year={item.year} artworkUrl={item.artworkUrl} />
       <span className="poster-row" aria-hidden="true">
         <span className="poster-name">{item.title}</span>
-        <span className="chip">{copiesLabel(item.copyCount)}</span>
       </span>
-      {item.bestCopy && (
-        <span className="poster-best" aria-hidden="true">
-          {offline ? (
-            <>
-              <span className="dot dot-bad" /> {item.bestCopy.serverName} · offline
-            </>
-          ) : (
-            <>
-              {item.bestCopy.label} · {item.bestCopy.serverName}
-            </>
-          )}
-        </span>
-      )}
       {extra && (
         <span className="poster-best" aria-hidden="true">
           {extra}

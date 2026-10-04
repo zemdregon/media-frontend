@@ -11,6 +11,7 @@ import type {
   Server,
   SyncRunsPage,
   ThemePreference,
+  VersionEntry,
 } from '@cinewren/shared';
 import { api } from './index';
 
@@ -52,6 +53,8 @@ export const search = (q: string, kind?: SearchKind, cursor?: string | null) =>
   api<SearchResponse>('GET', `/search${queryString({ q, kind, cursor })}`);
 
 export const getItem = (id: string) => api<ItemDetail>('GET', `/items/${enc(id)}`);
+
+export const getVersions = (id: string) => api<VersionEntry[]>('GET', `/items/${enc(id)}/versions`);
 
 export const getChildren = (id: string, cursor?: string | null) =>
   api<Page<ItemCard>>('GET', `/items/${enc(id)}/children${queryString({ cursor, limit: 100 })}`);

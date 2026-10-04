@@ -1,13 +1,6 @@
 import type { ItemCard } from '@cinewren/shared';
 import { getHome } from '../api-client/catalog';
-import {
-  Alert,
-  PageHead,
-  PosterCard,
-  PosterGrid,
-  SkeletonGrid,
-  copiesLabel,
-} from '../components/ui';
+import { Alert, PageHead, PosterCard, PosterGrid, SkeletonGrid } from '../components/ui';
 import { Link } from '../lib/router';
 import { useLoad } from '../lib/useLoad';
 
@@ -50,15 +43,9 @@ export function Home() {
   );
 }
 
-function percent(item: ItemCard): number {
-  const p = item.progress;
-  if (!p || p.durationMs <= 0) return 0;
-  return Math.min(100, Math.round((p.positionMs / p.durationMs) * 100));
-}
-
 /**
- * Continue-watching hero row (UX §6). Playback and progress arrive in M3, so until the API sends
- * items this is a quiet placeholder rather than an empty hero.
+ * Continue-watching row (UX §6). Playback and progress arrive in M3, so the API returns an empty
+ * list until then and this is a quiet placeholder. Nothing is invented from missing progress.
  */
 function ContinueWatching({ items }: { items: ItemCard[] }) {
   if (items.length === 0) {
@@ -74,53 +61,15 @@ function ContinueWatching({ items }: { items: ItemCard[] }) {
     );
   }
   return (
-    <div className="hero-row">
-      {items.map((item) => {
-        const pct = percent(item);
-        const left = item.progress
-          ? Math.max(0, Math.round((item.progress.durationMs - item.progress.positionMs) / 60000))
-          : null;
-        return (
-          <section key={item.id} aria-labelledby={`cw-${item.id}`} className="hero">
-            <div className="hero-art">
-              <span className="hero-art-title" aria-hidden="true">
-                {item.title}
-              </span>
-              <div
-                className="hero-progress"
-                role="progressbar"
-                aria-label={`${String(pct)}% watched`}
-                aria-valuenow={pct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <span style={{ width: `${String(pct)}%` }} />
-              </div>
-            </div>
-            <div className="hero-body">
-              <h2 id={`cw-${item.id}`} className="mono-label">
-                Continue watching
-              </h2>
-              <p className="h-hero">
-                {item.title}
-                {item.year ? <span className="muted"> ({item.year})</span> : null}
-              </p>
-              <p>
-                {left !== null ? `${String(left)} min left · ` : ''}
-                {item.bestCopy ? `from ${item.bestCopy.serverName}` : copiesLabel(item.copyCount)}
-              </p>
-              <div className="actions">
-                <Link
-                  to={`/items/${encodeURIComponent(item.id)}`}
-                  className="button button-primary"
-                >
-                  Open
-                </Link>
-              </div>
-            </div>
-          </section>
-        );
-      })}
-    </div>
+    <section aria-labelledby="cw-h" className="stack">
+      <h2 id="cw-h" className="h-section">
+        Continue watching
+      </h2>
+      <PosterGrid>
+        {items.map((item) => (
+          <PosterCard key={item.id} item={item} />
+        ))}
+      </PosterGrid>
+    </section>
   );
 }

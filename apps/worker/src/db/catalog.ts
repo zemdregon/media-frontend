@@ -79,10 +79,12 @@ export interface ItemCardRow {
   type: CatalogType;
   title: string;
   year: number | null;
+  season_number: number | null;
+  episode_number: number | null;
   poster_tag: string | null;
 }
 
-const CARD_COLUMNS = `i.id, i.type, i.title, i.year,
+const CARD_COLUMNS = `i.id, i.type, i.title, i.year, i.season_number, i.episode_number,
   (SELECT json_extract(ms.artwork, '$.poster.tag') FROM sources ms
     WHERE ms.id = i.metadata_source_id) AS poster_tag`;
 

@@ -79,6 +79,8 @@ function itemCard(row: ItemCardRow): ItemCard {
     type: row.type,
     title: row.title,
     year: row.year,
+    seasonNumber: row.season_number,
+    episodeNumber: row.episode_number,
     artworkUrl: row.poster_tag
       ? `/api/v1/artwork/${row.id}/poster?v=${slug(row.poster_tag)}`
       : null,

@@ -188,7 +188,6 @@ function CollectionBody({ collection }: { collection: CollectionDetail }) {
     collection.members,
     async (cursor) => (await getCollection(collection.id, cursor)).members,
   );
-  const servers = new Set(paged.items.map((i) => i.bestCopy?.serverName).filter(Boolean)).size;
   return (
     <>
       <header className="stack">
@@ -196,7 +195,6 @@ function CollectionBody({ collection }: { collection: CollectionDetail }) {
         <h1 className="h-display">{collection.name}</h1>
         <p className="meta-line">
           {paged.items.length} {paged.items.length === 1 ? 'title' : 'titles'}
-          {servers > 0 ? ` on ${String(servers)} ${servers === 1 ? 'server' : 'servers'}` : ''}
         </p>
         {collection.overview && <p className="overview">{collection.overview}</p>}
       </header>
