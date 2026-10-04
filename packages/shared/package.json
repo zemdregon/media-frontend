@@ -9,5 +9,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "echo \"no tests in shared\""
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
   }
 }
