@@ -8,7 +8,7 @@ import { card, detail, operator, page, renderApp, viewer } from '../test-utils';
 const url = (fetchMock: ReturnType<typeof renderApp>, includes: string) =>
   fetchMock.mock.calls.some(([u]) => u.includes(includes));
 
-it('home shows recently added and a continue-watching placeholder', async () => {
+it('home shows recently added and omits the empty continue-watching section', async () => {
   renderApp('/', viewer, (_m, p) =>
     p === '/home'
       ? [
@@ -29,7 +29,7 @@ it('home shows recently added and a continue-watching placeholder', async () => 
   });
   expect(link).toHaveAttribute('href', '/items/m1');
   expect(screen.getByRole('link', { name: 'His Girl Friday, 1940' })).toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: 'Continue watching' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Continue watching' })).not.toBeInTheDocument();
   expect(screen.getByRole('heading', { name: /Recently added/ })).toBeInTheDocument();
 });
 
@@ -195,10 +195,12 @@ it('title detail shows the versions badge, server count, copies table and cast',
   expect(screen.getByLabelText('Versions: 4K HDR, 1080p')).toBeInTheDocument();
   expect(screen.getByText('Available from 2 servers')).toBeInTheDocument();
   expect(screen.getByText('1968 · 1 h 36 min · Horror')).toBeInTheDocument();
-  const table = await screen.findByRole('table');
-  expect(within(table).getByText('Basement NAS')).toBeInTheDocument();
-  expect(within(table).getByText('HEVC')).toBeInTheDocument();
-  expect(within(table).getByText('Offline')).toBeInTheDocument();
+  // Without `copies` on the item, the M2 `/versions` rows still fill the radiogroup.
+  const group = await screen.findByRole('radiogroup', { name: 'Copies' });
+  expect(within(group).getAllByRole('radio')).toHaveLength(2);
+  expect(within(group).getByText('Basement NAS')).toBeInTheDocument();
+  expect(within(group).getByText('Seedbox')).toBeInTheDocument();
+  expect(within(group).getByText('Unavailable')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Duane Jones/ })).toHaveAttribute('href', '/people/p1');
   expect(screen.getByRole('link', { name: 'Classic Horror' })).toHaveAttribute(
     'href',

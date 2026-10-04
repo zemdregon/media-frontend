@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import type { ItemDetail as Detail, VersionEntry } from '@cinewren/shared';
 import { getChildren, getItem, getVersions } from '../api-client/catalog';
+import { getNextEpisode, setWatched } from '../api-client/playback';
+import type { CopyRow, WithCopies } from '../api-client/playback-types';
+import { CopiesPicker, copyKey } from '../components/CopiesPicker';
+import { capsHeaders } from '../lib/capabilities';
+import { playabilityLabel, secondsLabel } from '../lib/reasons';
 import {
   Alert,
   PersonChip,
@@ -16,7 +21,8 @@ import { useLoad } from '../lib/useLoad';
 
 /** Title detail for movies and episodes, and series detail with seasons (FR-CAT-005, FR-CAT-013). */
 export function ItemDetail({ id }: { id: string }) {
-  const { state, reload } = useLoad(() => getItem(id), `item:${id}`);
+  // The device capabilities ride along as X-Device-Caps so the copy table is per device (FR-PLAY-002).
+  const { state, reload } = useLoad(async () => getItem(id, await capsHeaders()), `item:${id}`);
   usePageTitle(state.status === 'ready' ? state.data.title : 'Title');
 
   if (state.status === 'loading') return <SkeletonBlock label="Loading title" />;
@@ -54,6 +60,7 @@ export function ItemDetail({ id }: { id: string }) {
           </p>
           <VersionsLine item={item} />
           {item.overview && <p className="overview">{item.overview}</p>}
+          {item.type === 'series' && <NextEpisode seriesId={item.id} />}
           {item.collections.length > 0 && (
             <p className="meta-line">
               Part of{' '}
@@ -68,7 +75,7 @@ export function ItemDetail({ id }: { id: string }) {
         </div>
       </div>
       {item.type === 'series' && <Seasons seriesId={item.id} />}
-      {item.type !== 'series' && item.type !== 'season' && <CopiesTable id={item.id} />}
+      {item.type !== 'series' && item.type !== 'season' && <Playable item={item} />}
       {item.cast.length > 0 && (
         <section aria-labelledby="cast-h" className="stack">
           <h2 id="cast-h" className="h-section">
@@ -115,46 +122,146 @@ function VersionsLine({ item }: { item: Detail }) {
   );
 }
 
-function CopiesTable({ id }: { id: string }) {
-  const { state, reload } = useLoad(() => getVersions(id), `versions:${id}`);
+/** Legacy `/versions` rows (M2) shown as copies without a device prediction. */
+function fromVersion(v: VersionEntry): CopyRow {
+  return {
+    sourceId: v.sourceId,
+    versionId: v.versionId,
+    serverName: v.serverName,
+    serverStatus: v.serverStatus,
+    resolution: v.height ? { width: 0, height: v.height, label: v.label } : null,
+    hdr: v.hdr,
+    videoCodec: v.videoCodec,
+    container: null,
+    audio: [],
+    sizeBytes: null,
+    expectedPlayability: v.serverStatus === 'unreachable' ? 'unavailable' : null,
+    reasons: v.serverStatus === 'unreachable' ? ['server_unreachable'] : [],
+    selected: false,
+  };
+}
+
+/**
+ * Play controls and the copies radiogroup for a movie or episode (FR-CAT-013, FR-PLAY-005).
+ * `copies` comes with the item; an older API without it falls back to `/versions`.
+ */
+function Playable({ item }: { item: Detail & WithCopies }) {
+  const legacy = useLoad(
+    async () => (item.copies ? [] : (await getVersions(item.id)).map(fromVersion)),
+    `versions:${item.id}`,
+  );
+  const [picked, setPicked] = useState<string | null>(null);
+  const [watched, setWatchedState] = useState(item.progress?.watched ?? false);
+  const [busy, setBusy] = useState(false);
+  const [markError, setMarkError] = useState<string | null>(null);
+
+  const loaded = item.copies ? { status: 'ready' as const, data: item.copies } : legacy.state;
+  const copies = loaded.status === 'ready' ? loaded.data : [];
+  const auto = copies.find((c) => c.selected) ?? copies[0];
+  const current = copies.find((c) => copyKey(c) === picked) ?? auto;
+  const overridden = current && auto && copyKey(current) !== copyKey(auto);
+  const playable = current !== undefined && current.expectedPlayability !== 'unavailable';
+
+  const playHref =
+    `/watch/${encodeURIComponent(item.id)}` +
+    (overridden
+      ? `?sourceId=${encodeURIComponent(current.sourceId)}&versionId=${encodeURIComponent(current.versionId)}`
+      : '');
+  const mode = current ? playabilityLabel(current.expectedPlayability).text : '';
+  const resumeFrom =
+    item.progress && !item.progress.watched && item.progress.positionMs > 60_000
+      ? item.progress.positionMs
+      : null;
+
+  const mark = async () => {
+    setBusy(true);
+    setMarkError(null);
+    try {
+      const r = await setWatched(item.id, !watched);
+      setWatchedState(r.watched);
+    } catch (e) {
+      setMarkError(e instanceof Error ? e.message : 'Could not update watched state.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <section aria-labelledby="copies-h" className="stack">
-      <h2 id="copies-h" className="h-section">
-        Copies
-      </h2>
-      {state.status === 'loading' && <SkeletonBlock label="Loading copies" />}
-      {state.status === 'error' && <Alert message={state.message} onRetry={reload} />}
-      {state.status === 'ready' && <Copies copies={state.data} />}
-      <p className="helper">Playback arrives in a later release.</p>
-    </section>
+    <>
+      <div className="actions" role="group" aria-label="Playback">
+        {playable ? (
+          <Link to={playHref} className="button button-primary">
+            <PlayGlyph />
+            Play from {current.serverName}
+          </Link>
+        ) : (
+          <button type="button" className="button button-primary" disabled>
+            <PlayGlyph />
+            {current ? 'Unavailable right now' : 'No playable copy'}
+          </button>
+        )}
+        {current && playable && <span className="helper">{mode}</span>}
+        <button
+          type="button"
+          className="button button-outline"
+          aria-pressed={watched}
+          disabled={busy}
+          onClick={() => void mark()}
+        >
+          {watched ? 'Mark as unwatched' : 'Mark as watched'}
+        </button>
+        {watched && <StatusDot tone="ok" label="Watched" />}
+        {resumeFrom !== null && !watched && (
+          <span className="helper">Resume from {secondsLabel(resumeFrom / 1000)}</span>
+        )}
+      </div>
+      {markError && <Alert message={markError} />}
+      <section aria-labelledby="copies-h" className="stack">
+        <h2 id="copies-h" className="h-section">
+          Copies
+        </h2>
+        {loaded.status === 'loading' && <SkeletonBlock label="Loading copies" />}
+        {loaded.status === 'error' && <Alert message={loaded.message} onRetry={legacy.reload} />}
+        {loaded.status === 'ready' &&
+          (copies.length === 0 ? (
+            <p className="helper">No playable copy right now.</p>
+          ) : (
+            <CopiesPicker
+              copies={copies}
+              value={current ? copyKey(current) : null}
+              onChange={setPicked}
+              labelledBy="copies-h"
+            />
+          ))}
+      </section>
+    </>
   );
 }
 
-function Copies({ copies }: { copies: VersionEntry[] }) {
-  if (copies.length === 0) return <p className="helper">No playable copy right now.</p>;
+function PlayGlyph() {
   return (
-    <div className="table-wrap" tabIndex={0} role="region" aria-labelledby="copies-h">
-      <table className="copies">
-        <thead>
-          <tr>
-            <th scope="col">Server</th>
-            <th scope="col">Quality</th>
-            <th scope="col">Video</th>
-          </tr>
-        </thead>
-        <tbody>
-          {copies.map((c) => (
-            <tr key={`${c.sourceId}-${c.versionId}`}>
-              <th scope="row">
-                <span className="copy-server">{c.serverName}</span>
-                {c.serverStatus !== 'active' && <StatusDot tone="bad" label="Offline" />}
-              </th>
-              <td>{c.label}</td>
-              <td>{c.videoCodec ? c.videoCodec.toUpperCase() : 'Unknown'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+      <path d="M3 1.5 L12.5 7 L3 12.5 Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** "Play next episode" for a series: the first unwatched episode after the last watched (FR-PROG-004). */
+function NextEpisode({ seriesId }: { seriesId: string }) {
+  const { state } = useLoad(() => getNextEpisode(seriesId), `next:${seriesId}`);
+  if (state.status !== 'ready' || !state.data) return null;
+  const ep = state.data;
+  const code =
+    ep.seasonNumber !== null && ep.episodeNumber !== null
+      ? `S${String(ep.seasonNumber)} E${String(ep.episodeNumber)}`
+      : null;
+  return (
+    <div className="actions">
+      <Link to={`/watch/${encodeURIComponent(ep.id)}`} className="button button-primary">
+        <PlayGlyph />
+        {code ? `Play ${code}` : 'Play next episode'}
+      </Link>
+      <span className="helper">{ep.title}</span>
     </div>
   );
 }

@@ -13,17 +13,22 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
+  opts: { headers?: Record<string, string>; keepalive?: boolean } = {},
 ): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`/api/v1${path}`, {
       method,
       credentials: 'same-origin',
-      headers: body === undefined ? {} : { 'content-type': 'application/json' },
+      headers: {
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        ...opts.headers,
+      },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(opts.keepalive ? { keepalive: true } : {}),
     });
   } catch {
     throw new ApiError(0, 'NETWORK', "Can't reach Cinewren. Check your connection and try again.");
