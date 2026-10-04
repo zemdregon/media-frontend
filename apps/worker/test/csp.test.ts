@@ -33,9 +33,20 @@ const directive = (csp: string, name: string) =>
     ?.split(' ')
     .slice(1) ?? [];
 
+// A stub SPA document, so these tests never depend on a prior `pnpm build` of apps/web (CI runs
+// tests before the build; without dist/ the real ASSETS binding has no index.html).
+const stubAssets = {
+  fetch: () =>
+    Promise.resolve(
+      new Response('<!doctype html><html><body></body></html>', {
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      }),
+    ),
+} as unknown as Fetcher;
+
 /** The CSP of a response; `/` is the SPA document, the only kind that gets the origin list. */
 async function cspOf(path = '/', init?: RequestInit): Promise<string> {
-  const res = await createApp().request(path, init, env);
+  const res = await createApp().request(path, init, { ...env, ASSETS: stubAssets });
   return res.headers.get('content-security-policy') ?? '';
 }
 

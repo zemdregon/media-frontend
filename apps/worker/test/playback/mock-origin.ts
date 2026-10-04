@@ -13,6 +13,8 @@
  *
  * Response shapes follow the recorded `playbackinfo_*` fixtures. Everything is synthetic.
  */
+import { loadFixture } from '../providers/fixture-fetch';
+
 export type Flavor = 'jellyfin' | 'emby';
 
 interface TokenState {
@@ -27,6 +29,11 @@ export interface MockOriginOptions {
   failItems?: Set<string>;
   /** Every request fails like a connection error. */
   down?: boolean;
+  /**
+   * Emby only: PlaybackInfo answers like the recorded `playbackinfo_mp4_directplay.json`
+   * (`SupportsDirectPlay` with a relative `DirectStreamUrl`), with this run's ids and token.
+   */
+  directPlay?: boolean;
 }
 
 export class MockOrigin {
@@ -40,6 +47,7 @@ export class MockOrigin {
   readonly transcodes = new Set<string>();
   failItems: Set<string>;
   down: boolean;
+  directPlay: boolean;
   private seq = 0;
 
   constructor(opts: MockOriginOptions) {
@@ -47,6 +55,7 @@ export class MockOrigin {
     this.host = opts.host;
     this.failItems = opts.failItems ?? new Set();
     this.down = opts.down ?? false;
+    this.directPlay = opts.directPlay ?? false;
   }
 
   get carrier(): string {
@@ -91,6 +100,28 @@ export class MockOrigin {
     });
   }
 
+  /** The recorded Emby direct-play PlaybackInfo, re-targeted at this item, device and token. */
+  private recordedDirectPlay(
+    itemId: string,
+    mediaSourceId: string,
+    playSession: string,
+    device: string,
+    token: string,
+  ): unknown {
+    const recorded = loadFixture('emby', 'playbackinfo_mp4_directplay.json').response.body as {
+      MediaSources: Record<string, unknown>[];
+    };
+    const source: Record<string, unknown> = { ...recorded.MediaSources[0], Id: mediaSourceId };
+    const q = new URLSearchParams({
+      DeviceId: device,
+      MediaSourceId: mediaSourceId,
+      PlaySessionId: playSession,
+    });
+    q.set('api_key', token);
+    source.DirectStreamUrl = `/videos/${itemId}/original.mp4?${q.toString()}`;
+    return { PlaySessionId: playSession, MediaSources: [source] };
+  }
+
   private handle(
     method: string,
     url: URL,
@@ -132,6 +163,9 @@ export class MockOrigin {
       const ms = typeof body.MediaSourceId === 'string' ? body.MediaSourceId : itemId;
       const playSession = `ps-${++this.seq}`;
       const device = this.deviceOf(headers) ?? '';
+      if (this.flavor === 'emby' && this.directPlay) {
+        return this.json(200, this.recordedDirectPlay(itemId, ms, playSession, device, token));
+      }
       const q = new URLSearchParams({
         DeviceId: device,
         MediaSourceId: ms,
