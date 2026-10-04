@@ -44,6 +44,8 @@ import {
   type ServerRow,
 } from '../db/servers';
 import { ulid } from '../platform/ids';
+import { createSyncDeps } from '../sync/deps';
+import { enqueueRun } from '../sync/scheduler';
 import { ProviderError } from '../providers/errors';
 import { buildProviderContext, getProvider } from '../providers/registry';
 import type { ProviderContext, ServerSecret, ValidationResult } from '../providers/types';
@@ -348,7 +350,27 @@ export async function register(
     throw err;
   }
   await db.batch([...libraryStmts, markValidatedStmt(db, id, result.version, Date.now(), true)]);
+  await queueFirstSync(c, id);
   return detail(c, id);
+}
+
+/**
+ * WF-1 step 7: the server just became active, so queue its first full sync. A failure here must
+ * not undo the registration; the scheduler tick finds a server with no runs and syncs it (WF-2).
+ */
+async function queueFirstSync(c: Context<AppEnv>, serverId: string): Promise<void> {
+  try {
+    const deps = createSyncDeps(c.env, {
+      fetchImpl: c.get('originFetch'),
+      logger: c.get('logger'),
+    });
+    await enqueueRun(deps, serverId, 'full', 'schedule');
+  } catch (err) {
+    c.get('logger').error('sync.first_enqueue_failed', {
+      server_id: serverId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 function duplicate(existing: { id: string; name: string }): AppError {
@@ -398,6 +420,7 @@ export async function validate(c: Context<AppEnv>, id: string): Promise<Validati
       requestId: c.get('requestId'),
     }),
   ]);
+  if (activate) await queueFirstSync(c, id);
   return {
     ok: true,
     checks: { tls: 'passed', credentials: 'passed', identity: 'passed', version: 'passed' },

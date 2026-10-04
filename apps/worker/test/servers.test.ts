@@ -229,6 +229,14 @@ describe('WF-1: register a server (FR-SRV-001, FR-SRV-002, FR-SRV-003)', () => {
     expect(rows[0]?.details).not.toContain('cinewren-svc');
   });
 
+  it('queues the first full sync once the server is active (WF-1, FR-SYNC-001)', async () => {
+    const { id } = await json<{ id: string }>(await register());
+    const runs = await db
+      .prepare('SELECT server_id, type, status FROM sync_runs')
+      .all<{ server_id: string; type: string; status: string }>();
+    expect(runs.results).toEqual([{ server_id: id, type: 'full', status: 'queued' }]);
+  });
+
   it('accepts a priority and trims the name', async () => {
     const res = await register({ ...BODY, name: '  Basement NAS  ', priority: 7 });
     expect(await json(res)).toMatchObject({ name: 'Basement NAS', priority: 7 });
@@ -397,6 +405,7 @@ describe('WF-1: register a server (FR-SRV-001, FR-SRV-002, FR-SRV-003)', () => {
         .first<{ id: string; status: string }>();
       expect(saved?.status).toBe('pending_validation');
       expect(await count('libraries')).toBe(0);
+      expect(await count('sync_runs')).toBe(0); // not active yet: nothing to sync
 
       useOrigin(happy);
       const res = await api('POST', `/api/v1/admin/servers/${saved?.id}/validate`);
@@ -405,6 +414,7 @@ describe('WF-1: register a server (FR-SRV-001, FR-SRV-002, FR-SRV-003)', () => {
         (await db.prepare('SELECT status FROM servers').first<{ status: string }>())?.status,
       ).toBe('active');
       expect(await count('libraries')).toBe(2);
+      expect(await count('sync_runs')).toBe(1); // activation queues the first full sync
     });
   });
 
