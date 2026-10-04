@@ -8,14 +8,14 @@ import { card, detail, operator, page, renderApp, viewer } from '../test-utils';
 const url = (fetchMock: ReturnType<typeof renderApp>, includes: string) =>
   fetchMock.mock.calls.some(([u]) => u.includes(includes));
 
-it('home shows recently added with copies chips, and a continue-watching placeholder', async () => {
+it('home shows recently added and a continue-watching placeholder', async () => {
   renderApp('/', viewer, (_m, p) =>
     p === '/home'
       ? [
           200,
           {
             recentlyAdded: [
-              card({ id: 'm1', title: 'Night of the Living Dead', copyCount: 2 }),
+              card({ id: 'm1', title: 'Night of the Living Dead' }),
               card({ id: 'm2', title: 'His Girl Friday', year: 1940 }),
             ],
             continueWatching: [],
@@ -25,29 +25,12 @@ it('home shows recently added with copies chips, and a continue-watching placeho
   );
   expect(await screen.findByRole('heading', { level: 1, name: 'Home' })).toBeInTheDocument();
   const link = await screen.findByRole('link', {
-    name: 'Night of the Living Dead, 1968, 2 copies',
+    name: 'Night of the Living Dead, 1968',
   });
   expect(link).toHaveAttribute('href', '/items/m1');
-  expect(screen.getByRole('link', { name: 'His Girl Friday, 1940, 1 copy' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'His Girl Friday, 1940' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Continue watching' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: /Recently added/ })).toBeInTheDocument();
-});
-
-it('home marks a poster whose best copy is offline', async () => {
-  renderApp('/', viewer, () => [
-    200,
-    {
-      recentlyAdded: [
-        card({
-          id: 'm1',
-          title: 'Detour',
-          bestCopy: { serverName: 'Seedbox', serverStatus: 'unreachable', label: '1080p' },
-        }),
-      ],
-      continueWatching: [],
-    },
-  ]);
-  expect(await screen.findByText(/Seedbox · offline/)).toBeInTheDocument();
 });
 
 it('hides operator navigation from viewers and shows it to operators', async () => {
@@ -92,7 +75,7 @@ it('browse applies a filter through the form and shows the empty state with Clea
   const fetchMock = renderApp('/shows', viewer, (_m, p) =>
     p.includes('genre=Western')
       ? [200, page([])]
-      : [200, page([card({ id: 's1', title: 'Dragnet', kind: 'series' })])],
+      : [200, page([card({ id: 's1', title: 'Dragnet', type: 'series' })])],
   );
   await screen.findByRole('link', { name: /Dragnet/ });
   fireEvent.change(screen.getByLabelText('Genre'), { target: { value: 'Western' } });
@@ -160,58 +143,51 @@ it('search with no hits says so', async () => {
 
 it('title detail shows the versions badge, server count, copies table and cast', async () => {
   renderApp('/items/m1', viewer, (_m, p) =>
-    p === '/items/m1'
+    p === '/items/m1/versions'
       ? [
           200,
-          detail({
-            id: 'm1',
-            title: 'Night of the Living Dead',
-            copyCount: 2,
-            serverCount: 2,
-            runtimeMinutes: 96,
-            cast: [
-              {
-                person: { id: 'p1', name: 'Duane Jones', artworkUrl: null },
-                role: 'Actor',
-                character: 'Ben',
-              },
-            ],
-            collections: [{ id: 'c1', name: 'Classic Horror' }],
-            copies: [
-              {
-                sourceId: 's1',
-                versionId: 'v1',
-                serverName: 'Basement NAS',
-                serverStatus: 'active',
-                resolution: { width: 3840, height: 2160, label: '4K' },
-                hdr: 'hdr10',
-                videoCodec: 'hevc',
-                container: 'mkv',
-                audio: [{ codec: 'aac', channels: 6, language: 'en' }],
-                sizeBytes: 6_400_000_000,
-                expectedPlayability: 'direct_play',
-                reasons: ['direct_play'],
-                selected: true,
-              },
-              {
-                sourceId: 's2',
-                versionId: 'v2',
-                serverName: 'Seedbox',
-                serverStatus: 'unreachable',
-                resolution: { width: 1920, height: 1080, label: '1080p' },
-                hdr: 'none',
-                videoCodec: 'h264',
-                container: 'mp4',
-                audio: [],
-                sizeBytes: null,
-                expectedPlayability: 'unavailable',
-                reasons: ['server_unreachable'],
-                selected: false,
-              },
-            ],
-          }),
+          [
+            {
+              sourceId: 's1',
+              versionId: 'v1',
+              label: '4K HDR',
+              height: 2160,
+              hdr: 'hdr10',
+              videoCodec: 'hevc',
+              serverName: 'Basement NAS',
+              serverStatus: 'active',
+            },
+            {
+              sourceId: 's2',
+              versionId: 'v2',
+              label: '1080p',
+              height: 1080,
+              hdr: 'none',
+              videoCodec: 'h264',
+              serverName: 'Seedbox',
+              serverStatus: 'unreachable',
+            },
+          ],
         ]
-      : undefined,
+      : p === '/items/m1'
+        ? [
+            200,
+            detail({
+              id: 'm1',
+              title: 'Night of the Living Dead',
+              serverCount: 2,
+              runtimeMs: 96 * 60000,
+              cast: [
+                {
+                  person: { id: 'p1', name: 'Duane Jones', artworkUrl: null },
+                  role: 'actor',
+                  character: 'Ben',
+                },
+              ],
+              collections: [{ id: 'c1', name: 'Classic Horror' }],
+            }),
+          ]
+        : undefined,
   );
   expect(
     await screen.findByRole('heading', { level: 1, name: 'Night of the Living Dead' }),
@@ -219,9 +195,9 @@ it('title detail shows the versions badge, server count, copies table and cast',
   expect(screen.getByLabelText('Versions: 4K HDR, 1080p')).toBeInTheDocument();
   expect(screen.getByText('Available from 2 servers')).toBeInTheDocument();
   expect(screen.getByText('1968 · 1 h 36 min · Horror')).toBeInTheDocument();
-  const table = screen.getByRole('table');
-  expect(within(table).getByText('BEST')).toBeInTheDocument();
-  expect(within(table).getByText('Plays as-is in this browser')).toBeInTheDocument();
+  const table = await screen.findByRole('table');
+  expect(within(table).getByText('Basement NAS')).toBeInTheDocument();
+  expect(within(table).getByText('HEVC')).toBeInTheDocument();
   expect(within(table).getByText('Offline')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Duane Jones/ })).toHaveAttribute('href', '/people/p1');
   expect(screen.getByRole('link', { name: 'Classic Horror' })).toHaveAttribute(
@@ -246,13 +222,13 @@ it('an unknown title shows a not-found state, not a crash', async () => {
 it('series detail lists seasons as a radio group and loads the chosen season', async () => {
   renderApp('/items/sr1', viewer, (_m, p) => {
     if (p === '/items/sr1')
-      return [200, detail({ id: 'sr1', title: 'Dragnet', kind: 'series', copies: [] })];
+      return [200, detail({ id: 'sr1', title: 'Dragnet', type: 'series', copies: [] })];
     if (p.startsWith('/items/sr1/children'))
       return [
         200,
         page([
-          card({ id: 'se1', title: 'Season 1', kind: 'season', seasonNumber: 1 }),
-          card({ id: 'se2', title: 'Season 2', kind: 'season', seasonNumber: 2 }),
+          card({ id: 'se1', title: 'Season 1', type: 'season', seasonNumber: 1 }),
+          card({ id: 'se2', title: 'Season 2', type: 'season', seasonNumber: 2 }),
         ]),
       ];
     if (p.startsWith('/items/se1/children'))
@@ -262,9 +238,8 @@ it('series detail lists seasons as a radio group and loads the chosen season', a
           card({
             id: 'e1',
             title: 'The Big Casing',
-            kind: 'episode',
+            type: 'episode',
             episodeNumber: 1,
-            runtimeMinutes: 30,
           }),
         ]),
       ];
@@ -275,9 +250,8 @@ it('series detail lists seasons as a radio group and loads the chosen season', a
           card({
             id: 'e9',
             title: 'The Big Bounce',
-            kind: 'episode',
+            type: 'episode',
             episodeNumber: 1,
-            bestCopy: { serverName: 'Seedbox', serverStatus: 'unreachable', label: '720p' },
           }),
         ]),
       ];
@@ -288,19 +262,19 @@ it('series detail lists seasons as a radio group and loads the chosen season', a
   expect(within(group).getByRole('radio', { name: 'Season 1' })).toBeChecked();
   await userEvent.click(within(group).getByRole('radio', { name: 'Season 2' }));
   const ep = await screen.findByRole('link', { name: /The Big Bounce/ });
-  expect(ep).toHaveTextContent('Offline');
+  expect(ep).toHaveTextContent('E01');
   expect(ep).toHaveAttribute('href', '/items/e9');
 });
 
 it('season selector moves with the arrow keys', async () => {
   renderApp('/items/sr1', viewer, (_m, p) => {
-    if (p === '/items/sr1') return [200, detail({ id: 'sr1', title: 'Dragnet', kind: 'series' })];
+    if (p === '/items/sr1') return [200, detail({ id: 'sr1', title: 'Dragnet', type: 'series' })];
     if (p.startsWith('/items/sr1/children'))
       return [
         200,
         page([
-          card({ id: 'se1', title: 'S1', kind: 'season', seasonNumber: 1 }),
-          card({ id: 'se2', title: 'S2', kind: 'season', seasonNumber: 2 }),
+          card({ id: 'se1', title: 'S1', type: 'season', seasonNumber: 1 }),
+          card({ id: 'se2', title: 'S2', type: 'season', seasonNumber: 2 }),
         ]),
       ];
     return [200, page([])];
@@ -321,7 +295,7 @@ it('person page lists visible titles with the role', async () => {
       credits: page([
         {
           item: card({ id: 'm1', title: 'Night of the Living Dead' }),
-          role: 'Actor',
+          role: 'actor',
           character: 'Ben',
         },
       ]),
@@ -358,18 +332,14 @@ it('collection page shows the member count and titles', async () => {
       artworkUrl: null,
       members: page([
         card({ id: 'm1', title: 'Night of the Living Dead' }),
-        card({
-          id: 'm2',
-          title: 'Plan 9',
-          bestCopy: { serverName: 'Seedbox', serverStatus: 'active', label: '720p' },
-        }),
+        card({ id: 'm2', title: 'Plan 9' }),
       ]),
     },
   ]);
   expect(
     await screen.findByRole('heading', { level: 1, name: 'Classic Horror' }),
   ).toBeInTheDocument();
-  expect(screen.getByText('2 titles on 2 servers')).toBeInTheDocument();
+  expect(screen.getByText('2 titles')).toBeInTheDocument();
 });
 
 it('sync status shows last run, outcome, next run and recent errors per server', async () => {

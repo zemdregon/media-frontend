@@ -38,25 +38,33 @@ export const page = <T,>(items: T[], nextCursor: string | null = null) => ({ ite
 
 export function card(over: Partial<ItemCard> & { id: string; title: string }): ItemCard {
   return {
-    kind: 'movie',
+    type: 'movie',
     year: 1968,
+    seasonNumber: null,
+    episodeNumber: null,
     artworkUrl: null,
-    copyCount: 1,
-    serverCount: 1,
-    bestCopy: { serverName: 'Basement NAS', serverStatus: 'active', label: '1080p' },
     ...over,
   };
 }
 
 export function detail(over: Partial<ItemDetail> & { id: string; title: string }): ItemDetail {
   return {
-    ...card(over),
+    type: 'movie',
+    parentId: null,
+    originalTitle: null,
+    year: 1968,
     overview: 'A group of strangers barricade themselves in a farmhouse.',
     genres: ['Horror'],
+    runtimeMs: null,
+    seasonNumber: null,
+    episodeNumber: null,
+    artwork: { poster: null, backdrop: null, thumb: null },
     versionsSummary: ['4K HDR', '1080p'],
+    serverCount: 1,
+    progress: null,
+    children: null,
     cast: [],
     collections: [],
-    copies: [],
     ...over,
   };
 }

@@ -1,11 +1,5 @@
 import { useState } from 'react';
-import type {
-  CollectionDetail,
-  ItemCard,
-  Page,
-  PersonCredit,
-  PersonDetail,
-} from '@cinewren/shared';
+import type { CollectionDetail, ItemCard, Page, PersonDetail } from '@cinewren/shared';
 import { getCollection, getPerson, listCollections } from '../api-client/catalog';
 import {
   Alert,
@@ -88,7 +82,7 @@ export function PersonPage({ id }: { id: string }) {
 
 function PersonBody({ person }: { person: PersonDetail }) {
   usePageTitle(person.name);
-  const paged = usePaged<PersonCredit>(
+  const paged = usePaged<PersonDetail['credits']['items'][number]>(
     person.credits,
     async (cursor) => (await getPerson(person.id, cursor)).credits,
   );
