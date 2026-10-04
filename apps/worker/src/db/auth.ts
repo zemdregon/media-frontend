@@ -143,7 +143,10 @@ export async function operatorExists(db: D1Database): Promise<boolean> {
 }
 
 export async function displayNameTaken(db: D1Database, name: string): Promise<boolean> {
-  const row = await db.prepare('SELECT 1 AS x FROM users WHERE display_name = ?').bind(name).first();
+  const row = await db
+    .prepare('SELECT 1 AS x FROM users WHERE display_name = ?')
+    .bind(name)
+    .first();
   return row !== null;
 }
 
@@ -184,7 +187,11 @@ export function insertInvitedUserStmt(
     .bind(id, displayName, role, now);
 }
 
-export function activateInvitedUserStmt(db: D1Database, id: string, now: number): D1PreparedStatement {
+export function activateInvitedUserStmt(
+  db: D1Database,
+  id: string,
+  now: number,
+): D1PreparedStatement {
   return db
     .prepare(
       "UPDATE users SET status = 'active', last_seen_at = ? WHERE id = ? AND status = 'invited'",
@@ -201,13 +208,19 @@ export function touchUserStmt(db: D1Database, id: string, now: number): D1Prepar
 export async function countEnabledLibraries(db: D1Database, ids: string[]): Promise<number> {
   if (ids.length === 0) return 0;
   const row = await db
-    .prepare('SELECT COUNT(*) AS n FROM libraries WHERE enabled = 1 AND id IN (SELECT value FROM json_each(?))')
+    .prepare(
+      'SELECT COUNT(*) AS n FROM libraries WHERE enabled = 1 AND id IN (SELECT value FROM json_each(?))',
+    )
     .bind(JSON.stringify(ids))
     .first<{ n: number }>();
   return row?.n ?? 0;
 }
 
-export function grantAllEnabledStmt(db: D1Database, userId: string, now: number): D1PreparedStatement {
+export function grantAllEnabledStmt(
+  db: D1Database,
+  userId: string,
+  now: number,
+): D1PreparedStatement {
   return db
     .prepare(
       'INSERT INTO library_grants (user_id, library_id, granted_at) SELECT ?, id, ? FROM libraries WHERE enabled = 1',
@@ -333,7 +346,15 @@ export function insertSessionStmt(db: D1Database, s: NewSession): D1PreparedStat
          absolute_expires_at, user_agent_hint)
        VALUES (?1, ?2, ?3, ?4, ?4, ?5, ?6, ?7)`,
     )
-    .bind(s.idHash, s.userId, s.passkeyId, s.now, s.idleExpiresAt, s.absoluteExpiresAt, s.userAgentHint);
+    .bind(
+      s.idHash,
+      s.userId,
+      s.passkeyId,
+      s.now,
+      s.idleExpiresAt,
+      s.absoluteExpiresAt,
+      s.userAgentHint,
+    );
 }
 
 /** A live session of an active user (LLD-TOKEN "Session ... Validated"). */
@@ -456,12 +477,17 @@ export function redeemInviteStmt(db: D1Database, id: string, now: number): D1Pre
 
 export function revokeInviteStmt(db: D1Database, id: string, now: number): D1PreparedStatement {
   return db
-    .prepare('UPDATE invites SET revoked_at = ? WHERE id = ? AND redeemed_at IS NULL AND revoked_at IS NULL')
+    .prepare(
+      'UPDATE invites SET revoked_at = ? WHERE id = ? AND redeemed_at IS NULL AND revoked_at IS NULL',
+    )
     .bind(now, id);
 }
 
 /** FRD rule: revoking a signup invite deletes its still-`invited` user (cascades grants and invite). */
-export function deleteInvitedUserOfRevokedInviteStmt(db: D1Database, inviteId: string): D1PreparedStatement {
+export function deleteInvitedUserOfRevokedInviteStmt(
+  db: D1Database,
+  inviteId: string,
+): D1PreparedStatement {
   return db
     .prepare(
       `DELETE FROM users WHERE status = 'invited' AND id = (

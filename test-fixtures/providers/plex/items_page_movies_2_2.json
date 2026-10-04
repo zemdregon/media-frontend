@@ -1,0 +1,178 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/library/sections/1/all?includeGuids=1",
+    "headers": {
+      "Accept": "application/json",
+      "X-Plex-Client-Identifier": "cinewren-spike",
+      "X-Plex-Product": "Cinewren",
+      "X-Plex-Version": "0.0.1",
+      "X-Plex-Platform": "Web",
+      "X-Plex-Device": "Spike",
+      "X-Plex-Token": "<PLEX_TRANSIENT_TOKEN>",
+      "X-Plex-Container-Start": "2",
+      "X-Plex-Container-Size": "2"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Content-Length": "2696"
+    },
+    "body": {
+      "MediaContainer": {
+        "size": 1,
+        "totalSize": 3,
+        "offset": 2,
+        "allowSync": true,
+        "art": "/:/resources/movie-fanart.jpg",
+        "identifier": "com.plexapp.plugins.library",
+        "librarySectionID": 1,
+        "librarySectionTitle": "Movies",
+        "librarySectionUUID": "46c5cf5a-867c-4793-a534-564be2d8e10f",
+        "mediaTagPrefix": "/system/bundle/media/flags/",
+        "mediaTagVersion": 1786914632,
+        "thumb": "/:/resources/movie.png",
+        "title1": "Movies",
+        "title2": "All Movies",
+        "viewGroup": "movie",
+        "viewMode": 65592,
+        "Metadata": [
+          {
+            "ratingKey": "3",
+            "key": "/library/metadata/3",
+            "guid": "plex://movie/5d9f34fbd74e670020020087",
+            "slug": "plan-9-from-outer-space",
+            "studio": "Reynolds Pictures",
+            "type": "movie",
+            "title": "Plan 9 from Outer Space",
+            "contentRating": "Not Rated",
+            "summary": "Evil aliens attack Earth and set their terrible \"Plan 9\" into action. As the aliens resurrect the dead of the Earth, the lives of the living are in danger.",
+            "rating": 6.6,
+            "audienceRating": 4.5,
+            "year": 1959,
+            "tagline": "Unspeakable horrors from outer space paralyze the living and resurrect the dead!",
+            "thumb": "/library/metadata/3/thumb/1791097147",
+            "art": "/library/metadata/3/art/1791097147",
+            "duration": 12023,
+            "originallyAvailableAt": "1959-07-22",
+            "addedAt": 1791096331,
+            "updatedAt": 1791097147,
+            "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+            "primaryExtraKey": "/library/metadata/13",
+            "ratingImage": "rottentomatoes://image.rating.ripe",
+            "Media": [
+              {
+                "id": 3,
+                "duration": 12023,
+                "bitrate": 134,
+                "width": 1920,
+                "height": 1080,
+                "aspectRatio": 1.78,
+                "audioChannels": 1,
+                "audioCodec": "aac",
+                "videoCodec": "hevc",
+                "videoResolution": "1080",
+                "container": "mkv",
+                "videoFrameRate": "24p",
+                "videoProfile": "main",
+                "hasVoiceActivity": false,
+                "Part": [
+                  {
+                    "id": 3,
+                    "key": "/library/parts/3/1791096331/file.mkv",
+                    "duration": 12023,
+                    "file": "/data/movies/Plan 9 from Outer Space (1957)/Plan 9 from Outer Space (1957).mkv",
+                    "size": 201767,
+                    "container": "mkv",
+                    "videoProfile": "main"
+                  }
+                ]
+              }
+            ],
+            "Image": [
+              {
+                "alt": "Plan 9 from Outer Space",
+                "type": "coverPoster",
+                "url": "/library/metadata/3/thumb/1791097147"
+              },
+              {
+                "alt": "Plan 9 from Outer Space",
+                "type": "background",
+                "url": "/library/metadata/3/art/1791097147"
+              },
+              {
+                "alt": "Plan 9 from Outer Space",
+                "type": "clearLogo",
+                "url": "/library/metadata/3/clearLogo/1791097147"
+              },
+              {
+                "alt": "Plan 9 from Outer Space",
+                "type": "backgroundSquare",
+                "url": "/library/metadata/3/squareArt/1791097147"
+              }
+            ],
+            "UltraBlurColors": {
+              "topLeft": "4f181d",
+              "topRight": "96394e",
+              "bottomRight": "2d2558",
+              "bottomLeft": "a9222c"
+            },
+            "Guid": [
+              {
+                "id": "imdb://tt0052077"
+              },
+              {
+                "id": "tmdb://10513"
+              },
+              {
+                "id": "tvdb://7230"
+              }
+            ],
+            "Genre": [
+              {
+                "tag": "Science Fiction"
+              },
+              {
+                "tag": "Horror"
+              }
+            ],
+            "Country": [
+              {
+                "tag": "United States of America"
+              }
+            ],
+            "Director": [
+              {
+                "tag": "Edward D. Wood Jr."
+              }
+            ],
+            "Writer": [
+              {
+                "tag": "Edward D. Wood Jr."
+              }
+            ],
+            "Role": [
+              {
+                "tag": "Gregory Walcott"
+              },
+              {
+                "tag": "Mona McKinnon"
+              },
+              {
+                "tag": "Duke Moore"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

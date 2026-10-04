@@ -1,0 +1,314 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/library/sections/1/all?includeGuids=1&X-Plex-Container-Start=0&X-Plex-Container-Size=2",
+    "headers": {
+      "Accept": "application/json",
+      "X-Plex-Client-Identifier": "cinewren-spike",
+      "X-Plex-Product": "Cinewren",
+      "X-Plex-Version": "0.0.1",
+      "X-Plex-Platform": "Web",
+      "X-Plex-Device": "Spike",
+      "X-Plex-Token": "<PLEX_TRANSIENT_TOKEN>"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Content-Length": "5203"
+    },
+    "body": {
+      "MediaContainer": {
+        "size": 2,
+        "totalSize": 3,
+        "offset": 0,
+        "allowSync": true,
+        "art": "/:/resources/movie-fanart.jpg",
+        "identifier": "com.plexapp.plugins.library",
+        "librarySectionID": 1,
+        "librarySectionTitle": "Movies",
+        "librarySectionUUID": "46c5cf5a-867c-4793-a534-564be2d8e10f",
+        "mediaTagPrefix": "/system/bundle/media/flags/",
+        "mediaTagVersion": 1786914632,
+        "thumb": "/:/resources/movie.png",
+        "title1": "Movies",
+        "title2": "All Movies",
+        "viewGroup": "movie",
+        "viewMode": 65592,
+        "Metadata": [
+          {
+            "ratingKey": "1",
+            "key": "/library/metadata/1",
+            "guid": "plex://movie/5d77682cf54112001f5bc78d",
+            "slug": "his-girl-friday",
+            "studio": "Columbia Pictures",
+            "type": "movie",
+            "title": "His Girl Friday",
+            "contentRating": "Passed",
+            "contentRatingAge": 12,
+            "summary": "Walter Burns is an irresistibly conniving newspaper publisher desperate to woo back his paper’s star reporter, who also happens to be his estranged wife. She’s threatening to quit and settle down with a new beau, but, as Walter knows, she has a weakness: she can’t resist a juicy scoop.",
+            "rating": 9.9,
+            "audienceRating": 9.0,
+            "year": 1940,
+            "tagline": "They're at each other's throats when they're not in each other's arms!",
+            "thumb": "/library/metadata/1/thumb/1791097146",
+            "art": "/library/metadata/1/art/1791097146",
+            "duration": 12000,
+            "originallyAvailableAt": "1940-01-18",
+            "addedAt": 1791096320,
+            "updatedAt": 1791097146,
+            "audienceRatingImage": "rottentomatoes://image.rating.upright",
+            "primaryExtraKey": "/library/metadata/10",
+            "ratingImage": "rottentomatoes://image.rating.ripe",
+            "Media": [
+              {
+                "id": 1,
+                "duration": 12000,
+                "bitrate": 140,
+                "width": 1280,
+                "height": 720,
+                "aspectRatio": 1.78,
+                "audioChannels": 1,
+                "audioCodec": "aac",
+                "videoCodec": "h264",
+                "videoResolution": "720",
+                "container": "mp4",
+                "videoFrameRate": "24p",
+                "optimizedForStreaming": 1,
+                "has64bitOffsets": false,
+                "videoProfile": "constrained baseline",
+                "hasVoiceActivity": false,
+                "Part": [
+                  {
+                    "id": 1,
+                    "key": "/library/parts/1/1791096320/file.mp4",
+                    "duration": 12000,
+                    "file": "/data/movies/His Girl Friday (1940)/His Girl Friday (1940).mp4",
+                    "size": 209804,
+                    "container": "mp4",
+                    "has64bitOffsets": false,
+                    "optimizedForStreaming": true,
+                    "videoProfile": "constrained baseline"
+                  }
+                ]
+              }
+            ],
+            "Image": [
+              {
+                "alt": "His Girl Friday",
+                "type": "coverPoster",
+                "url": "/library/metadata/1/thumb/1791097146"
+              },
+              {
+                "alt": "His Girl Friday",
+                "type": "background",
+                "url": "/library/metadata/1/art/1791097146"
+              },
+              {
+                "alt": "His Girl Friday",
+                "type": "clearLogo",
+                "url": "/library/metadata/1/clearLogo/1791097146"
+              },
+              {
+                "alt": "His Girl Friday",
+                "type": "backgroundSquare",
+                "url": "/library/metadata/1/squareArt/1791097146"
+              }
+            ],
+            "UltraBlurColors": {
+              "topLeft": "442511",
+              "topRight": "96401e",
+              "bottomRight": "8e4726",
+              "bottomLeft": "313540"
+            },
+            "Guid": [
+              {
+                "id": "imdb://tt0032599"
+              },
+              {
+                "id": "tmdb://3085"
+              },
+              {
+                "id": "tvdb://8213"
+              }
+            ],
+            "Genre": [
+              {
+                "tag": "Comedy"
+              },
+              {
+                "tag": "Drama"
+              }
+            ],
+            "Country": [
+              {
+                "tag": "United States of America"
+              }
+            ],
+            "Director": [
+              {
+                "tag": "Howard Hawks"
+              }
+            ],
+            "Writer": [
+              {
+                "tag": "Charles MacArthur"
+              },
+              {
+                "tag": "Charles Lederer"
+              }
+            ],
+            "Role": [
+              {
+                "tag": "Cary Grant"
+              },
+              {
+                "tag": "Rosalind Russell"
+              },
+              {
+                "tag": "Ralph Bellamy"
+              }
+            ]
+          },
+          {
+            "ratingKey": "2",
+            "key": "/library/metadata/2",
+            "guid": "plex://movie/5d77683585719b001f3a3946",
+            "slug": "night-of-the-living-dead",
+            "studio": "Image Ten",
+            "type": "movie",
+            "title": "Night of the Living Dead",
+            "contentRating": "Not Rated",
+            "contentRatingAge": 17,
+            "summary": "A ragtag group of Pennsylvanians barricade themselves in an old farmhouse to remain safe from a horde of flesh-eating ghouls that are ravaging the Northeast of the United States.",
+            "rating": 9.5,
+            "audienceRating": 8.7,
+            "year": 1968,
+            "tagline": "If it doesn't scare you, you're already dead!",
+            "thumb": "/library/metadata/2/thumb/1791097146",
+            "art": "/library/metadata/2/art/1791097146",
+            "duration": 12023,
+            "originallyAvailableAt": "1968-10-04",
+            "addedAt": 1791096318,
+            "updatedAt": 1791097146,
+            "audienceRatingImage": "rottentomatoes://image.rating.upright",
+            "primaryExtraKey": "/library/metadata/4",
+            "ratingImage": "rottentomatoes://image.rating.ripe",
+            "Media": [
+              {
+                "id": 2,
+                "duration": 12023,
+                "bitrate": 6474,
+                "width": 1280,
+                "height": 720,
+                "aspectRatio": 1.78,
+                "audioChannels": 1,
+                "audioCodec": "aac",
+                "videoCodec": "h264",
+                "videoResolution": "720",
+                "container": "mkv",
+                "videoFrameRate": "24p",
+                "videoProfile": "constrained baseline",
+                "hasVoiceActivity": false,
+                "Part": [
+                  {
+                    "id": 2,
+                    "key": "/library/parts/2/1791096318/file.mkv",
+                    "duration": 12023,
+                    "file": "/data/movies/Night of the Living Dead (1968)/Night of the Living Dead (1968).mkv",
+                    "size": 9729927,
+                    "container": "mkv",
+                    "videoProfile": "constrained baseline"
+                  }
+                ]
+              }
+            ],
+            "Image": [
+              {
+                "alt": "Night of the Living Dead",
+                "type": "coverPoster",
+                "url": "/library/metadata/2/thumb/1791097146"
+              },
+              {
+                "alt": "Night of the Living Dead",
+                "type": "background",
+                "url": "/library/metadata/2/art/1791097146"
+              },
+              {
+                "alt": "Night of the Living Dead",
+                "type": "clearLogo",
+                "url": "/library/metadata/2/clearLogo/1791097146"
+              },
+              {
+                "alt": "Night of the Living Dead",
+                "type": "backgroundSquare",
+                "url": "/library/metadata/2/squareArt/1791097146"
+              }
+            ],
+            "UltraBlurColors": {
+              "topLeft": "551210",
+              "topRight": "38090d",
+              "bottomRight": "982a2a",
+              "bottomLeft": "5c1214"
+            },
+            "Guid": [
+              {
+                "id": "imdb://tt0063350"
+              },
+              {
+                "id": "tmdb://10331"
+              },
+              {
+                "id": "tvdb://1831"
+              }
+            ],
+            "Genre": [
+              {
+                "tag": "Horror"
+              },
+              {
+                "tag": "Thriller"
+              }
+            ],
+            "Country": [
+              {
+                "tag": "United States of America"
+              }
+            ],
+            "Director": [
+              {
+                "tag": "George A. Romero"
+              }
+            ],
+            "Writer": [
+              {
+                "tag": "George A. Romero"
+              },
+              {
+                "tag": "John A. Russo"
+              }
+            ],
+            "Role": [
+              {
+                "tag": "Judith O'Dea"
+              },
+              {
+                "tag": "Duane Jones"
+              },
+              {
+                "tag": "Marilyn Eastman"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

@@ -39,7 +39,13 @@ import {
 import { ulid } from '../platform/ids';
 import { currentUser, prepareSession, setSessionCookie } from './sessions';
 import { randomToken, sha256Hex } from './tokens';
-import { ceremonyFailed, registrationOptions, storeChallenge, takeChallenge, verifyRegistration } from './webauthn';
+import {
+  ceremonyFailed,
+  registrationOptions,
+  storeChallenge,
+  takeChallenge,
+  verifyRegistration,
+} from './webauthn';
 
 const LIST_LIMIT = 200;
 
@@ -84,7 +90,11 @@ export async function createInvite(
     throw new AppError('DISPLAY_NAME_TAKEN', 'Someone already has that name.');
   }
   const libraryIds = body.libraryIds ? [...new Set(body.libraryIds)] : undefined;
-  if (body.role === 'viewer' && libraryIds && (await countEnabledLibraries(db, libraryIds)) !== libraryIds.length) {
+  if (
+    body.role === 'viewer' &&
+    libraryIds &&
+    (await countEnabledLibraries(db, libraryIds)) !== libraryIds.length
+  ) {
     throw new AppError('VALIDATION_FAILED', 'Grants may only name enabled libraries.', {
       fields: ['libraryIds'],
     });
@@ -97,7 +107,11 @@ export async function createInvite(
   const grants =
     body.role === 'operator'
       ? [] // operators implicitly see every enabled library (FR-USR-005)
-      : [libraryIds ? grantListedStmt(db, userId, libraryIds, now) : grantAllEnabledStmt(db, userId, now)];
+      : [
+          libraryIds
+            ? grantListedStmt(db, userId, libraryIds, now)
+            : grantAllEnabledStmt(db, userId, now),
+        ];
   try {
     await db.batch([
       insertInvitedUserStmt(db, userId, body.displayName, body.role, now),
@@ -123,7 +137,11 @@ export async function createInvite(
       }),
     ]);
   } catch (err) {
-    if (err instanceof Error && /UNIQUE/i.test(err.message) && (await displayNameTaken(db, body.displayName))) {
+    if (
+      err instanceof Error &&
+      /UNIQUE/i.test(err.message) &&
+      (await displayNameTaken(db, body.displayName))
+    ) {
       throw new AppError('DISPLAY_NAME_TAKEN', 'Someone already has that name.');
     }
     throw err;
@@ -131,7 +149,10 @@ export async function createInvite(
   return { id: inviteId, userId, link: `${config.appOrigin}/invite#t=${token}`, expiresAt };
 }
 
-export async function listInvites(c: Context<AppEnv>, status?: InviteStatus): Promise<Page<Invite>> {
+export async function listInvites(
+  c: Context<AppEnv>,
+  status?: InviteStatus,
+): Promise<Page<Invite>> {
   const now = Date.now();
   const items = (await listInviteRows(c.env.DB, LIST_LIMIT))
     .map((r) => toInvite(r, now))
@@ -183,7 +204,12 @@ async function openInvite(db: D1Database, token: string): Promise<InviteRow> {
 
 export async function inspectInvite(c: Context<AppEnv>, token: string): Promise<InviteInspection> {
   const invite = await openInvite(c.env.DB, token);
-  return { kind: invite.kind, role: invite.role, displayName: invite.display_name, expiresAt: invite.expires_at };
+  return {
+    kind: invite.kind,
+    role: invite.role,
+    displayName: invite.display_name,
+    expiresAt: invite.expires_at,
+  };
 }
 
 export async function redeemOptions(c: Context<AppEnv>, token: string): Promise<CeremonyOptions> {
@@ -211,11 +237,19 @@ export async function redeemVerify(
   const logger = c.get('logger');
   const challenge = await takeChallenge(db, body.challengeId, ['signup', 'reenroll']);
   const invite = await openInvite(db, body.token);
-  if (challenge.invite_id !== invite.id || challenge.purpose !== invite.kind) throw ceremonyFailed();
+  if (challenge.invite_id !== invite.id || challenge.purpose !== invite.kind)
+    throw ceremonyFailed();
   const passkey = await verifyRegistration(config, logger, body.response, challenge.challenge);
   const now = Date.now();
   const passkeyId = ulid();
-  const session = await prepareSession(db, config, invite.user_id, passkeyId, now, c.req.header('user-agent'));
+  const session = await prepareSession(
+    db,
+    config,
+    invite.user_id,
+    passkeyId,
+    now,
+    c.req.header('user-agent'),
+  );
   try {
     // One batch: CAS-consume the invite (guarded), activate the user, store the passkey and
     // start the session. Any failure rolls all of it back, leaving the invite `issued`.
@@ -225,7 +259,13 @@ export async function redeemVerify(
       ...(invite.kind === 'signup'
         ? [activateInvitedUserStmt(db, invite.user_id, now), guardChangedStmt(db)]
         : []),
-      insertPasskeyStmt(db, { ...passkey, id: passkeyId, userId: invite.user_id, label: body.label ?? null, now }),
+      insertPasskeyStmt(db, {
+        ...passkey,
+        id: passkeyId,
+        userId: invite.user_id,
+        label: body.label ?? null,
+        now,
+      }),
       session.stmt,
     ]);
   } catch (err) {

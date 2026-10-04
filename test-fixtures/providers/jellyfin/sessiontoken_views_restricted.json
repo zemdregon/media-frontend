@@ -1,0 +1,83 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/UserViews?userId=148dded263c74cb885d9819605d68044",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SESSION_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "Items": [
+        {
+          "Name": "Movies",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "f137a2dd21bbc1b99aa5c0f6bf02a805",
+          "Etag": "2d31e031242af4e304fec0b9841b0418",
+          "DateCreated": "2026-10-04T06:58:55.5112998Z",
+          "DateLastMediaAdded": "0001-01-01T00:00:00.0000000Z",
+          "CanDelete": false,
+          "CanDownload": false,
+          "SortName": "movies",
+          "ExternalUrls": [],
+          "Path": "/config/root/default/Movies",
+          "EnableMediaSourceDisplay": true,
+          "ChannelId": null,
+          "Taglines": [],
+          "Genres": [],
+          "PlayAccess": "Full",
+          "RemoteTrailers": [],
+          "ProviderIds": {},
+          "IsFolder": true,
+          "ParentId": "e9d5075a555c1cbc394eec4cef295274",
+          "Type": "CollectionFolder",
+          "People": [],
+          "Studios": [],
+          "GenreItems": [],
+          "LocalTrailerCount": 0,
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false,
+            "Key": "f137a2dd-21bb-c1b9-9aa5-c0f6bf02a805",
+            "ItemId": "f137a2dd21bbc1b99aa5c0f6bf02a805"
+          },
+          "ChildCount": 3,
+          "SpecialFeatureCount": 0,
+          "DisplayPreferencesId": "f137a2dd21bbc1b99aa5c0f6bf02a805",
+          "Tags": [],
+          "PrimaryImageAspectRatio": 1.7777777777777777,
+          "CollectionType": "movies",
+          "ImageTags": {
+            "Primary": "64fafe184ecb973b173b2e6c5512b797"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "64fafe184ecb973b173b2e6c5512b797": "WAA0:u.iHtvNAbR+%LTBrx-Ck=o{00n-.7R*RPR*RkRjt7ozt7jb"
+            }
+          },
+          "Chapters": [],
+          "LocationType": "FileSystem",
+          "MediaType": "Unknown",
+          "LockedFields": [],
+          "LockData": false
+        }
+      ],
+      "TotalRecordCount": 1,
+      "StartIndex": 0
+    }
+  }
+}

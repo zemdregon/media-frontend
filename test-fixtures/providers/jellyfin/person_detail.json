@@ -1,0 +1,76 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Items/98f4a5c661af4abab8b78099e81b8f86?userId=148dded263c74cb885d9819605d68044",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SERVICE_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "Name": "Duane Jones",
+      "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+      "Id": "98f4a5c661af4abab8b78099e81b8f86",
+      "Etag": "7972bd8070e49550415147cb4e283b4f",
+      "DateCreated": "2026-10-04T06:59:01.0557644Z",
+      "CanDelete": false,
+      "CanDownload": false,
+      "SortName": "Duane Jones",
+      "ExternalUrls": [],
+      "Path": "/config/metadata/People/D/Duane Jones",
+      "EnableMediaSourceDisplay": true,
+      "ChannelId": null,
+      "Taglines": [],
+      "Genres": [],
+      "PlayAccess": "Full",
+      "RemoteTrailers": [],
+      "ProviderIds": {},
+      "ParentId": null,
+      "Type": "Person",
+      "People": [],
+      "Studios": [],
+      "GenreItems": [],
+      "LocalTrailerCount": 0,
+      "UserData": {
+        "PlaybackPositionTicks": 0,
+        "PlayCount": 0,
+        "IsFavorite": false,
+        "Played": false,
+        "Key": "Person-Duane Jones",
+        "ItemId": "98f4a5c661af4abab8b78099e81b8f86"
+      },
+      "ChildCount": 1,
+      "SpecialFeatureCount": 0,
+      "DisplayPreferencesId": "b607178b0ac2f604a458d3d2363fdc83",
+      "Tags": [],
+      "ImageTags": {},
+      "BackdropImageTags": [],
+      "ImageBlurHashes": {},
+      "Chapters": [],
+      "LocationType": "FileSystem",
+      "MediaType": "Unknown",
+      "LockedFields": [],
+      "TrailerCount": 0,
+      "MovieCount": 1,
+      "SeriesCount": 0,
+      "ProgramCount": 0,
+      "EpisodeCount": 0,
+      "SongCount": 0,
+      "AlbumCount": 0,
+      "ArtistCount": 0,
+      "MusicVideoCount": 0,
+      "LockData": false
+    }
+  }
+}

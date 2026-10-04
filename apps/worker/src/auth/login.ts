@@ -33,11 +33,24 @@ export async function loginVerify(
     logger.info('auth.login.failed', { reason: 'unknown_credential' });
     throw ceremonyFailed(401);
   }
-  const newCounter = await verifyAuthentication(config, logger, body.response, challenge.challenge, passkey);
+  const newCounter = await verifyAuthentication(
+    config,
+    logger,
+    body.response,
+    challenge.challenge,
+    passkey,
+  );
   const user = await getUser(db, passkey.user_id);
   if (user?.status !== 'active') throw ceremonyFailed(401);
   const now = Date.now();
-  const session = await prepareSession(db, config, user.id, passkey.id, now, c.req.header('user-agent'));
+  const session = await prepareSession(
+    db,
+    config,
+    user.id,
+    passkey.id,
+    now,
+    c.req.header('user-agent'),
+  );
   await db.batch([
     recordPasskeyUseStmt(db, passkey.id, newCounter, now),
     touchUserStmt(db, user.id, now),

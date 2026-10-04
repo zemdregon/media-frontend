@@ -1,0 +1,59 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/System/Info",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SERVICE_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "OperatingSystemDisplayName": "",
+      "HasPendingRestart": false,
+      "IsShuttingDown": false,
+      "SupportsLibraryMonitor": true,
+      "WebSocketPortNumber": 8096,
+      "CompletedInstallations": [],
+      "CanSelfRestart": true,
+      "CanLaunchWebBrowser": false,
+      "ProgramDataPath": "/config",
+      "WebPath": "/jellyfin/jellyfin-web",
+      "ItemsByNamePath": "/config/metadata",
+      "CachePath": "/cache",
+      "LogPath": "/config/log",
+      "InternalMetadataPath": "/config/metadata",
+      "TranscodingTempPath": "/cache/transcodes",
+      "CastReceiverApplications": [
+        {
+          "Id": "F007D354",
+          "Name": "Stable"
+        },
+        {
+          "Id": "6F511C87",
+          "Name": "Unstable"
+        }
+      ],
+      "HasUpdateAvailable": false,
+      "EncoderLocation": "System",
+      "SystemArchitecture": "X64",
+      "LocalAddress": "http://172.17.0.4:8096",
+      "ServerName": "185373dcc44d",
+      "Version": "12.1.0",
+      "ProductName": "Jellyfin Server",
+      "OperatingSystem": "",
+      "Id": "e8a0c84738be4ea3a75540d3c5ea8225",
+      "StartupWizardCompleted": true
+    }
+  }
+}

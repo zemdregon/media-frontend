@@ -1,0 +1,31 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "POST",
+    "path": "/Sessions/Playing",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SESSION_TOKEN_PLAY>\"",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "ItemId": "5bd7c114c62f47e8cd0dbaceb156ff8e",
+      "MediaSourceId": "5bd7c114c62f47e8cd0dbaceb156ff8e",
+      "PlaySessionId": "16bddaa06780454d828010c4c0cc710e",
+      "PositionTicks": 0,
+      "PlayMethod": "DirectPlay",
+      "CanSeek": true,
+      "IsPaused": false,
+      "IsMuted": false
+    }
+  },
+  "response": {
+    "status": 204,
+    "headers": {},
+    "body": ""
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Items?userId=148dded263c74cb885d9819605d68044&IncludeItemTypes=BoxSet&Recursive=true&Fields=ProviderIds,Overview,DateLastSaved,ChildCount",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SERVICE_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "Items": [
+        {
+          "Name": "Cinewren Spike Horror Collection",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "275b474076ee2847be682160e284766c",
+          "ChannelId": null,
+          "ProductionYear": 1957,
+          "ProviderIds": {},
+          "IsFolder": true,
+          "Type": "BoxSet",
+          "UserData": {
+            "PlayedPercentage": 0,
+            "UnplayedItemCount": 2,
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false,
+            "Key": "275b4740-76ee-2847-be68-2160e284766c",
+            "ItemId": "275b474076ee2847be682160e284766c"
+          },
+          "ChildCount": 2,
+          "DisplayOrder": "PremiereDate",
+          "ImageTags": {},
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {},
+          "LocationType": "FileSystem",
+          "MediaType": "Unknown"
+        }
+      ],
+      "TotalRecordCount": 1,
+      "StartIndex": 0
+    }
+  }
+}

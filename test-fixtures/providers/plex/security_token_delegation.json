@@ -1,0 +1,34 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/security/token?type=delegation&scope=all",
+    "headers": {
+      "Accept": "application/json",
+      "X-Plex-Client-Identifier": "cinewren-spike",
+      "X-Plex-Product": "Cinewren",
+      "X-Plex-Version": "0.0.1",
+      "X-Plex-Platform": "Web",
+      "X-Plex-Device": "Spike",
+      "X-Plex-Token": "<PLEX_TOKEN>"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Content-Length": "86"
+    },
+    "body": {
+      "MediaContainer": {
+        "size": 0,
+        "token": "<SESSION_TOKEN>"
+      }
+    }
+  }
+}

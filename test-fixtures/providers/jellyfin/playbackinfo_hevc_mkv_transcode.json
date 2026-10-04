@@ -1,0 +1,236 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "POST",
+    "path": "/Items/25900aea80a228d02844e045bdd4213f/PlaybackInfo?UserId=148dded263c74cb885d9819605d68044",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SESSION_TOKEN_PLAY>\"",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "UserId": "148dded263c74cb885d9819605d68044",
+      "DeviceProfile": {
+        "Name": "Cinewren browser (spike)",
+        "MaxStreamingBitrate": 20000000,
+        "MaxStaticBitrate": 100000000,
+        "MusicStreamingTranscodingBitrate": 192000,
+        "DirectPlayProfiles": [
+          {
+            "Container": "mp4,m4v",
+            "Type": "Video",
+            "VideoCodec": "h264",
+            "AudioCodec": "aac,mp3"
+          },
+          {
+            "Container": "webm",
+            "Type": "Video",
+            "VideoCodec": "vp9,av1",
+            "AudioCodec": "opus"
+          }
+        ],
+        "TranscodingProfiles": [
+          {
+            "Container": "ts",
+            "Type": "Video",
+            "VideoCodec": "h264",
+            "AudioCodec": "aac",
+            "Context": "Streaming",
+            "Protocol": "hls",
+            "MaxAudioChannels": "2",
+            "MinSegments": 1,
+            "BreakOnNonKeyFrames": true
+          }
+        ],
+        "ContainerProfiles": [],
+        "CodecProfiles": [],
+        "SubtitleProfiles": [
+          {
+            "Format": "vtt",
+            "Method": "External"
+          },
+          {
+            "Format": "vtt",
+            "Method": "Hls"
+          }
+        ]
+      },
+      "MaxStreamingBitrate": 20000000,
+      "StartTimeTicks": 0,
+      "EnableDirectPlay": true,
+      "EnableDirectStream": true,
+      "EnableTranscoding": true,
+      "AutoOpenLiveStream": false,
+      "AllowVideoStreamCopy": true,
+      "AllowAudioStreamCopy": true,
+      "SubtitleStreamIndex": null
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "MediaSources": [
+        {
+          "Protocol": "File",
+          "Id": "25900aea80a228d02844e045bdd4213f",
+          "Path": "/data/movies/Plan 9 from Outer Space (1957)/Plan 9 from Outer Space (1957).mkv",
+          "Type": "Default",
+          "Container": "mkv",
+          "Size": 201767,
+          "Name": "Plan 9 from Outer Space (1957)",
+          "IsRemote": false,
+          "ETag": "3eac50d3cb7bc8dbb3656844ed8dfb64",
+          "RunTimeTicks": 120230000,
+          "ReadAtNativeFramerate": false,
+          "IgnoreDts": false,
+          "IgnoreIndex": false,
+          "GenPtsInput": false,
+          "SupportsTranscoding": true,
+          "SupportsDirectStream": false,
+          "SupportsDirectPlay": false,
+          "IsInfiniteStream": false,
+          "UseMostCompatibleTranscodingProfile": false,
+          "RequiresOpening": false,
+          "RequiresClosing": false,
+          "RequiresLooping": false,
+          "SupportsProbing": true,
+          "VideoType": "VideoFile",
+          "MediaStreams": [
+            {
+              "Codec": "subrip",
+              "Language": "eng",
+              "TimeBase": "1/1000",
+              "VideoRange": "Unknown",
+              "VideoRangeType": "Unknown",
+              "AudioSpatialFormat": "None",
+              "LocalizedUndefined": "Undefined",
+              "LocalizedDefault": "Default",
+              "LocalizedForced": "Forced",
+              "LocalizedExternal": "External",
+              "LocalizedHearingImpaired": "Hearing Impaired",
+              "LocalizedLanguage": "English",
+              "DisplayTitle": "English - SUBRIP - External",
+              "IsInterlaced": false,
+              "IsDefault": false,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "IsOriginal": false,
+              "Type": "Subtitle",
+              "Index": 0,
+              "Score": 111222,
+              "IsExternal": true,
+              "DeliveryMethod": "External",
+              "DeliveryUrl": "/Videos/25900aea-80a2-28d0-2844-e045bdd4213f/25900aea80a228d02844e045bdd4213f/Subtitles/0/0/Stream.vtt?ApiKey=<SESSION_TOKEN_PLAY>",
+              "IsExternalUrl": false,
+              "IsTextSubtitleStream": true,
+              "SupportsExternalStream": true,
+              "Path": "/data/movies/Plan 9 from Outer Space (1957)/Plan 9 from Outer Space (1957).en.srt"
+            },
+            {
+              "Codec": "hevc",
+              "TimeBase": "1/1000",
+              "VideoRange": "SDR",
+              "VideoRangeType": "SDR",
+              "AudioSpatialFormat": "None",
+              "DisplayTitle": "1080p HEVC SDR",
+              "IsInterlaced": false,
+              "BitDepth": 8,
+              "RefFrames": 1,
+              "IsDefault": false,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "IsOriginal": false,
+              "Height": 1080,
+              "Width": 1920,
+              "AverageFrameRate": 24,
+              "RealFrameRate": 24,
+              "ReferenceFrameRate": 24,
+              "Profile": "Main",
+              "Type": "Video",
+              "AspectRatio": "16:9",
+              "Index": 1,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false,
+              "PixelFormat": "yuv420p",
+              "Level": 120,
+              "IsAnamorphic": false
+            },
+            {
+              "Codec": "aac",
+              "TimeBase": "1/1000",
+              "VideoRange": "Unknown",
+              "VideoRangeType": "Unknown",
+              "AudioSpatialFormat": "None",
+              "LocalizedDefault": "Default",
+              "LocalizedExternal": "External",
+              "LocalizedOriginal": "Original",
+              "DisplayTitle": "AAC - Mono",
+              "IsInterlaced": false,
+              "ChannelLayout": "mono",
+              "BitRate": 192000,
+              "Channels": 1,
+              "SampleRate": 44100,
+              "IsDefault": false,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "IsOriginal": false,
+              "Profile": "LC",
+              "Type": "Audio",
+              "Index": 2,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false
+            },
+            {
+              "Codec": "subrip",
+              "Language": "eng",
+              "TimeBase": "1/1000",
+              "VideoRange": "Unknown",
+              "VideoRangeType": "Unknown",
+              "AudioSpatialFormat": "None",
+              "LocalizedUndefined": "Undefined",
+              "LocalizedDefault": "Default",
+              "LocalizedForced": "Forced",
+              "LocalizedExternal": "External",
+              "LocalizedHearingImpaired": "Hearing Impaired",
+              "LocalizedLanguage": "English",
+              "DisplayTitle": "English - SUBRIP",
+              "IsInterlaced": false,
+              "IsDefault": false,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "IsOriginal": false,
+              "Type": "Subtitle",
+              "Index": 3,
+              "IsExternal": false,
+              "DeliveryMethod": "External",
+              "DeliveryUrl": "/Videos/25900aea-80a2-28d0-2844-e045bdd4213f/25900aea80a228d02844e045bdd4213f/Subtitles/3/0/Stream.vtt?ApiKey=<SESSION_TOKEN_PLAY>",
+              "IsExternalUrl": false,
+              "IsTextSubtitleStream": true,
+              "SupportsExternalStream": true
+            }
+          ],
+          "MediaAttachments": [],
+          "Formats": [],
+          "Bitrate": 134254,
+          "RequiredHttpHeaders": {},
+          "TranscodingUrl": "/videos/25900aea-80a2-28d0-2844-e045bdd4213f/master.m3u8?DeviceId=cinewren-ps-play1&MediaSourceId=25900aea80a228d02844e045bdd4213f&VideoCodec=h264&AudioCodec=aac&AudioStreamIndex=2&VideoBitrate=19808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=ts&MinSegments=1&PlaySessionId=4219ad652b654eda93dc780b2a4a4e25&ApiKey=<SESSION_TOKEN_PLAY>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=3eac50d3cb7bc8dbb3656844ed8dfb64&hevc-level=120&hevc-videobitdepth=8&hevc-profile=main&TranscodeReasons=ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported",
+          "TranscodingSubProtocol": "hls",
+          "TranscodingContainer": "ts",
+          "DefaultAudioStreamIndex": 2,
+          "DefaultSubtitleStreamIndex": 0,
+          "HasSegments": false
+        }
+      ],
+      "PlaySessionId": "4219ad652b654eda93dc780b2a4a4e25"
+    }
+  }
+}

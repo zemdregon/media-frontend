@@ -1,0 +1,151 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Items?userId=5c84ecbdbf494494a7fa03913ea2e020&Recursive=true&IncludeItemTypes=Movie&Fields=People,ProviderIds",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SERVICE_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Length": "1628",
+      "Content-Type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": {
+      "Items": [
+        {
+          "Name": "His Girl Friday",
+          "ServerId": "66831b99153e41cb824035fd4f81aa23",
+          "Id": "10",
+          "RunTimeTicks": 120000000,
+          "ProviderIds": {
+            "Tmdb": "3085",
+            "Imdb": "tt0032599"
+          },
+          "IsFolder": false,
+          "Type": "Movie",
+          "People": [
+            {
+              "Name": "Howard Hawks",
+              "Id": "13",
+              "Type": "Director"
+            },
+            {
+              "Name": "Cary Grant",
+              "Id": "14",
+              "Role": "Walter Burns",
+              "Type": "Actor"
+            },
+            {
+              "Name": "Rosalind Russell",
+              "Id": "15",
+              "Role": "Hildy Johnson",
+              "Type": "Actor"
+            }
+          ],
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": true,
+            "Played": true
+          },
+          "ImageTags": {},
+          "BackdropImageTags": [],
+          "MediaType": "Video"
+        },
+        {
+          "Name": "Night of the Living Dead",
+          "ServerId": "66831b99153e41cb824035fd4f81aa23",
+          "Id": "11",
+          "RunTimeTicks": 120230000,
+          "ProviderIds": {
+            "Tmdb": "10331",
+            "Imdb": "tt0063350"
+          },
+          "IsFolder": false,
+          "Type": "Movie",
+          "People": [
+            {
+              "Name": "George A. Romero",
+              "Id": "17",
+              "Type": "Director"
+            },
+            {
+              "Name": "John A. Russo",
+              "Id": "18",
+              "Type": "Writer"
+            },
+            {
+              "Name": "Duane Jones",
+              "Id": "19",
+              "Role": "Ben",
+              "Type": "Actor"
+            },
+            {
+              "Name": "Judith O'Dea",
+              "Id": "20",
+              "Role": "Barbara",
+              "Type": "Actor"
+            }
+          ],
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false
+          },
+          "ImageTags": {},
+          "BackdropImageTags": [],
+          "MediaType": "Video"
+        },
+        {
+          "Name": "Plan 9 from Outer Space",
+          "ServerId": "66831b99153e41cb824035fd4f81aa23",
+          "Id": "12",
+          "RunTimeTicks": 120230000,
+          "ProviderIds": {
+            "Tmdb": "10513",
+            "Imdb": "tt0052077"
+          },
+          "IsFolder": false,
+          "Type": "Movie",
+          "People": [
+            {
+              "Name": "Ed Wood",
+              "Id": "23",
+              "Type": "Director"
+            },
+            {
+              "Name": "Bela Lugosi",
+              "Id": "24",
+              "Role": "Ghoul Man",
+              "Type": "Actor"
+            }
+          ],
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": true
+          },
+          "ImageTags": {},
+          "BackdropImageTags": [],
+          "MediaType": "Video"
+        }
+      ],
+      "TotalRecordCount": 3
+    }
+  }
+}

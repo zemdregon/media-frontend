@@ -9,7 +9,9 @@ import { parseJson } from '../validation';
 export const setup = new Hono<AppEnv>()
   .use(authRateLimit)
   .get('/', async (c) => c.json<SetupStatus>({ available: await setupAvailable(c.env.DB) }))
-  .post('/options', async (c) => c.json(await setupOptions(c, await parseJson(c, setupOptionsRequest))))
+  .post('/options', async (c) =>
+    c.json(await setupOptions(c, await parseJson(c, setupOptionsRequest))),
+  )
   .post('/verify', async (c) =>
     c.json({ user: await setupVerify(c, await parseJson(c, setupVerifyRequest)) }, 201),
   );

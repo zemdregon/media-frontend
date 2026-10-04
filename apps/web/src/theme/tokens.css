@@ -1,0 +1,94 @@
+/*
+ * Design tokens (docs/design/UX.md §3). UX owns names and values; components use var(--cw-*)
+ * only. Dark is the base; light applies under prefers-color-scheme unless the user forced dark,
+ * and whenever data-theme="light" is set (UX §3.5, TDD §6.6).
+ */
+:root {
+  color-scheme: dark;
+  --cw-bg: #0e0d0b;
+  --cw-surface-nav: #14120e;
+  --cw-surface-1: #17150f;
+  --cw-surface-2: #201d16;
+  --cw-surface-selected: #262219;
+  --cw-surface-selected-row: #211d15;
+  --cw-border-row: #221f18;
+  --cw-border: #2a261e;
+  --cw-border-input: #2e2a21;
+  --cw-border-strong: #3a352a;
+  --cw-border-control: #756d5a;
+  --cw-text: #f2ede3;
+  --cw-text-2: #e3dccf;
+  --cw-text-body: #cfc7b8;
+  --cw-text-muted: #a39b8b;
+  --cw-text-placeholder: #8a8272;
+  --cw-accent: #f2a93b;
+  --cw-accent-hover: #ffc56e;
+  --cw-on-accent: #1a1408;
+  --cw-status-ok: #5cc8b0;
+  --cw-status-warn: #f2a93b;
+  --cw-status-bad: #e8735a;
+
+  --cw-r-chip: 6px;
+  --cw-r-button: 10px;
+  --cw-r-callout: 12px;
+  --cw-r-card: 18px;
+  --cw-r-pill: 24px;
+
+  --cw-font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --cw-font-body: 'Instrument Sans', system-ui, sans-serif;
+  --cw-font-mono: 'JetBrains Mono', monospace;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+    --cw-bg: #faf6ee;
+    --cw-surface-nav: #f2ecdf;
+    --cw-surface-1: #fffdf8;
+    --cw-surface-2: #ede6d6;
+    --cw-surface-selected: #e6dcc6;
+    --cw-surface-selected-row: #f0e7d2;
+    --cw-border-row: #eae2d0;
+    --cw-border: #e4dac6;
+    --cw-border-input: #d6cbb3;
+    --cw-border-strong: #b8ab90;
+    --cw-border-control: #8a7f68;
+    --cw-text: #1f1b14;
+    --cw-text-2: #2e2920;
+    --cw-text-body: #4a4437;
+    --cw-text-muted: #665f50;
+    --cw-text-placeholder: #6f6858;
+    --cw-accent: #9a5700;
+    --cw-accent-hover: #74400a;
+    --cw-on-accent: #ffffff;
+    --cw-status-ok: #0e7360;
+    --cw-status-warn: #9a5700;
+    --cw-status-bad: #b3361e;
+  }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --cw-bg: #faf6ee;
+  --cw-surface-nav: #f2ecdf;
+  --cw-surface-1: #fffdf8;
+  --cw-surface-2: #ede6d6;
+  --cw-surface-selected: #e6dcc6;
+  --cw-surface-selected-row: #f0e7d2;
+  --cw-border-row: #eae2d0;
+  --cw-border: #e4dac6;
+  --cw-border-input: #d6cbb3;
+  --cw-border-strong: #b8ab90;
+  --cw-border-control: #8a7f68;
+  --cw-text: #1f1b14;
+  --cw-text-2: #2e2920;
+  --cw-text-body: #4a4437;
+  --cw-text-muted: #665f50;
+  --cw-text-placeholder: #6f6858;
+  --cw-accent: #9a5700;
+  --cw-accent-hover: #74400a;
+  --cw-on-accent: #ffffff;
+  --cw-status-ok: #0e7360;
+  --cw-status-warn: #9a5700;
+  --cw-status-bad: #b3361e;
+}

@@ -1,0 +1,74 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Items?userId=5c84ecbdbf494494a7fa03913ea2e020&ParentId=22&Fields=ProviderIds",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SERVICE_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Length": "719",
+      "Content-Type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": {
+      "Items": [
+        {
+          "Name": "Plan 9 from Outer Space",
+          "ServerId": "66831b99153e41cb824035fd4f81aa23",
+          "Id": "12",
+          "RunTimeTicks": 120230000,
+          "ProviderIds": {
+            "Tmdb": "10513",
+            "Imdb": "tt0052077"
+          },
+          "IsFolder": false,
+          "Type": "Movie",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false
+          },
+          "ImageTags": {},
+          "BackdropImageTags": [],
+          "MediaType": "Video"
+        },
+        {
+          "Name": "Night of the Living Dead",
+          "ServerId": "66831b99153e41cb824035fd4f81aa23",
+          "Id": "11",
+          "RunTimeTicks": 120230000,
+          "ProviderIds": {
+            "Tmdb": "10331",
+            "Imdb": "tt0063350"
+          },
+          "IsFolder": false,
+          "Type": "Movie",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false
+          },
+          "ImageTags": {},
+          "BackdropImageTags": [],
+          "MediaType": "Video"
+        }
+      ],
+      "TotalRecordCount": 2
+    }
+  }
+}

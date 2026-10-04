@@ -1,0 +1,221 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Sessions?ActiveWithinSeconds=60",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<ADMIN_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": [
+      {
+        "PlayState": {
+          "PositionTicks": 0,
+          "CanSeek": true,
+          "IsPaused": false,
+          "IsMuted": false,
+          "MediaSourceId": "5bd7c114c62f47e8cd0dbaceb156ff8e",
+          "PlayMethod": "DirectPlay",
+          "RepeatMode": "RepeatNone",
+          "PlaybackOrder": "Default"
+        },
+        "AdditionalUsers": [],
+        "Capabilities": {
+          "PlayableMediaTypes": [],
+          "SupportedCommands": [],
+          "SupportsMediaControl": false,
+          "SupportsPersistentIdentifier": true
+        },
+        "RemoteEndPoint": "172.17.0.1",
+        "PlayableMediaTypes": [],
+        "Id": "13a81269c9a3625998cdb28066ea20c9",
+        "UserId": "148dded263c74cb885d9819605d68044",
+        "UserName": "cinewren-svc",
+        "Client": "Cinewren",
+        "LastActivityDate": "2026-10-04T07:03:39.0538547Z",
+        "LastPlaybackCheckIn": "2026-10-04T07:03:39.0538554Z",
+        "DeviceName": "Cinewren Playback",
+        "NowPlayingItem": {
+          "Name": "His Girl Friday",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "5bd7c114c62f47e8cd0dbaceb156ff8e",
+          "DateCreated": "2026-10-04T06:45:20.3664113Z",
+          "Container": "mov,mp4,m4a,3gp,3g2,mj2",
+          "ExternalUrls": [
+            {
+              "Name": "IMDb",
+              "Url": "https://www.imdb.com/title/tt0032599"
+            },
+            {
+              "Name": "TMDB",
+              "Url": "https://www.themoviedb.org/movie/3085"
+            }
+          ],
+          "Path": "/data/movies/His Girl Friday (1940)/His Girl Friday (1940).mp4",
+          "EnableMediaSourceDisplay": true,
+          "ChannelId": null,
+          "Overview": "Edited by the spike at 2026-10-04T07:03:26.292982+00:00",
+          "Taglines": [],
+          "Genres": [
+            "Comedy"
+          ],
+          "RunTimeTicks": 120000000,
+          "ProductionYear": 1940,
+          "ProviderIds": {
+            "Imdb": "tt0032599",
+            "Tmdb": "3085"
+          },
+          "IsHD": true,
+          "IsFolder": false,
+          "ParentId": "429cfa5c1648e89c5f696f08e19b138f",
+          "Type": "Movie",
+          "Studios": [],
+          "GenreItems": [
+            {
+              "Name": "Comedy",
+              "Id": "08d31605d366d63a7a924f944b4417f1"
+            }
+          ],
+          "LocalTrailerCount": 0,
+          "SpecialFeatureCount": 0,
+          "PrimaryImageAspectRatio": 1.7777777777777777,
+          "MediaStreams": [
+            {
+              "Codec": "h264",
+              "Language": "und",
+              "ColorSpace": "bt470bg",
+              "TimeBase": "1/12288",
+              "VideoRange": "SDR",
+              "VideoRangeType": "SDR",
+              "AudioSpatialFormat": "None",
+              "DisplayTitle": "720p H264 SDR",
+              "NalLengthSize": "4",
+              "IsInterlaced": false,
+              "IsAVC": true,
+              "BitRate": 37905,
+              "BitDepth": 8,
+              "RefFrames": 1,
+              "IsDefault": true,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "IsOriginal": false,
+              "Height": 720,
+              "Width": 1280,
+              "AverageFrameRate": 24,
+              "RealFrameRate": 24,
+              "ReferenceFrameRate": 24,
+              "Profile": "Constrained Baseline",
+              "Type": "Video",
+              "AspectRatio": "16:9",
+              "Index": 0,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false,
+              "PixelFormat": "yuv420p",
+              "Level": 31,
+              "IsAnamorphic": false
+            },
+            {
+              "Codec": "aac",
+              "Language": "und",
+              "TimeBase": "1/44100",
+              "VideoRange": "Unknown",
+              "VideoRangeType": "Unknown",
+              "AudioSpatialFormat": "None",
+              "LocalizedDefault": "Default",
+              "LocalizedExternal": "External",
+              "LocalizedLanguage": "Undetermined",
+              "LocalizedOriginal": "Original",
+              "DisplayTitle": "AAC - Mono - Default",
+              "IsInterlaced": false,
+              "ChannelLayout": "mono",
+              "BitRate": 96198,
+              "Channels": 1,
+              "SampleRate": 44100,
+              "IsDefault": true,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "IsOriginal": false,
+              "Profile": "LC",
+              "Type": "Audio",
+              "Index": 1,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false
+            }
+          ],
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "384ff45a2c8a2341d935fc188c40e37d"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "384ff45a2c8a2341d935fc188c40e37d": "WkGbk@.hwz+OE+OB-:c5sD=MpIpGaxt7W.RjRjWBt8aNjbS#fljI"
+            }
+          },
+          "Chapters": [],
+          "Trickplay": {},
+          "LocationType": "FileSystem",
+          "MediaType": "Video",
+          "Width": 1280,
+          "Height": 720
+        },
+        "DeviceId": "cinewren-ps-play1",
+        "ApplicationVersion": "0.0.1",
+        "IsActive": true,
+        "SupportsMediaControl": false,
+        "SupportsRemoteControl": false,
+        "NowPlayingQueue": [],
+        "HasCustomDeviceName": false,
+        "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+        "SupportedCommands": []
+      },
+      {
+        "PlayState": {
+          "CanSeek": false,
+          "IsPaused": false,
+          "IsMuted": false,
+          "RepeatMode": "RepeatNone",
+          "PlaybackOrder": "Default"
+        },
+        "AdditionalUsers": [],
+        "Capabilities": {
+          "PlayableMediaTypes": [],
+          "SupportedCommands": [],
+          "SupportsMediaControl": false,
+          "SupportsPersistentIdentifier": true
+        },
+        "RemoteEndPoint": "172.17.0.1",
+        "PlayableMediaTypes": [],
+        "Id": "f11731e158d6486bdf805e2a700a39b7",
+        "UserId": "148dded263c74cb885d9819605d68044",
+        "UserName": "cinewren-svc",
+        "Client": "Cinewren",
+        "LastActivityDate": "2026-10-04T07:03:25.4728594Z",
+        "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+        "DeviceName": "Cinewren Sync",
+        "DeviceId": "cinewren-svc-main",
+        "ApplicationVersion": "0.0.1",
+        "IsActive": true,
+        "SupportsMediaControl": false,
+        "SupportsRemoteControl": false,
+        "NowPlayingQueue": [],
+        "HasCustomDeviceName": false,
+        "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+        "SupportedCommands": []
+      }
+    ]
+  }
+}

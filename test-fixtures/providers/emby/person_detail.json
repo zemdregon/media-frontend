@@ -1,0 +1,69 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Users/5c84ecbdbf494494a7fa03913ea2e020/Items/19",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SERVICE_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Length": "843",
+      "Content-Type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": {
+      "Name": "Duane Jones",
+      "ServerId": "66831b99153e41cb824035fd4f81aa23",
+      "Id": "19",
+      "Etag": "a8cd7e46e703d3a54173d26c632606ca",
+      "DateCreated": "2026-10-04T06:58:37.0000000Z",
+      "DateModified": "2026-10-04T06:58:37.0000000Z",
+      "CanDelete": false,
+      "CanDownload": false,
+      "PresentationUniqueKey": "cc9ed0cd54684806ba80a76cc6be9ea9",
+      "SortName": "Duane Jones",
+      "ForcedSortName": "Duane Jones",
+      "ExternalUrls": [
+        {
+          "Name": "IMDb",
+          "Url": "https://www.imdb.com/name/nm0428658"
+        },
+        {
+          "Name": "TheMovieDb",
+          "Url": "https://www.themoviedb.org/person/32237"
+        }
+      ],
+      "Taglines": [],
+      "RemoteTrailers": [],
+      "ProviderIds": {
+        "tmdb": "32237",
+        "imdb": "nm0428658"
+      },
+      "Type": "Person",
+      "TagItems": [],
+      "UserData": {
+        "PlaybackPositionTicks": 0,
+        "PlayCount": 0,
+        "IsFavorite": false,
+        "Played": false
+      },
+      "DisplayPreferencesId": "b607178b0ac2f604a458d3d2363fdc83",
+      "ImageTags": {},
+      "BackdropImageTags": [],
+      "LockedFields": [],
+      "LockData": false
+    }
+  }
+}

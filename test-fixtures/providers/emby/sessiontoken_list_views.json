@@ -1,0 +1,130 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Users/5c84ecbdbf494494a7fa03913ea2e020/Views",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SESSION_TOKEN_A>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Length": "2300",
+      "Content-Type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": {
+      "Items": [
+        {
+          "Name": "Movies",
+          "ServerId": "66831b99153e41cb824035fd4f81aa23",
+          "Id": "3",
+          "Guid": "c1dafd8291f64359a2467eb9511f1029",
+          "Etag": "86767006831fede07dd0f97da06675e7",
+          "DateCreated": "2026-10-04T06:58:36.4243055Z",
+          "DateModified": "0001-01-01T00:00:00.0000000Z",
+          "CanDelete": false,
+          "CanDownload": false,
+          "PresentationUniqueKey": "c1dafd8291f64359a2467eb9511f1029",
+          "SortName": "Movies",
+          "ForcedSortName": "Movies",
+          "ExternalUrls": [],
+          "Taglines": [],
+          "RemoteTrailers": [],
+          "ProviderIds": {},
+          "IsFolder": true,
+          "ParentId": "2",
+          "Type": "CollectionFolder",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "IsFavorite": false,
+            "Played": false
+          },
+          "DisplayPreferencesId": "c1dafd8291f64359a2467eb9511f1029",
+          "CollectionType": "movies",
+          "ImageTags": {},
+          "BackdropImageTags": [],
+          "LockedFields": [],
+          "LockData": false
+        },
+        {
+          "Name": "Shows",
+          "ServerId": "66831b99153e41cb824035fd4f81aa23",
+          "Id": "5",
+          "Guid": "5dd217776bd9417ebbebf14f39a529c8",
+          "Etag": "e28584b1fd6936a0eead937d82e54a34",
+          "DateCreated": "2026-10-04T06:58:36.4748283Z",
+          "DateModified": "0001-01-01T00:00:00.0000000Z",
+          "CanDelete": false,
+          "CanDownload": false,
+          "PresentationUniqueKey": "5dd217776bd9417ebbebf14f39a529c8",
+          "SortName": "Shows",
+          "ForcedSortName": "Shows",
+          "ExternalUrls": [],
+          "Taglines": [],
+          "RemoteTrailers": [],
+          "ProviderIds": {},
+          "IsFolder": true,
+          "ParentId": "2",
+          "Type": "CollectionFolder",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "IsFavorite": false,
+            "Played": false
+          },
+          "DisplayPreferencesId": "5dd217776bd9417ebbebf14f39a529c8",
+          "CollectionType": "tvshows",
+          "ImageTags": {},
+          "BackdropImageTags": [],
+          "LockedFields": [],
+          "LockData": false
+        },
+        {
+          "Name": "Collections",
+          "ServerId": "66831b99153e41cb824035fd4f81aa23",
+          "Id": "31",
+          "Guid": "7ce64355f6c649bdba657596a3accf48",
+          "Etag": "bfe864cf537d33c13975a353e57b910b",
+          "DateCreated": "2026-10-04T06:58:38.1469071Z",
+          "DateModified": "0001-01-01T00:00:00.0000000Z",
+          "CanDelete": false,
+          "CanDownload": false,
+          "PresentationUniqueKey": "7ce64355f6c649bdba657596a3accf48",
+          "SortName": "zCollections",
+          "ForcedSortName": "zCollections",
+          "ExternalUrls": [],
+          "Taglines": [],
+          "RemoteTrailers": [],
+          "ProviderIds": {},
+          "IsFolder": true,
+          "ParentId": "2",
+          "Type": "CollectionFolder",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "IsFavorite": false,
+            "Played": false
+          },
+          "DisplayPreferencesId": "7ce64355f6c649bdba657596a3accf48",
+          "CollectionType": "boxsets",
+          "ImageTags": {},
+          "BackdropImageTags": [],
+          "LockedFields": [
+            "SortName"
+          ],
+          "LockData": false
+        }
+      ],
+      "TotalRecordCount": 3
+    }
+  }
+}

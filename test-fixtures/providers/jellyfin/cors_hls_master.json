@@ -1,0 +1,25 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/videos/25900aea-80a2-28d0-2844-e045bdd4213f/master.m3u8?DeviceId=cinewren-ps-play1&MediaSourceId=25900aea80a228d02844e045bdd4213f&VideoCodec=h264&AudioCodec=aac&AudioStreamIndex=2&VideoBitrate=19808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=ts&MinSegments=1&PlaySessionId=4219ad652b654eda93dc780b2a4a4e25&ApiKey=<SESSION_TOKEN_PLAY>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=3eac50d3cb7bc8dbb3656844ed8dfb64&hevc-level=120&hevc-videobitdepth=8&hevc-profile=main&TranscodeReasons=ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported",
+    "headers": {
+      "Accept": "application/json",
+      "Origin": "https://cinewren.example"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Length": "719",
+      "Content-Type": "application/vnd.apple.mpegurl",
+      "Access-Control-Allow-Origin": "*"
+    },
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=19936000,AVERAGE-BANDWIDTH=19936000,VIDEO-RANGE=SDR,CODECS=\"avc1.424029,mp4a.40.2\",RESOLUTION=1920x1080,FRAME-RATE=24\nmain.m3u8?DeviceId=cinewren-ps-play1&MediaSourceId=25900aea80a228d02844e045bdd4213f&VideoCodec=h264&AudioCodec=copy&AudioStreamIndex=2&VideoBitrate=19808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=ts&MinSegments=1&PlaySessionId=4219ad652b654eda93dc780b2a4a4e25&ApiKey=<SESSION_TOKEN_PLAY>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=3eac50d3cb7bc8dbb3656844ed8dfb64&hevc-level=120&hevc-videobitdepth=8&hevc-profile=main&TranscodeReasons=ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported\n"
+  }
+}

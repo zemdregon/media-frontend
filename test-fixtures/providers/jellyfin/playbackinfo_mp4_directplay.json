@@ -1,0 +1,181 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "POST",
+    "path": "/Items/5bd7c114c62f47e8cd0dbaceb156ff8e/PlaybackInfo?UserId=148dded263c74cb885d9819605d68044",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SESSION_TOKEN_PLAY>\"",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "UserId": "148dded263c74cb885d9819605d68044",
+      "DeviceProfile": {
+        "Name": "Cinewren browser (spike)",
+        "MaxStreamingBitrate": 20000000,
+        "MaxStaticBitrate": 100000000,
+        "MusicStreamingTranscodingBitrate": 192000,
+        "DirectPlayProfiles": [
+          {
+            "Container": "mp4,m4v",
+            "Type": "Video",
+            "VideoCodec": "h264",
+            "AudioCodec": "aac,mp3"
+          },
+          {
+            "Container": "webm",
+            "Type": "Video",
+            "VideoCodec": "vp9,av1",
+            "AudioCodec": "opus"
+          }
+        ],
+        "TranscodingProfiles": [
+          {
+            "Container": "ts",
+            "Type": "Video",
+            "VideoCodec": "h264",
+            "AudioCodec": "aac",
+            "Context": "Streaming",
+            "Protocol": "hls",
+            "MaxAudioChannels": "2",
+            "MinSegments": 1,
+            "BreakOnNonKeyFrames": true
+          }
+        ],
+        "ContainerProfiles": [],
+        "CodecProfiles": [],
+        "SubtitleProfiles": [
+          {
+            "Format": "vtt",
+            "Method": "External"
+          },
+          {
+            "Format": "vtt",
+            "Method": "Hls"
+          }
+        ]
+      },
+      "MaxStreamingBitrate": 20000000,
+      "StartTimeTicks": 0,
+      "EnableDirectPlay": true,
+      "EnableDirectStream": true,
+      "EnableTranscoding": true,
+      "AutoOpenLiveStream": false,
+      "AllowVideoStreamCopy": true,
+      "AllowAudioStreamCopy": true
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "MediaSources": [
+        {
+          "Protocol": "File",
+          "Id": "5bd7c114c62f47e8cd0dbaceb156ff8e",
+          "Path": "/data/movies/His Girl Friday (1940)/His Girl Friday (1940).mp4",
+          "Type": "Default",
+          "Container": "mp4",
+          "Size": 209804,
+          "Name": "His Girl Friday (1940)",
+          "IsRemote": false,
+          "ETag": "d8d293690cfb241250a292b4b45ae0d5",
+          "RunTimeTicks": 120000000,
+          "ReadAtNativeFramerate": false,
+          "IgnoreDts": false,
+          "IgnoreIndex": false,
+          "GenPtsInput": false,
+          "SupportsTranscoding": true,
+          "SupportsDirectStream": true,
+          "SupportsDirectPlay": true,
+          "IsInfiniteStream": false,
+          "UseMostCompatibleTranscodingProfile": false,
+          "RequiresOpening": false,
+          "RequiresClosing": false,
+          "RequiresLooping": false,
+          "SupportsProbing": true,
+          "VideoType": "VideoFile",
+          "MediaStreams": [
+            {
+              "Codec": "h264",
+              "Language": "und",
+              "ColorSpace": "bt470bg",
+              "TimeBase": "1/12288",
+              "VideoRange": "SDR",
+              "VideoRangeType": "SDR",
+              "AudioSpatialFormat": "None",
+              "DisplayTitle": "720p H264 SDR",
+              "NalLengthSize": "4",
+              "IsInterlaced": false,
+              "IsAVC": true,
+              "BitRate": 37905,
+              "BitDepth": 8,
+              "RefFrames": 1,
+              "IsDefault": true,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "IsOriginal": false,
+              "Height": 720,
+              "Width": 1280,
+              "AverageFrameRate": 24,
+              "RealFrameRate": 24,
+              "ReferenceFrameRate": 24,
+              "Profile": "Constrained Baseline",
+              "Type": "Video",
+              "AspectRatio": "16:9",
+              "Index": 0,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false,
+              "PixelFormat": "yuv420p",
+              "Level": 31,
+              "IsAnamorphic": false
+            },
+            {
+              "Codec": "aac",
+              "Language": "und",
+              "TimeBase": "1/44100",
+              "VideoRange": "Unknown",
+              "VideoRangeType": "Unknown",
+              "AudioSpatialFormat": "None",
+              "LocalizedDefault": "Default",
+              "LocalizedExternal": "External",
+              "LocalizedLanguage": "Undetermined",
+              "LocalizedOriginal": "Original",
+              "DisplayTitle": "AAC - Mono - Default",
+              "IsInterlaced": false,
+              "ChannelLayout": "mono",
+              "BitRate": 96198,
+              "Channels": 1,
+              "SampleRate": 44100,
+              "IsDefault": true,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "IsOriginal": false,
+              "Profile": "LC",
+              "Type": "Audio",
+              "Index": 1,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false
+            }
+          ],
+          "MediaAttachments": [],
+          "Formats": [],
+          "Bitrate": 139869,
+          "RequiredHttpHeaders": {},
+          "TranscodingSubProtocol": "http",
+          "DefaultAudioStreamIndex": 1,
+          "HasSegments": false
+        }
+      ],
+      "PlaySessionId": "16bddaa06780454d828010c4c0cc710e"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/System/Info/Public",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "LocalAddress": "http://172.17.0.4:8096",
+      "ServerName": "185373dcc44d",
+      "Version": "12.1.0",
+      "ProductName": "Jellyfin Server",
+      "OperatingSystem": "",
+      "Id": "e8a0c84738be4ea3a75540d3c5ea8225",
+      "StartupWizardCompleted": true
+    }
+  }
+}

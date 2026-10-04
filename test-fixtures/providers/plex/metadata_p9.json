@@ -1,0 +1,502 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/library/metadata/3?includeGuids=1",
+    "headers": {
+      "Accept": "application/json",
+      "X-Plex-Client-Identifier": "cinewren-spike",
+      "X-Plex-Product": "Cinewren",
+      "X-Plex-Version": "0.0.1",
+      "X-Plex-Platform": "Web",
+      "X-Plex-Device": "Spike",
+      "X-Plex-Token": "<PLEX_TRANSIENT_TOKEN>"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Content-Length": "9554"
+    },
+    "body": {
+      "MediaContainer": {
+        "size": 1,
+        "allowSync": true,
+        "identifier": "com.plexapp.plugins.library",
+        "librarySectionID": 1,
+        "librarySectionTitle": "Movies",
+        "librarySectionUUID": "46c5cf5a-867c-4793-a534-564be2d8e10f",
+        "mediaTagPrefix": "/system/bundle/media/flags/",
+        "mediaTagVersion": 1786914632,
+        "Metadata": [
+          {
+            "ratingKey": "3",
+            "key": "/library/metadata/3",
+            "guid": "plex://movie/5d9f34fbd74e670020020087",
+            "slug": "plan-9-from-outer-space",
+            "studio": "Reynolds Pictures",
+            "type": "movie",
+            "title": "Plan 9 from Outer Space",
+            "librarySectionTitle": "Movies",
+            "librarySectionID": 1,
+            "librarySectionKey": "/library/sections/1",
+            "contentRating": "Not Rated",
+            "summary": "Evil aliens attack Earth and set their terrible \"Plan 9\" into action. As the aliens resurrect the dead of the Earth, the lives of the living are in danger.",
+            "rating": 6.6,
+            "audienceRating": 4.5,
+            "year": 1959,
+            "tagline": "Unspeakable horrors from outer space paralyze the living and resurrect the dead!",
+            "thumb": "/library/metadata/3/thumb/1791097147",
+            "art": "/library/metadata/3/art/1791097147",
+            "duration": 12023,
+            "originallyAvailableAt": "1959-07-22",
+            "addedAt": 1791096331,
+            "updatedAt": 1791097147,
+            "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+            "primaryExtraKey": "/library/metadata/13",
+            "ratingImage": "rottentomatoes://image.rating.ripe",
+            "Media": [
+              {
+                "id": 3,
+                "duration": 12023,
+                "bitrate": 134,
+                "width": 1920,
+                "height": 1080,
+                "aspectRatio": 1.78,
+                "audioChannels": 1,
+                "audioCodec": "aac",
+                "videoCodec": "hevc",
+                "videoResolution": "1080",
+                "container": "mkv",
+                "videoFrameRate": "24p",
+                "videoProfile": "main",
+                "hasVoiceActivity": false,
+                "Part": [
+                  {
+                    "id": 3,
+                    "key": "/library/parts/3/1791096331/file.mkv",
+                    "duration": 12023,
+                    "file": "/data/movies/Plan 9 from Outer Space (1957)/Plan 9 from Outer Space (1957).mkv",
+                    "size": 201767,
+                    "container": "mkv",
+                    "videoProfile": "main",
+                    "Stream": [
+                      {
+                        "id": 43,
+                        "streamType": 1,
+                        "codec": "hevc",
+                        "index": 0,
+                        "bitrate": 134,
+                        "language": "English",
+                        "languageTag": "en",
+                        "languageCode": "eng",
+                        "bitDepth": 8,
+                        "chromaLocation": "left",
+                        "chromaSubsampling": "4:2:0",
+                        "codedHeight": 1088,
+                        "codedWidth": 1920,
+                        "colorRange": "tv",
+                        "frameRate": 24.0,
+                        "height": 1080,
+                        "level": 120,
+                        "profile": "main",
+                        "refFrames": 1,
+                        "scanType": "progressive",
+                        "width": 1920,
+                        "displayTitle": "1080p",
+                        "extendedDisplayTitle": "1080p (HEVC Main)"
+                      },
+                      {
+                        "id": 44,
+                        "streamType": 2,
+                        "canNormalizeLoudness": false,
+                        "selected": true,
+                        "codec": "aac",
+                        "index": 1,
+                        "channels": 1,
+                        "language": "English",
+                        "languageTag": "en",
+                        "languageCode": "eng",
+                        "samplingRate": 44100,
+                        "displayTitle": "English (AAC Mono)",
+                        "extendedDisplayTitle": "English (AAC Mono)"
+                      },
+                      {
+                        "id": 45,
+                        "streamType": 3,
+                        "canAutoSync": false,
+                        "codec": "srt",
+                        "index": 2,
+                        "language": "English",
+                        "languageTag": "en",
+                        "languageCode": "eng",
+                        "displayTitle": "English",
+                        "extendedDisplayTitle": "English (SRT)"
+                      },
+                      {
+                        "id": 46,
+                        "key": "/library/streams/46",
+                        "streamType": 3,
+                        "canAutoSync": false,
+                        "codec": "srt",
+                        "language": "English",
+                        "languageTag": "en",
+                        "languageCode": "eng",
+                        "format": "srt",
+                        "displayTitle": "English",
+                        "extendedDisplayTitle": "English (SRT External)"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "Image": [
+              {
+                "alt": "Plan 9 from Outer Space",
+                "type": "coverPoster",
+                "url": "/library/metadata/3/thumb/1791097147"
+              },
+              {
+                "alt": "Plan 9 from Outer Space",
+                "type": "background",
+                "url": "/library/metadata/3/art/1791097147"
+              },
+              {
+                "alt": "Plan 9 from Outer Space",
+                "type": "clearLogo",
+                "url": "/library/metadata/3/clearLogo/1791097147"
+              },
+              {
+                "alt": "Plan 9 from Outer Space",
+                "type": "backgroundSquare",
+                "url": "/library/metadata/3/squareArt/1791097147"
+              }
+            ],
+            "UltraBlurColors": {
+              "topLeft": "4f181d",
+              "topRight": "96394e",
+              "bottomRight": "2d2558",
+              "bottomLeft": "a9222c"
+            },
+            "Genre": [
+              {
+                "id": 8,
+                "filter": "genre=8",
+                "tag": "Science Fiction"
+              },
+              {
+                "id": 6,
+                "filter": "genre=6",
+                "tag": "Horror"
+              }
+            ],
+            "Country": [
+              {
+                "id": 96,
+                "filter": "country=96",
+                "tag": "United States of America"
+              }
+            ],
+            "Guid": [
+              {
+                "id": "imdb://tt0052077"
+              },
+              {
+                "id": "tmdb://10513"
+              },
+              {
+                "id": "tvdb://7230"
+              }
+            ],
+            "Rating": [
+              {
+                "image": "imdb://image.rating",
+                "value": 3.9,
+                "type": "audience"
+              },
+              {
+                "image": "rottentomatoes://image.rating.ripe",
+                "value": 6.6,
+                "type": "critic"
+              },
+              {
+                "image": "rottentomatoes://image.rating.spilled",
+                "value": 4.5,
+                "type": "audience"
+              },
+              {
+                "image": "themoviedb://image.rating",
+                "value": 4.2,
+                "type": "audience"
+              }
+            ],
+            "Director": [
+              {
+                "id": 152,
+                "filter": "director=152",
+                "tag": "Edward D. Wood Jr.",
+                "tagKey": "5d77682e7e9a3c0020c6ba00",
+                "thumb": "https://metadata-static.plex.tv/9/people/9dd511fed7614b6b07d6e779ffb5537e.jpg"
+              }
+            ],
+            "Writer": [
+              {
+                "id": 153,
+                "filter": "writer=153",
+                "tag": "Edward D. Wood Jr.",
+                "tagKey": "5d77682e7e9a3c0020c6ba00",
+                "thumb": "https://metadata-static.plex.tv/9/people/9dd511fed7614b6b07d6e779ffb5537e.jpg"
+              }
+            ],
+            "Role": [
+              {
+                "id": 154,
+                "filter": "actor=154",
+                "tag": "Gregory Walcott",
+                "tagKey": "5d776827880197001ec90a7c",
+                "role": "Jeff Trent",
+                "thumb": "https://metadata-static.plex.tv/4/people/46475ca60622ec978febb1f7b727667e.jpg"
+              },
+              {
+                "id": 155,
+                "filter": "actor=155",
+                "tag": "Mona McKinnon",
+                "tagKey": "5d77684b961905001eb98061",
+                "role": "Paula Trent",
+                "thumb": "https://metadata-static.plex.tv/people/5d77684b961905001eb98061.jpg"
+              },
+              {
+                "id": 156,
+                "filter": "actor=156",
+                "tag": "Duke Moore",
+                "tagKey": "5d77685e103a2d001f56f280",
+                "role": "Lt. John Harper",
+                "thumb": "https://metadata-static.plex.tv/people/5d77685e103a2d001f56f280.jpg"
+              },
+              {
+                "id": 157,
+                "filter": "actor=157",
+                "tag": "Tom Keene",
+                "tagKey": "5d776856880197001ec99545",
+                "role": "Col. Tom Edwards",
+                "thumb": "https://metadata-static.plex.tv/6/people/6b0d26b553d4b685dd0abfd8c9fdf388.jpg"
+              },
+              {
+                "id": 158,
+                "filter": "actor=158",
+                "tag": "Carl Anthony",
+                "tagKey": "5d77685c33f255001e853dd5",
+                "role": "Patrolman Larry",
+                "thumb": "https://metadata-static.plex.tv/people/5d77685c33f255001e853dd5.jpg"
+              },
+              {
+                "id": 159,
+                "filter": "actor=159",
+                "tag": "Paul Marco",
+                "tagKey": "5d7768598718ba001e3196ba",
+                "role": "Patrolman Kelton",
+                "thumb": "https://metadata-static.plex.tv/b/people/b7f0e14fcafe4e23b2561fe2d5a0567a.jpg"
+              },
+              {
+                "id": 160,
+                "filter": "actor=160",
+                "tag": "Tor Johnson",
+                "tagKey": "5d77683c54f42c001f8c588b",
+                "role": "Inspector Clay",
+                "thumb": "https://metadata-static.plex.tv/0/people/00af25dff607fd09f7eecb64940ec6f9.jpg"
+              },
+              {
+                "id": 161,
+                "filter": "actor=161",
+                "tag": "Dudley Manlove",
+                "tagKey": "5d7768ae9ab54400214ea07b",
+                "role": "Eros",
+                "thumb": "https://metadata-static.plex.tv/people/5d7768ae9ab54400214ea07b.jpg"
+              },
+              {
+                "id": 162,
+                "filter": "actor=162",
+                "tag": "Joanna Lee",
+                "tagKey": "5d7768911999bc0020dc93f5",
+                "role": "Tanna"
+              },
+              {
+                "id": 163,
+                "filter": "actor=163",
+                "tag": "Bunny Breckinridge",
+                "tagKey": "5d9f34fbd74e6700200200ab",
+                "role": "Ruler",
+                "thumb": "https://metadata-static.plex.tv/people/5d9f34fbd74e6700200200ab.jpg"
+              },
+              {
+                "id": 164,
+                "filter": "actor=164",
+                "tag": "Lyle Talbot",
+                "tagKey": "5d77682d5af944001f1f80f7",
+                "role": "General Roberts",
+                "thumb": "https://metadata-static.plex.tv/5/people/54dafd31724674cd6f259027983871b3.jpg"
+              },
+              {
+                "id": 165,
+                "filter": "actor=165",
+                "tag": "Conrad Brooks",
+                "tagKey": "5d776827880197001ec90a6f",
+                "role": "Patrolman Jamie",
+                "thumb": "https://metadata-static.plex.tv/7/people/7333be9115e9eefcb08c60e555783c4b.jpg"
+              },
+              {
+                "id": 166,
+                "filter": "actor=166",
+                "tag": "Maila Nurmi",
+                "tagKey": "5d77682e7e9a3c0020c6b9fb",
+                "role": "Vampire Girl",
+                "thumb": "https://metadata-static.plex.tv/e/people/e4bfcff4577a574e5ec400a565e163c2.jpg"
+              },
+              {
+                "id": 167,
+                "filter": "actor=167",
+                "tag": "Bela Lugosi",
+                "tagKey": "5d7768262e80df001ebdcd00",
+                "role": "Ghoul Man",
+                "thumb": "https://metadata-static.plex.tv/2/people/2446820feb65d644940320633a8699a7.jpg"
+              },
+              {
+                "id": 168,
+                "filter": "actor=168",
+                "tag": "Criswell",
+                "tagKey": "5d77686133f255001e854663",
+                "role": "Self / Narrator",
+                "thumb": "https://metadata-static.plex.tv/people/5d77686133f255001e854663.jpg"
+              },
+              {
+                "id": 169,
+                "filter": "actor=169",
+                "tag": "David De Mering",
+                "tagKey": "6323e83693de28374b31ee3b",
+                "role": "Danny"
+              },
+              {
+                "id": 170,
+                "filter": "actor=170",
+                "tag": "Norma McCarty",
+                "tagKey": "5d7768b533f255001e85d85c",
+                "role": "Edith"
+              },
+              {
+                "id": 171,
+                "filter": "actor=171",
+                "tag": "Lynn Lemon",
+                "tagKey": "6a0bedd8dd3b523074e27d4c",
+                "role": "Reverend"
+              },
+              {
+                "id": 172,
+                "filter": "actor=172",
+                "tag": "Ben Frommer",
+                "tagKey": "5d7768262e80df001ebdce1e",
+                "role": "Man"
+              },
+              {
+                "id": 173,
+                "filter": "actor=173",
+                "tag": "Gloria Dea",
+                "tagKey": "5d776a5aad5437001f77b019",
+                "role": "Girl",
+                "thumb": "https://metadata-static.plex.tv/c/people/c516691346d43218d1c697291435cee9.jpg"
+              },
+              {
+                "id": 174,
+                "filter": "actor=174",
+                "tag": "Donald A. Davis",
+                "tagKey": "5d77682f961905001eb92e46",
+                "role": "Drunk (uncredited)"
+              },
+              {
+                "id": 175,
+                "filter": "actor=175",
+                "tag": "Johnny Duncan",
+                "tagKey": "5d77682954f42c001f8c2d57",
+                "role": "Second Stretcher Bearer (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/3/people/36267aff8af684ff790ce7606125412e.jpg"
+              },
+              {
+                "id": 176,
+                "filter": "actor=176",
+                "tag": "Tom Mason",
+                "tagKey": "6a0bf251141002df6909a33b",
+                "role": "Ghoul Man (uncredited)",
+                "thumb": "https://image.tmdb.org/t/p/original/bVWmk63dKNnFQBOhbXhXx9cXq0P.jpg"
+              },
+              {
+                "id": 177,
+                "filter": "actor=177",
+                "tag": "Karl Johnson",
+                "tagKey": "5d77686133f255001e85466b",
+                "role": "Farmer Calder (uncredited)"
+              },
+              {
+                "id": 178,
+                "filter": "actor=178",
+                "tag": "J. Edward Reynolds",
+                "tagKey": "5dcd4bee45de43001e4615ef",
+                "role": "Gravedigger (uncredited)"
+              },
+              {
+                "id": 179,
+                "filter": "actor=179",
+                "tag": "Hugh Thomas Jr",
+                "tagKey": "5dcd4bee45de43001e4615f1",
+                "role": "Gravedigger (uncredited)"
+              },
+              {
+                "id": 180,
+                "filter": "actor=180",
+                "tag": "Pauline Reynolds",
+                "tagKey": "64997e483f62254e48a35096",
+                "role": "Woman in Telephone Booth (uncredited)"
+              },
+              {
+                "id": 181,
+                "filter": "actor=181",
+                "tag": "Clay Stone",
+                "tagKey": "693d089af741f3302e786fcd",
+                "role": "Mourner Reading Bible in Opening Scene (uncredited)"
+              },
+              {
+                "id": 182,
+                "filter": "actor=182",
+                "tag": "James Miller",
+                "tagKey": "64997e47ee73a72b1ce2f21a",
+                "role": "Man (uncredited)"
+              },
+              {
+                "id": 183,
+                "filter": "actor=183",
+                "tag": "Edward D. Wood Jr.",
+                "tagKey": "5d77682e7e9a3c0020c6ba00",
+                "role": "Man Holding Newspaper (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/9/people/9dd511fed7614b6b07d6e779ffb5537e.jpg"
+              }
+            ],
+            "Producer": [
+              {
+                "id": 184,
+                "filter": "producer=184",
+                "tag": "Edward D. Wood Jr.",
+                "tagKey": "5d77682e7e9a3c0020c6ba00",
+                "thumb": "https://metadata-static.plex.tv/9/people/9dd511fed7614b6b07d6e779ffb5537e.jpg"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

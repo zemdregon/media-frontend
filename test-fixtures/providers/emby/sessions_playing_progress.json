@@ -1,0 +1,37 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "POST",
+    "path": "/Sessions/Playing/Progress",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SESSION_TOKEN_PLAY>\"",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "ItemId": "10",
+      "MediaSourceId": "mediasource_10",
+      "PlaySessionId": "464a524602f9475488193a1d80e84b6c",
+      "PositionTicks": 50000000,
+      "PlayMethod": "DirectPlay",
+      "CanSeek": true,
+      "IsPaused": false,
+      "IsMuted": false,
+      "EventName": "timeupdate"
+    }
+  },
+  "response": {
+    "status": 204,
+    "headers": {
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": ""
+  }
+}

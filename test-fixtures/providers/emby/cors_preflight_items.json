@@ -1,0 +1,31 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "OPTIONS",
+    "path": "/Items?userId=5c84ecbdbf494494a7fa03913ea2e020&ParentId=3&Recursive=true&IncludeItemTypes=Movie,Series,Season,Episode&Fields=ProviderIds,MediaSources,MediaStreams,Overview,Genres,DateCreated,DateLastSaved,Path,SortName,OriginalTitle,ProductionYear,RunTimeTicks,ParentId,Etag&SortBy=SortName&SortOrder=Ascending&Limit=1",
+    "headers": {
+      "Accept": "application/json",
+      "Origin": "https://cinewren.example",
+      "Access-Control-Request-Method": "GET",
+      "Access-Control-Request-Headers": "authorization"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Length": "0",
+      "Content-Type": "text/plain",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "https://cinewren.example",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": ""
+  }
+}

@@ -7,3 +7,4 @@ AGENTS.md
 CLAUDE.md
 worker-configuration.d.ts
 scripts/check-docs.mjs
+test-fixtures/

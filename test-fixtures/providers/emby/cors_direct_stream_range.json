@@ -1,0 +1,32 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Videos/10/stream.mp4?static=true&MediaSourceId=mediasource_10&api_key=<SESSION_TOKEN_PLAY>",
+    "headers": {
+      "Accept": "application/json",
+      "Origin": "https://cinewren.example",
+      "Range": "bytes=100-299"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 206,
+    "headers": {
+      "Content-Length": "200",
+      "Content-Type": "video/mp4",
+      "Accept-Ranges": "bytes",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "https://cinewren.example",
+      "Content-Range": "bytes 100-299/209804",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": "\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000@\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0003\u0000\u0000\u000bRtrak\u0000\u0000\u0000\\tkhd\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000.�\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000@\u0000\u0000\u0000\u0005\u0000\u0000\u0000\u0002�\u0000\u0000\u0000\u0000\u0000$edts\u0000\u0000\u0000\u001celst\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000.�\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\n�mdia\u0000\u0000\u0000 mdhd"
+  }
+}

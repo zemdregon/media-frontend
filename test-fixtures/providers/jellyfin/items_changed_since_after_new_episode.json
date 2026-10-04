@@ -1,0 +1,255 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Items?Recursive=true&IncludeItemTypes=Movie,Series,Season,Episode&MinDateLastSaved=2026-10-04T07:04:21.000Z",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<ADMIN_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "Items": [
+        {
+          "Name": "Spike Episode 1",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "2e0541e32529f136f21d5adc161d9ca6",
+          "Container": "mkv",
+          "ChannelId": null,
+          "RunTimeTicks": 80230000,
+          "IndexNumber": 1,
+          "ParentIndexNumber": 1,
+          "IsFolder": false,
+          "Type": "Episode",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false,
+            "Key": "70843001001",
+            "ItemId": "2e0541e32529f136f21d5adc161d9ca6"
+          },
+          "SeriesName": "Dragnet",
+          "SeriesId": "81f19fe0f2aea319cc5676cdbbde9a49",
+          "SeasonId": "34790537000a74ebf9cd4204df374d02",
+          "SeasonName": "Season 1",
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "c2190bfefb1013f929dc0d8b771d9905"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "c2190bfefb1013f929dc0d8b771d9905": "V~K-?]$=bW*ZnAt7WTW;jJW.WVW;aybFa#bufhW;WVjb"
+            }
+          },
+          "LocationType": "FileSystem",
+          "MediaType": "Video"
+        },
+        {
+          "Name": "Spike Episode 2",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "b3e9d68f845e7d49bbf4a5765a39854e",
+          "Container": "mkv",
+          "ChannelId": null,
+          "RunTimeTicks": 80230000,
+          "IndexNumber": 2,
+          "ParentIndexNumber": 1,
+          "IsFolder": false,
+          "Type": "Episode",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false,
+            "Key": "70843001002",
+            "ItemId": "b3e9d68f845e7d49bbf4a5765a39854e"
+          },
+          "SeriesName": "Dragnet",
+          "SeriesId": "81f19fe0f2aea319cc5676cdbbde9a49",
+          "SeasonId": "34790537000a74ebf9cd4204df374d02",
+          "SeasonName": "Season 1",
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "306615fcfdeea2bbff4d1c03373bc1b5"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "306615fcfdeea2bbff4d1c03373bc1b5": "V~K-?]$=bW*ZnAt7WTW;jJW.WVW;aybFa#bufhW;WVjb"
+            }
+          },
+          "LocationType": "FileSystem",
+          "MediaType": "Video"
+        },
+        {
+          "Name": "Dragnet - S01E03",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "fb060da7f3fa27edcc3a75f05574b5ef",
+          "Container": "mkv",
+          "ChannelId": null,
+          "RunTimeTicks": 80230000,
+          "IndexNumber": 3,
+          "ParentIndexNumber": 1,
+          "IsFolder": false,
+          "Type": "Episode",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false,
+            "Key": "70843001003",
+            "ItemId": "fb060da7f3fa27edcc3a75f05574b5ef"
+          },
+          "SeriesName": "Dragnet",
+          "SeriesId": "81f19fe0f2aea319cc5676cdbbde9a49",
+          "SeasonId": "34790537000a74ebf9cd4204df374d02",
+          "SeasonName": "Season 1",
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "e26bcc3ea4addca28cf1568119a02869"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "e26bcc3ea4addca28cf1568119a02869": "V~K-?]$=bW*ZnAt7WTW;jJW.WVW;aybFa#bufhW;WVjb"
+            }
+          },
+          "LocationType": "FileSystem",
+          "MediaType": "Video"
+        },
+        {
+          "Name": "Dragnet",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "81f19fe0f2aea319cc5676cdbbde9a49",
+          "ChannelId": null,
+          "ProductionYear": 1951,
+          "IsFolder": true,
+          "Type": "Series",
+          "UserData": {
+            "PlayedPercentage": 0,
+            "UnplayedItemCount": 3,
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false,
+            "Key": "70843",
+            "ItemId": "81f19fe0f2aea319cc5676cdbbde9a49"
+          },
+          "AirDays": [],
+          "ImageTags": {},
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {},
+          "LocationType": "FileSystem",
+          "MediaType": "Unknown"
+        },
+        {
+          "Name": "His Girl Friday",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "5bd7c114c62f47e8cd0dbaceb156ff8e",
+          "Container": "mov,mp4,m4a,3gp,3g2,mj2",
+          "ChannelId": null,
+          "RunTimeTicks": 120000000,
+          "ProductionYear": 1940,
+          "IsFolder": false,
+          "Type": "Movie",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false,
+            "Key": "3085",
+            "ItemId": "5bd7c114c62f47e8cd0dbaceb156ff8e"
+          },
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "384ff45a2c8a2341d935fc188c40e37d"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "384ff45a2c8a2341d935fc188c40e37d": "WkGbk@.hwz+OE+OB-:c5sD=MpIpGaxt7W.RjRjWBt8aNjbS#fljI"
+            }
+          },
+          "LocationType": "FileSystem",
+          "MediaType": "Video"
+        },
+        {
+          "Name": "Night of the Living Dead",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "ea7efa1224758f90a2a989d8cc93a42a",
+          "Container": "mkv",
+          "ChannelId": null,
+          "RunTimeTicks": 120230000,
+          "ProductionYear": 1968,
+          "IsFolder": false,
+          "Type": "Movie",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false,
+            "Key": "10331",
+            "ItemId": "ea7efa1224758f90a2a989d8cc93a42a"
+          },
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "b66ca575b92c4b2d19099e0b6848c277"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "b66ca575b92c4b2d19099e0b6848c277": "W~K_Ua;Zorz6iQ]~xunzW.j1WCs,WqaybFbFayW;xtoHayaPaisl"
+            }
+          },
+          "LocationType": "FileSystem",
+          "MediaType": "Video"
+        },
+        {
+          "Name": "Plan 9 from Outer Space",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "25900aea80a228d02844e045bdd4213f",
+          "HasSubtitles": true,
+          "Container": "mkv",
+          "ChannelId": null,
+          "RunTimeTicks": 120230000,
+          "ProductionYear": 1957,
+          "IsFolder": false,
+          "Type": "Movie",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false,
+            "Key": "10513",
+            "ItemId": "25900aea80a228d02844e045bdd4213f"
+          },
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "3972aec7507dc5870650943eb6ff7bdb"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "3972aec7507dc5870650943eb6ff7bdb": "W~KxVTILOGK.XdMR%2V]nSS0X4Vxn%nOjZn%jFXSxuahX7fzjYbH"
+            }
+          },
+          "LocationType": "FileSystem",
+          "MediaType": "Video"
+        }
+      ],
+      "TotalRecordCount": 7,
+      "StartIndex": 0
+    }
+  }
+}

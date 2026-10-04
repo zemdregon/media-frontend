@@ -1,0 +1,295 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/library/sections/2/all?type=4&includeGuids=1",
+    "headers": {
+      "Accept": "application/json",
+      "X-Plex-Client-Identifier": "cinewren-spike",
+      "X-Plex-Product": "Cinewren",
+      "X-Plex-Version": "0.0.1",
+      "X-Plex-Platform": "Web",
+      "X-Plex-Device": "Spike",
+      "X-Plex-Token": "<PLEX_TRANSIENT_TOKEN>"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Content-Length": "5327"
+    },
+    "body": {
+      "MediaContainer": {
+        "size": 2,
+        "allowSync": true,
+        "art": "/:/resources/show-fanart.jpg",
+        "identifier": "com.plexapp.plugins.library",
+        "librarySectionID": 2,
+        "librarySectionTitle": "Shows",
+        "librarySectionUUID": "53ece43c-2459-4e55-beb5-49e2f2870b50",
+        "mediaTagPrefix": "/system/bundle/media/flags/",
+        "mediaTagVersion": 1786914632,
+        "nocache": true,
+        "thumb": "/:/resources/show.png",
+        "title1": "Shows",
+        "title2": "All Shows",
+        "viewGroup": "show",
+        "viewMode": 65592,
+        "Metadata": [
+          {
+            "ratingKey": "17",
+            "key": "/library/metadata/17",
+            "parentRatingKey": "16",
+            "grandparentRatingKey": "15",
+            "guid": "plex://episode/5d9c0c4cef619b002048dd35",
+            "parentGuid": "plex://season/602e5b0333eb76002d602051",
+            "grandparentGuid": "plex://show/5d9c07ffba2e21001f18cfe4",
+            "grandparentSlug": "dragnet-1951",
+            "type": "episode",
+            "title": "The Human Bomb",
+            "titleSort": "Human Bomb",
+            "grandparentKey": "/library/metadata/15",
+            "parentKey": "/library/metadata/16",
+            "grandparentTitle": "Dragnet (1951)",
+            "parentTitle": "Season 1",
+            "contentRating": "TV-PG",
+            "summary": "An ex-con bears a grudge against the city of Los Angeles. He wants to blow up city hall unless his demands are met. He has a powerful bomb. The police find 28 sticks of dynamite in his apartment. Only Sergeant Friday has the power to stop this 1950s terrorist attack.",
+            "index": 1,
+            "parentIndex": 1,
+            "audienceRating": 10.0,
+            "year": 1951,
+            "thumb": "/library/metadata/17/thumb/1791097150",
+            "art": "/library/metadata/15/art/1791097149",
+            "parentThumb": "/library/metadata/16/thumb/1791097149",
+            "grandparentThumb": "/library/metadata/15/thumb/1791097149",
+            "grandparentArt": "/library/metadata/15/art/1791097149",
+            "grandparentTheme": "/library/metadata/15/theme/1791097149",
+            "duration": 8023,
+            "originallyAvailableAt": "1951-12-16",
+            "addedAt": 1791096932,
+            "updatedAt": 1791097150,
+            "audienceRatingImage": "themoviedb://image.rating",
+            "Media": [
+              {
+                "id": 26,
+                "duration": 8023,
+                "bitrate": 2206,
+                "width": 640,
+                "height": 480,
+                "aspectRatio": 1.33,
+                "audioChannels": 1,
+                "audioCodec": "aac",
+                "videoCodec": "h264",
+                "videoResolution": "480",
+                "container": "mkv",
+                "videoFrameRate": "24p",
+                "videoProfile": "constrained baseline",
+                "hasVoiceActivity": false,
+                "Part": [
+                  {
+                    "id": 26,
+                    "key": "/library/parts/26/1791096932/file.mkv",
+                    "duration": 8023,
+                    "file": "/data/tv/Dragnet (1951)/Season 01/Dragnet - S01E01.mkv",
+                    "size": 2212054,
+                    "container": "mkv",
+                    "videoProfile": "constrained baseline"
+                  }
+                ]
+              }
+            ],
+            "Image": [
+              {
+                "alt": "The Human Bomb",
+                "type": "coverPoster",
+                "url": "/library/metadata/15/thumb/1791097149"
+              },
+              {
+                "alt": "The Human Bomb",
+                "type": "snapshot",
+                "url": "/library/metadata/17/thumb/1791097150"
+              },
+              {
+                "alt": "The Human Bomb",
+                "type": "background",
+                "url": "/library/metadata/15/art/1791097149"
+              },
+              {
+                "alt": "The Human Bomb",
+                "type": "backgroundSquare",
+                "url": "/library/metadata/15/squareArt/1791097149"
+              }
+            ],
+            "UltraBlurColors": {
+              "topLeft": "2e2e2e",
+              "topRight": "545454",
+              "bottomRight": "5d5d5d",
+              "bottomLeft": "5d5d5d"
+            },
+            "Guid": [
+              {
+                "id": "imdb://tt0565972"
+              },
+              {
+                "id": "tmdb://260236"
+              },
+              {
+                "id": "tvdb://95535"
+              }
+            ],
+            "Director": [
+              {
+                "tag": "Jack Webb"
+              }
+            ],
+            "Writer": [
+              {
+                "tag": "Jack Webb"
+              }
+            ],
+            "Role": [
+              {
+                "tag": "Jack Webb"
+              },
+              {
+                "tag": "Ben Alexander"
+              },
+              {
+                "tag": "Raymond Burr"
+              }
+            ]
+          },
+          {
+            "ratingKey": "18",
+            "key": "/library/metadata/18",
+            "parentRatingKey": "16",
+            "grandparentRatingKey": "15",
+            "guid": "plex://episode/5d9c0c4c08fddd001f2c91fc",
+            "parentGuid": "plex://season/602e5b0333eb76002d602051",
+            "grandparentGuid": "plex://show/5d9c07ffba2e21001f18cfe4",
+            "grandparentSlug": "dragnet-1951",
+            "type": "episode",
+            "title": "The Big Actor",
+            "titleSort": "Big Actor",
+            "grandparentKey": "/library/metadata/15",
+            "parentKey": "/library/metadata/16",
+            "grandparentTitle": "Dragnet (1951)",
+            "parentTitle": "Season 1",
+            "contentRating": "TV-PG",
+            "summary": "Friday and Jacobs track down a drug ring through a small-time television actor who is hooked on heroin.",
+            "index": 2,
+            "parentIndex": 1,
+            "audienceRating": 10.0,
+            "year": 1952,
+            "thumb": "/library/metadata/18/thumb/1791097150",
+            "art": "/library/metadata/15/art/1791097149",
+            "parentThumb": "/library/metadata/16/thumb/1791097149",
+            "grandparentThumb": "/library/metadata/15/thumb/1791097149",
+            "grandparentArt": "/library/metadata/15/art/1791097149",
+            "grandparentTheme": "/library/metadata/15/theme/1791097149",
+            "duration": 8023,
+            "originallyAvailableAt": "1952-01-03",
+            "addedAt": 1791097054,
+            "updatedAt": 1791097150,
+            "audienceRatingImage": "themoviedb://image.rating",
+            "Media": [
+              {
+                "id": 27,
+                "duration": 8023,
+                "bitrate": 2206,
+                "width": 640,
+                "height": 480,
+                "aspectRatio": 1.33,
+                "audioChannels": 1,
+                "audioCodec": "aac",
+                "videoCodec": "h264",
+                "videoResolution": "480",
+                "container": "mkv",
+                "videoFrameRate": "24p",
+                "videoProfile": "constrained baseline",
+                "hasVoiceActivity": false,
+                "Part": [
+                  {
+                    "id": 27,
+                    "key": "/library/parts/27/1791097054/file.mkv",
+                    "duration": 8023,
+                    "file": "/data/tv/Dragnet (1951)/Season 01/Dragnet - S01E02.mkv",
+                    "size": 2212001,
+                    "container": "mkv",
+                    "videoProfile": "constrained baseline"
+                  }
+                ]
+              }
+            ],
+            "Image": [
+              {
+                "alt": "The Big Actor",
+                "type": "coverPoster",
+                "url": "/library/metadata/15/thumb/1791097149"
+              },
+              {
+                "alt": "The Big Actor",
+                "type": "snapshot",
+                "url": "/library/metadata/18/thumb/1791097150"
+              },
+              {
+                "alt": "The Big Actor",
+                "type": "background",
+                "url": "/library/metadata/15/art/1791097149"
+              },
+              {
+                "alt": "The Big Actor",
+                "type": "backgroundSquare",
+                "url": "/library/metadata/15/squareArt/1791097149"
+              }
+            ],
+            "UltraBlurColors": {
+              "topLeft": "2b2b2b",
+              "topRight": "1c1c1c",
+              "bottomRight": "232423",
+              "bottomLeft": "040b03"
+            },
+            "Guid": [
+              {
+                "id": "imdb://tt0565700"
+              },
+              {
+                "id": "tmdb://260209"
+              },
+              {
+                "id": "tvdb://95536"
+              }
+            ],
+            "Director": [
+              {
+                "tag": "Jack Webb"
+              }
+            ],
+            "Writer": [
+              {
+                "tag": "Jack Webb"
+              }
+            ],
+            "Role": [
+              {
+                "tag": "Jack Webb"
+              },
+              {
+                "tag": "Ben Alexander"
+              },
+              {
+                "tag": "Olan Soule"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,243 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Items?userId=148dded263c74cb885d9819605d68044&ParentId=f137a2dd21bbc1b99aa5c0f6bf02a805&Recursive=true&IncludeItemTypes=Movie,Series,Season,Episode&Fields=ProviderIds,MediaSources,MediaStreams,Overview,Genres,DateCreated,DateLastSaved,Path,SortName,OriginalTitle,ProductionYear,RunTimeTicks,ParentId,Etag&SortBy=SortName&SortOrder=Ascending&MinDateLastSaved=2026-10-04T07:03:24.000Z",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SERVICE_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "Items": [
+        {
+          "Name": "His Girl Friday",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "5bd7c114c62f47e8cd0dbaceb156ff8e",
+          "Etag": "96da6291c0f2594f6226c3a80c2fcd73",
+          "DateCreated": "2026-10-04T06:45:20.3664113Z",
+          "Container": "mov,mp4,m4a,3gp,3g2,mj2",
+          "SortName": "his girl friday",
+          "MediaSources": [
+            {
+              "Protocol": "File",
+              "Id": "5bd7c114c62f47e8cd0dbaceb156ff8e",
+              "Path": "/data/movies/His Girl Friday (1940)/His Girl Friday (1940).mp4",
+              "Type": "Default",
+              "Container": "mp4",
+              "Size": 209804,
+              "Name": "His Girl Friday (1940)",
+              "IsRemote": false,
+              "ETag": "d8d293690cfb241250a292b4b45ae0d5",
+              "RunTimeTicks": 120000000,
+              "ReadAtNativeFramerate": false,
+              "IgnoreDts": false,
+              "IgnoreIndex": false,
+              "GenPtsInput": false,
+              "SupportsTranscoding": true,
+              "SupportsDirectStream": true,
+              "SupportsDirectPlay": true,
+              "IsInfiniteStream": false,
+              "UseMostCompatibleTranscodingProfile": false,
+              "RequiresOpening": false,
+              "RequiresClosing": false,
+              "RequiresLooping": false,
+              "SupportsProbing": true,
+              "VideoType": "VideoFile",
+              "MediaStreams": [
+                {
+                  "Codec": "h264",
+                  "Language": "und",
+                  "ColorSpace": "bt470bg",
+                  "TimeBase": "1/12288",
+                  "VideoRange": "SDR",
+                  "VideoRangeType": "SDR",
+                  "AudioSpatialFormat": "None",
+                  "DisplayTitle": "720p H264 SDR",
+                  "NalLengthSize": "4",
+                  "IsInterlaced": false,
+                  "IsAVC": true,
+                  "BitRate": 37905,
+                  "BitDepth": 8,
+                  "RefFrames": 1,
+                  "IsDefault": true,
+                  "IsForced": false,
+                  "IsHearingImpaired": false,
+                  "IsOriginal": false,
+                  "Height": 720,
+                  "Width": 1280,
+                  "AverageFrameRate": 24,
+                  "RealFrameRate": 24,
+                  "ReferenceFrameRate": 24,
+                  "Profile": "Constrained Baseline",
+                  "Type": "Video",
+                  "AspectRatio": "16:9",
+                  "Index": 0,
+                  "IsExternal": false,
+                  "IsTextSubtitleStream": false,
+                  "SupportsExternalStream": false,
+                  "PixelFormat": "yuv420p",
+                  "Level": 31,
+                  "IsAnamorphic": false
+                },
+                {
+                  "Codec": "aac",
+                  "Language": "und",
+                  "TimeBase": "1/44100",
+                  "VideoRange": "Unknown",
+                  "VideoRangeType": "Unknown",
+                  "AudioSpatialFormat": "None",
+                  "LocalizedDefault": "Default",
+                  "LocalizedExternal": "External",
+                  "LocalizedLanguage": "Undetermined",
+                  "LocalizedOriginal": "Original",
+                  "DisplayTitle": "AAC - Mono - Default",
+                  "IsInterlaced": false,
+                  "ChannelLayout": "mono",
+                  "BitRate": 96198,
+                  "Channels": 1,
+                  "SampleRate": 44100,
+                  "IsDefault": true,
+                  "IsForced": false,
+                  "IsHearingImpaired": false,
+                  "IsOriginal": false,
+                  "Profile": "LC",
+                  "Type": "Audio",
+                  "Index": 1,
+                  "IsExternal": false,
+                  "IsTextSubtitleStream": false,
+                  "SupportsExternalStream": false
+                }
+              ],
+              "MediaAttachments": [],
+              "Formats": [],
+              "Bitrate": 139869,
+              "RequiredHttpHeaders": {},
+              "TranscodingSubProtocol": "http",
+              "DefaultAudioStreamIndex": 1,
+              "HasSegments": false
+            }
+          ],
+          "Path": "/data/movies/His Girl Friday (1940)/His Girl Friday (1940).mp4",
+          "ChannelId": null,
+          "Overview": "Edited by the spike at 2026-10-04T07:03:26.292982+00:00",
+          "Genres": [
+            "Comedy"
+          ],
+          "RunTimeTicks": 120000000,
+          "ProductionYear": 1940,
+          "ProviderIds": {
+            "Imdb": "tt0032599",
+            "Tmdb": "3085"
+          },
+          "IsFolder": false,
+          "ParentId": "429cfa5c1648e89c5f696f08e19b138f",
+          "Type": "Movie",
+          "GenreItems": [
+            {
+              "Name": "Comedy",
+              "Id": "08d31605d366d63a7a924f944b4417f1"
+            }
+          ],
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": true,
+            "Played": false,
+            "Key": "5bd7c114-c62f-47e8-cd0d-baceb156ff8e",
+            "ItemId": "5bd7c114c62f47e8cd0dbaceb156ff8e"
+          },
+          "MediaStreams": [
+            {
+              "Codec": "h264",
+              "Language": "und",
+              "ColorSpace": "bt470bg",
+              "TimeBase": "1/12288",
+              "VideoRange": "SDR",
+              "VideoRangeType": "SDR",
+              "AudioSpatialFormat": "None",
+              "DisplayTitle": "720p H264 SDR",
+              "NalLengthSize": "4",
+              "IsInterlaced": false,
+              "IsAVC": true,
+              "BitRate": 37905,
+              "BitDepth": 8,
+              "RefFrames": 1,
+              "IsDefault": true,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "IsOriginal": false,
+              "Height": 720,
+              "Width": 1280,
+              "AverageFrameRate": 24,
+              "RealFrameRate": 24,
+              "ReferenceFrameRate": 24,
+              "Profile": "Constrained Baseline",
+              "Type": "Video",
+              "AspectRatio": "16:9",
+              "Index": 0,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false,
+              "PixelFormat": "yuv420p",
+              "Level": 31,
+              "IsAnamorphic": false
+            },
+            {
+              "Codec": "aac",
+              "Language": "und",
+              "TimeBase": "1/44100",
+              "VideoRange": "Unknown",
+              "VideoRangeType": "Unknown",
+              "AudioSpatialFormat": "None",
+              "LocalizedDefault": "Default",
+              "LocalizedExternal": "External",
+              "LocalizedLanguage": "Undetermined",
+              "LocalizedOriginal": "Original",
+              "DisplayTitle": "AAC - Mono - Default",
+              "IsInterlaced": false,
+              "ChannelLayout": "mono",
+              "BitRate": 96198,
+              "Channels": 1,
+              "SampleRate": 44100,
+              "IsDefault": true,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "IsOriginal": false,
+              "Profile": "LC",
+              "Type": "Audio",
+              "Index": 1,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false
+            }
+          ],
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "384ff45a2c8a2341d935fc188c40e37d"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "384ff45a2c8a2341d935fc188c40e37d": "WkGbk@.hwz+OE+OB-:c5sD=MpIpGaxt7W.RjRjWBt8aNjbS#fljI"
+            }
+          },
+          "LocationType": "FileSystem",
+          "MediaType": "Video"
+        }
+      ],
+      "TotalRecordCount": 1,
+      "StartIndex": 0
+    }
+  }
+}

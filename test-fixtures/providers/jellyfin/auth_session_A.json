@@ -1,0 +1,136 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "POST",
+    "path": "/Users/AuthenticateByName",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Client=\"Cinewren\", Device=\"Cinewren Playback\", DeviceId=\"cinewren-ps-sessionA\", Version=\"0.0.1\"",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "Username": "cinewren-svc",
+      "Pw": "<PASSWORD>"
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "User": {
+        "Name": "cinewren-svc",
+        "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+        "Id": "148dded263c74cb885d9819605d68044",
+        "HasPassword": true,
+        "HasConfiguredPassword": true,
+        "HasConfiguredEasyPassword": false,
+        "EnableAutoLogin": false,
+        "LastLoginDate": "2026-10-04T07:01:01.2647122Z",
+        "LastActivityDate": "2026-10-04T07:01:01.2647122Z",
+        "Configuration": {
+          "PlayDefaultAudioTrack": true,
+          "SubtitleLanguagePreference": "",
+          "DisplayMissingEpisodes": false,
+          "GroupedFolders": [],
+          "SubtitleMode": "Default",
+          "DisplayCollectionsView": false,
+          "EnableLocalPassword": false,
+          "OrderedViews": [],
+          "LatestItemsExcludes": [],
+          "MyMediaExcludes": [],
+          "HidePlayedInLatest": true,
+          "RememberAudioSelections": true,
+          "RememberSubtitleSelections": true,
+          "EnableNextEpisodeAutoPlay": true,
+          "CastReceiverId": "F007D354"
+        },
+        "Policy": {
+          "IsAdministrator": false,
+          "IsHidden": true,
+          "EnableCollectionManagement": false,
+          "EnableSubtitleManagement": false,
+          "EnableLyricManagement": false,
+          "IsDisabled": false,
+          "BlockedTags": [],
+          "AllowedTags": [],
+          "EnableUserPreferenceAccess": false,
+          "AccessSchedules": [],
+          "BlockUnratedItems": [],
+          "EnableRemoteControlOfOtherUsers": false,
+          "EnableSharedDeviceControl": false,
+          "EnableRemoteAccess": true,
+          "EnableLiveTvManagement": false,
+          "EnableLiveTvAccess": true,
+          "EnableMediaPlayback": true,
+          "EnableAudioPlaybackTranscoding": true,
+          "EnableVideoPlaybackTranscoding": true,
+          "EnablePlaybackRemuxing": true,
+          "ForceRemoteSourceTranscoding": false,
+          "EnableContentDeletion": false,
+          "EnableContentDeletionFromFolders": [],
+          "EnableContentDownloading": true,
+          "EnableSyncTranscoding": true,
+          "EnableMediaConversion": true,
+          "EnabledDevices": [],
+          "EnableAllDevices": true,
+          "EnabledChannels": [],
+          "EnableAllChannels": true,
+          "EnabledFolders": [],
+          "EnableAllFolders": true,
+          "InvalidLoginAttemptCount": 0,
+          "LoginAttemptsBeforeLockout": -1,
+          "MaxActiveSessions": 0,
+          "EnablePublicSharing": true,
+          "BlockedMediaFolders": [],
+          "BlockedChannels": [],
+          "RemoteClientBitrateLimit": 0,
+          "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+          "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+          "SyncPlayAccess": "CreateAndJoinGroups"
+        }
+      },
+      "SessionInfo": {
+        "PlayState": {
+          "CanSeek": false,
+          "IsPaused": false,
+          "IsMuted": false,
+          "RepeatMode": "RepeatNone",
+          "PlaybackOrder": "Default"
+        },
+        "AdditionalUsers": [],
+        "Capabilities": {
+          "PlayableMediaTypes": [],
+          "SupportedCommands": [],
+          "SupportsMediaControl": false,
+          "SupportsPersistentIdentifier": true
+        },
+        "RemoteEndPoint": "172.17.0.1",
+        "PlayableMediaTypes": [],
+        "Id": "d734b59135e78fb5b78f66161d1bb8b9",
+        "UserId": "148dded263c74cb885d9819605d68044",
+        "UserName": "cinewren-svc",
+        "Client": "Cinewren",
+        "LastActivityDate": "2026-10-04T07:01:01.2672344Z",
+        "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+        "DeviceName": "Cinewren Playback",
+        "DeviceId": "cinewren-ps-sessionA",
+        "ApplicationVersion": "0.0.1",
+        "IsActive": true,
+        "SupportsMediaControl": false,
+        "SupportsRemoteControl": false,
+        "NowPlayingQueue": [],
+        "HasCustomDeviceName": false,
+        "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+        "SupportedCommands": []
+      },
+      "AccessToken": "<SESSION_TOKEN_A>",
+      "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225"
+    }
+  }
+}

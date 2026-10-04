@@ -7,7 +7,9 @@ import { parseJson } from '../validation';
 
 /** Operator invite management (FR-USR-004); the operator guard is applied by the router. */
 export const adminInvites = new Hono<AppEnv>()
-  .post('/', async (c) => c.json(await createInvite(c, await parseJson(c, createInviteRequest)), 201))
+  .post('/', async (c) =>
+    c.json(await createInvite(c, await parseJson(c, createInviteRequest)), 201),
+  )
   .get('/', async (c) => {
     const raw = c.req.query('status');
     const status = raw === undefined ? undefined : inviteStatus.safeParse(raw);

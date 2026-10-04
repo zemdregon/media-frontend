@@ -14,5 +14,5 @@ export interface Env {
   SESSION_ABSOLUTE_DAYS?: string;
   INVITE_TTL_DAYS?: string;
   /** Secret. One-time bootstrap token; deliberately not in `secrets.required` (ADR-0014). */
-  SETUP_TOKEN?: string;
+  SETUP_TOKEN?: string | undefined;
 }

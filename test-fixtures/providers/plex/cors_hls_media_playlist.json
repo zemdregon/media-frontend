@@ -1,0 +1,25 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/video/:/transcode/universal/session/cinewren-ps-plex1/base/index.m3u8",
+    "headers": {
+      "Accept": "application/json",
+      "Origin": "https://cinewren.example"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.apple.mpegurl",
+      "Access-Control-Allow-Origin": "https://cinewren.example",
+      "Content-Length": "444"
+    },
+    "body": "#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXT-X-ALLOW-CACHE:NO\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:1, nodesc\n00000.ts\n#EXTINF:1, nodesc\n00001.ts\n#EXTINF:1, nodesc\n00002.ts\n#EXTINF:1, nodesc\n00003.ts\n#EXTINF:1, nodesc\n00004.ts\n#EXTINF:1, nodesc\n00005.ts\n#EXTINF:1, nodesc\n00006.ts\n#EXTINF:1, nodesc\n00007.ts\n#EXTINF:1, nodesc\n00008.ts\n#EXTINF:1, nodesc\n00009.ts\n#EXTINF:1, nodesc\n00010.ts\n#EXTINF:1, nodesc\n00011.ts\n#EXTINF:1, nodesc\n00012.ts\n#EXT-X-ENDLIST\n"
+  }
+}

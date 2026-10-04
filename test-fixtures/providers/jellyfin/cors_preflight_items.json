@@ -1,0 +1,27 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "OPTIONS",
+    "path": "/Items?userId=148dded263c74cb885d9819605d68044&ParentId=f137a2dd21bbc1b99aa5c0f6bf02a805&Recursive=true&IncludeItemTypes=Movie,Series,Season,Episode&Fields=ProviderIds,MediaSources,MediaStreams,Overview,Genres,DateCreated,DateLastSaved,Path,SortName,OriginalTitle,ProductionYear,RunTimeTicks,ParentId,Etag&SortBy=SortName&SortOrder=Ascending&Limit=1",
+    "headers": {
+      "Accept": "application/json",
+      "Origin": "https://cinewren.example",
+      "Access-Control-Request-Method": "GET",
+      "Access-Control-Request-Headers": "authorization"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 204,
+    "headers": {
+      "Access-Control-Allow-Headers": "authorization",
+      "Access-Control-Allow-Methods": "GET",
+      "Access-Control-Allow-Origin": "*"
+    },
+    "body": ""
+  }
+}

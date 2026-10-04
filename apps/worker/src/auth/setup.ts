@@ -45,7 +45,9 @@ export async function setupOptions(
     displayName: body.displayName,
     excludeCredentialIds: [],
   });
-  const challengeId = await storeChallenge(c.env.DB, config, 'setup', options.challenge, { id: userId });
+  const challengeId = await storeChallenge(c.env.DB, config, 'setup', options.challenge, {
+    id: userId,
+  });
   return { challengeId, options: options as unknown as Record<string, unknown> };
 }
 
@@ -62,7 +64,14 @@ export async function setupVerify(
   const userId = challenge.id;
   const now = Date.now();
   const passkeyId = ulid();
-  const session = await prepareSession(db, config, userId, passkeyId, now, c.req.header('user-agent'));
+  const session = await prepareSession(
+    db,
+    config,
+    userId,
+    passkeyId,
+    now,
+    c.req.header('user-agent'),
+  );
   try {
     // If another setup won the race, the guarded user insert adds nothing and the passkey insert
     // fails its foreign key, rolling the whole batch back.

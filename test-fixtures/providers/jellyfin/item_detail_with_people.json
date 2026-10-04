@@ -1,0 +1,286 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Items/ea7efa1224758f90a2a989d8cc93a42a?userId=148dded263c74cb885d9819605d68044&Fields=People,ProviderIds",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SERVICE_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "Name": "Night of the Living Dead",
+      "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+      "Id": "ea7efa1224758f90a2a989d8cc93a42a",
+      "Etag": "dc0822c3e8225ae669df4bad38fc3307",
+      "DateCreated": "2026-10-04T06:45:18.7918011Z",
+      "CanDelete": false,
+      "CanDownload": true,
+      "Container": "mkv",
+      "SortName": "night of living dead",
+      "ExternalUrls": [
+        {
+          "Name": "IMDb",
+          "Url": "https://www.imdb.com/title/tt0063350"
+        },
+        {
+          "Name": "TMDB",
+          "Url": "https://www.themoviedb.org/movie/10331"
+        }
+      ],
+      "MediaSources": [
+        {
+          "Protocol": "File",
+          "Id": "ea7efa1224758f90a2a989d8cc93a42a",
+          "Path": "/data/movies/Night of the Living Dead (1968)/Night of the Living Dead (1968).mkv",
+          "Type": "Default",
+          "Container": "mkv",
+          "Size": 9729927,
+          "Name": "Night of the Living Dead (1968)",
+          "IsRemote": false,
+          "ETag": "e75412252e8c92a685d75d7cb77423a0",
+          "RunTimeTicks": 120230000,
+          "ReadAtNativeFramerate": false,
+          "IgnoreDts": false,
+          "IgnoreIndex": false,
+          "GenPtsInput": false,
+          "SupportsTranscoding": true,
+          "SupportsDirectStream": true,
+          "SupportsDirectPlay": true,
+          "IsInfiniteStream": false,
+          "UseMostCompatibleTranscodingProfile": false,
+          "RequiresOpening": false,
+          "RequiresClosing": false,
+          "RequiresLooping": false,
+          "SupportsProbing": true,
+          "VideoType": "VideoFile",
+          "MediaStreams": [
+            {
+              "Codec": "h264",
+              "TimeBase": "1/1000",
+              "VideoRange": "SDR",
+              "VideoRangeType": "SDR",
+              "AudioSpatialFormat": "None",
+              "DisplayTitle": "720p H264 SDR",
+              "NalLengthSize": "4",
+              "IsInterlaced": false,
+              "IsAVC": true,
+              "BitRate": 6282209,
+              "BitDepth": 8,
+              "RefFrames": 1,
+              "IsDefault": false,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "IsOriginal": false,
+              "Height": 720,
+              "Width": 1280,
+              "AverageFrameRate": 24,
+              "RealFrameRate": 24,
+              "ReferenceFrameRate": 24,
+              "Profile": "Constrained Baseline",
+              "Type": "Video",
+              "AspectRatio": "16:9",
+              "Index": 0,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false,
+              "PixelFormat": "yuv420p",
+              "Level": 31,
+              "IsAnamorphic": false
+            },
+            {
+              "Codec": "aac",
+              "TimeBase": "1/1000",
+              "VideoRange": "Unknown",
+              "VideoRangeType": "Unknown",
+              "AudioSpatialFormat": "None",
+              "LocalizedDefault": "Default",
+              "LocalizedExternal": "External",
+              "LocalizedOriginal": "Original",
+              "DisplayTitle": "AAC - Mono",
+              "IsInterlaced": false,
+              "ChannelLayout": "mono",
+              "BitRate": 192000,
+              "Channels": 1,
+              "SampleRate": 44100,
+              "IsDefault": false,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "IsOriginal": false,
+              "Profile": "LC",
+              "Type": "Audio",
+              "Index": 1,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false
+            }
+          ],
+          "MediaAttachments": [],
+          "Formats": [],
+          "Bitrate": 6474209,
+          "RequiredHttpHeaders": {},
+          "TranscodingSubProtocol": "http",
+          "DefaultAudioStreamIndex": 1,
+          "HasSegments": false
+        }
+      ],
+      "ProductionLocations": [],
+      "Path": "/data/movies/Night of the Living Dead (1968)/Night of the Living Dead (1968).mkv",
+      "EnableMediaSourceDisplay": true,
+      "ChannelId": null,
+      "Overview": "Synthetic spike fixture. A group of people barricade themselves in a farmhouse.",
+      "Taglines": [],
+      "Genres": [
+        "Horror"
+      ],
+      "RunTimeTicks": 120230000,
+      "PlayAccess": "Full",
+      "ProductionYear": 1968,
+      "RemoteTrailers": [],
+      "ProviderIds": {
+        "Imdb": "tt0063350",
+        "Tmdb": "10331",
+        "TmdbCollection": "900001"
+      },
+      "IsHD": true,
+      "IsFolder": false,
+      "ParentId": "429cfa5c1648e89c5f696f08e19b138f",
+      "Type": "Movie",
+      "People": [
+        {
+          "Name": "Duane Jones",
+          "Id": "98f4a5c661af4abab8b78099e81b8f86",
+          "Role": "Ben",
+          "Type": "Actor"
+        },
+        {
+          "Name": "Judith O'Dea",
+          "Id": "a269870e3a7f5bdc0d090aed3caadbdd",
+          "Role": "Barbara",
+          "Type": "Actor"
+        },
+        {
+          "Name": "George A. Romero",
+          "Id": "b82f2a32b689d9ab612eeefa9eef056a",
+          "Role": "",
+          "Type": "Director"
+        },
+        {
+          "Name": "John A. Russo",
+          "Id": "ff170aa5a1261f6dbffd526682097caf",
+          "Role": "",
+          "Type": "Writer"
+        }
+      ],
+      "Studios": [],
+      "GenreItems": [
+        {
+          "Name": "Horror",
+          "Id": "8b9bd9a3eddad02f2b759b4938fdd0b8"
+        }
+      ],
+      "LocalTrailerCount": 0,
+      "UserData": {
+        "PlaybackPositionTicks": 0,
+        "PlayCount": 0,
+        "IsFavorite": false,
+        "Played": false,
+        "Key": "10331",
+        "ItemId": "ea7efa1224758f90a2a989d8cc93a42a"
+      },
+      "SpecialFeatureCount": 0,
+      "DisplayPreferencesId": "dbf7709c41faaa746463d67978eb863d",
+      "Tags": [],
+      "PrimaryImageAspectRatio": 1.7777777777777777,
+      "MediaStreams": [
+        {
+          "Codec": "h264",
+          "TimeBase": "1/1000",
+          "VideoRange": "SDR",
+          "VideoRangeType": "SDR",
+          "AudioSpatialFormat": "None",
+          "DisplayTitle": "720p H264 SDR",
+          "NalLengthSize": "4",
+          "IsInterlaced": false,
+          "IsAVC": true,
+          "BitRate": 6282209,
+          "BitDepth": 8,
+          "RefFrames": 1,
+          "IsDefault": false,
+          "IsForced": false,
+          "IsHearingImpaired": false,
+          "IsOriginal": false,
+          "Height": 720,
+          "Width": 1280,
+          "AverageFrameRate": 24,
+          "RealFrameRate": 24,
+          "ReferenceFrameRate": 24,
+          "Profile": "Constrained Baseline",
+          "Type": "Video",
+          "AspectRatio": "16:9",
+          "Index": 0,
+          "IsExternal": false,
+          "IsTextSubtitleStream": false,
+          "SupportsExternalStream": false,
+          "PixelFormat": "yuv420p",
+          "Level": 31,
+          "IsAnamorphic": false
+        },
+        {
+          "Codec": "aac",
+          "TimeBase": "1/1000",
+          "VideoRange": "Unknown",
+          "VideoRangeType": "Unknown",
+          "AudioSpatialFormat": "None",
+          "LocalizedDefault": "Default",
+          "LocalizedExternal": "External",
+          "LocalizedOriginal": "Original",
+          "DisplayTitle": "AAC - Mono",
+          "IsInterlaced": false,
+          "ChannelLayout": "mono",
+          "BitRate": 192000,
+          "Channels": 1,
+          "SampleRate": 44100,
+          "IsDefault": false,
+          "IsForced": false,
+          "IsHearingImpaired": false,
+          "IsOriginal": false,
+          "Profile": "LC",
+          "Type": "Audio",
+          "Index": 1,
+          "IsExternal": false,
+          "IsTextSubtitleStream": false,
+          "SupportsExternalStream": false
+        }
+      ],
+      "VideoType": "VideoFile",
+      "ImageTags": {
+        "Primary": "b66ca575b92c4b2d19099e0b6848c277"
+      },
+      "BackdropImageTags": [],
+      "ImageBlurHashes": {
+        "Primary": {
+          "b66ca575b92c4b2d19099e0b6848c277": "W~K_Ua;Zorz6iQ]~xunzW.j1WCs,WqaybFbFayW;xtoHayaPaisl"
+        }
+      },
+      "Chapters": [],
+      "Trickplay": {},
+      "LocationType": "FileSystem",
+      "MediaType": "Video",
+      "LockedFields": [],
+      "LockData": false,
+      "Width": 1280,
+      "Height": 720
+    }
+  }
+}

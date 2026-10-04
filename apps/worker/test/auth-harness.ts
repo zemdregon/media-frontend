@@ -42,7 +42,11 @@ export interface CallOptions {
   env?: Partial<Env>;
 }
 
-export function call(method: string, path: string, opts: CallOptions = {}): Promise<Response> {
+export async function call(
+  method: string,
+  path: string,
+  opts: CallOptions = {},
+): Promise<Response> {
   const headers: Record<string, string> = { ...opts.headers };
   if (opts.body !== undefined) headers['content-type'] = 'application/json';
   const origin = opts.origin === undefined ? ORIGIN : opts.origin;
@@ -96,13 +100,19 @@ export async function setupOperator(auth = new VirtualAuthenticator(), displayNa
     body: { setupToken: SETUP_TOKEN, displayName },
   });
   expect(optRes.status).toBe(200);
-  const { challengeId, options } = await json<Ceremony<PublicKeyCredentialCreationOptionsJSON>>(optRes);
+  const { challengeId, options } =
+    await json<Ceremony<PublicKeyCredentialCreationOptionsJSON>>(optRes);
   const response = await auth.register(options, ORIGIN);
   const res = await call('POST', '/api/v1/setup/verify', {
     body: { setupToken: SETUP_TOKEN, displayName, challengeId, response },
   });
   expect(res.status).toBe(201);
-  return { auth, cookie: sessionCookie(res), res, user: (await json<{ user: { id: string } }>(res)).user };
+  return {
+    auth,
+    cookie: sessionCookie(res),
+    res,
+    user: (await json<{ user: { id: string } }>(res)).user,
+  };
 }
 
 export async function createInvite(operatorCookie: string, body: Record<string, unknown>) {
@@ -115,7 +125,10 @@ export async function createInvite(operatorCookie: string, body: Record<string, 
 
 export async function redeemOptions(token: string) {
   const res = await call('POST', '/api/v1/invites/redeem/options', { body: { token } });
-  return { res, body: res.ok ? await json<Ceremony<PublicKeyCredentialCreationOptionsJSON>>(res) : null };
+  return {
+    res,
+    body: res.ok ? await json<Ceremony<PublicKeyCredentialCreationOptionsJSON>>(res) : null,
+  };
 }
 
 export async function redeem(token: string, auth = new VirtualAuthenticator()) {
@@ -123,7 +136,9 @@ export async function redeem(token: string, auth = new VirtualAuthenticator()) {
   expect(opts.res.status).toBe(200);
   const { challengeId, options } = opts.body as Ceremony<PublicKeyCredentialCreationOptionsJSON>;
   const response = await auth.register(options, ORIGIN);
-  const res = await call('POST', '/api/v1/invites/redeem/verify', { body: { token, challengeId, response } });
+  const res = await call('POST', '/api/v1/invites/redeem/verify', {
+    body: { token, challengeId, response },
+  });
   return { res, auth };
 }
 
@@ -142,9 +157,13 @@ export async function login(auth: VirtualAuthenticator, which = 0, origin = ORIG
 export async function addPasskey(cookie: string, auth: VirtualAuthenticator) {
   const optRes = await call('POST', '/api/v1/me/passkeys/options', { cookie });
   expect(optRes.status).toBe(200);
-  const { challengeId, options } = await json<Ceremony<PublicKeyCredentialCreationOptionsJSON>>(optRes);
+  const { challengeId, options } =
+    await json<Ceremony<PublicKeyCredentialCreationOptionsJSON>>(optRes);
   const response = await auth.register(options, ORIGIN);
-  return call('POST', '/api/v1/me/passkeys/verify', { cookie, body: { challengeId, response, label: 'Laptop' } });
+  return call('POST', '/api/v1/me/passkeys/verify', {
+    cookie,
+    body: { challengeId, response, label: 'Laptop' },
+  });
 }
 
 export async function sha256Hex(value: string): Promise<string> {

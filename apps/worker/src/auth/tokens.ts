@@ -17,7 +17,9 @@ async function digest(value: string): Promise<ArrayBuffer> {
 
 /** SHA-256 hex. Only this is stored for sessions and invite tokens. */
 export async function sha256Hex(value: string): Promise<string> {
-  return [...new Uint8Array(await digest(value))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return [...new Uint8Array(await digest(value))]
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 /**

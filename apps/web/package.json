@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@cinewren/shared": "workspace:*",
     "@simplewebauthn/browser": "^14.0.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"

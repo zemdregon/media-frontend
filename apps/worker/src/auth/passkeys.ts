@@ -21,7 +21,9 @@ import {
   verifyRegistration,
 } from './webauthn';
 
-function toSummary(p: Pick<PasskeyRow, 'id' | 'label' | 'created_at' | 'last_used_at' | 'backed_up'>): PasskeySummary {
+function toSummary(
+  p: Pick<PasskeyRow, 'id' | 'label' | 'created_at' | 'last_used_at' | 'backed_up'>,
+): PasskeySummary {
   return {
     id: p.id,
     label: p.label,
@@ -57,7 +59,12 @@ export async function addPasskeyVerify(
   const db = c.env.DB;
   const challenge = await takeChallenge(db, body.challengeId, ['add_passkey']);
   if (challenge.user_id !== user.userId) throw ceremonyFailed();
-  const verified = await verifyRegistration(c.get('config'), c.get('logger'), body.response, challenge.challenge);
+  const verified = await verifyRegistration(
+    c.get('config'),
+    c.get('logger'),
+    body.response,
+    challenge.challenge,
+  );
   const now = Date.now();
   const id = ulid();
   const label = body.label ?? null;
@@ -67,13 +74,22 @@ export async function addPasskeyVerify(
     if (isGuardOrConstraintError(err)) throw ceremonyFailed(); // credential already registered
     throw err;
   }
-  return toSummary({ id, label, created_at: now, last_used_at: null, backed_up: verified.backedUp ? 1 : 0 });
+  return toSummary({
+    id,
+    label,
+    created_at: now,
+    last_used_at: null,
+    backed_up: verified.backedUp ? 1 : 0,
+  });
 }
 
 export async function removePasskey(c: Context<AppEnv>, id: string): Promise<void> {
   const result = await deleteOwnPasskey(c.env.DB, id, currentUser(c).userId);
   if (result === 'not_found') throw new AppError('NOT_FOUND', 'Not found.');
   if (result === 'last') {
-    throw new AppError('LAST_PASSKEY', "Add another passkey first. You can't remove your only one.");
+    throw new AppError(
+      'LAST_PASSKEY',
+      "Add another passkey first. You can't remove your only one.",
+    );
   }
 }

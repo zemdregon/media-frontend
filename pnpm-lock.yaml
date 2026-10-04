@@ -39,6 +39,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@cinewren/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@simplewebauthn/browser':
         specifier: ^14.0.0
         version: 14.0.0

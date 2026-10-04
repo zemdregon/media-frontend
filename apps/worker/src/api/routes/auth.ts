@@ -10,7 +10,9 @@ import { parseJson } from '../validation';
 export const login = new Hono<AppEnv>()
   .use(authRateLimit)
   .post('/options', async (c) => c.json(await loginOptions(c)))
-  .post('/verify', async (c) => c.json({ user: await loginVerify(c, await parseJson(c, loginVerifyRequest)) }));
+  .post('/verify', async (c) =>
+    c.json({ user: await loginVerify(c, await parseJson(c, loginVerifyRequest)) }),
+  );
 
 /** Session-only auth routes. */
 export const logout = new Hono<AppEnv>().post('/', async (c) => {

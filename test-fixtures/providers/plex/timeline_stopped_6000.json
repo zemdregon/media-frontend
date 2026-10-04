@@ -1,0 +1,46 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/:/timeline?ratingKey=1&key=%2Flibrary%2Fmetadata%2F1&state=stopped&time=6000&duration=12000&playbackTime=6000&X-Plex-Client-Identifier=cinewren-ps-plex-tl",
+    "headers": {
+      "Accept": "application/json",
+      "X-Plex-Client-Identifier": "cinewren-ps-plex-tl",
+      "X-Plex-Product": "Cinewren",
+      "X-Plex-Version": "0.0.1",
+      "X-Plex-Platform": "Web",
+      "X-Plex-Device": "Spike",
+      "X-Plex-Token": "<PLEX_TRANSIENT_TOKEN>",
+      "X-Plex-Session-Identifier": "cinewren-ps-plex-tl"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Content-Length": "132"
+    },
+    "body": {
+      "MediaContainer": {
+        "size": 1,
+        "playbackState": "ignore",
+        "Bandwidths": [
+          {
+            "Bandwidth": [
+              {
+                "time": 0,
+                "bandwidth": 282,
+                "resolution": "720p"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
