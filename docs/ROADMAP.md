@@ -215,6 +215,8 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 | T3.6 | Compliance check: the operator setup guide documents non-proxied origin hostnames; a test asserts every descriptor URL host equals a registered origin host | NFR-COMP-001, FR-PLAY-008 | T3.4 | Test green, and the setup-guide section is merged. |
 | T3.7 | Copy table and "why this copy" | FR-CAT-013, FR-PLAY-010, [UX](design/UX.md) | T3.2, T3.4 | Component tests render every reason code. E2E: the table marks the selected copy and shows the playability status per copy. |
 
+**M3 frontend status (agent, 2026-10-04):** the UI side of T3.1, T3.4, T3.5 and T3.7 is implemented in `apps/web` and awaits the backend and E2E. Evidence: `apps/web/src/lib/capabilities.test.ts` (T3.1, complete); `apps/web/src/routes/playback.test.tsx` (player states, HLS and native HLS, tracks, failover, resume prompt, progress, continue watching, watched); `apps/web/src/components/CopiesPicker.test.tsx` (every reason code). The CSP header (T3.4) and the E2E checks stay open. Local copies of the playback types are in `apps/web/src/api-client/playback-types.ts` until `packages/shared` provides them.
+
 **M3 exit checks:**
 - (a) The T3.5 E2E journey passes.
 - (b) The T3.3 credential-revocation test passes.

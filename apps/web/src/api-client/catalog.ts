@@ -52,7 +52,9 @@ export type SearchKind = 'title' | 'person' | 'collection';
 export const search = (q: string, kind?: SearchKind, cursor?: string | null) =>
   api<SearchResponse>('GET', `/search${queryString({ q, kind, cursor })}`);
 
-export const getItem = (id: string) => api<ItemDetail>('GET', `/items/${enc(id)}`);
+/** `caps` is the `X-Device-Caps` header value, so the copy table carries per-device playability. */
+export const getItem = (id: string, caps?: Record<string, string>) =>
+  api<ItemDetail>('GET', `/items/${enc(id)}`, undefined, caps ? { headers: caps } : {});
 
 export const getVersions = (id: string) => api<VersionEntry[]>('GET', `/items/${enc(id)}/versions`);
 

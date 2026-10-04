@@ -29,6 +29,7 @@ const SearchResults = lazy(() =>
   import('./SearchResults').then((m) => ({ default: m.SearchResults })),
 );
 const ItemDetail = lazy(() => import('./ItemDetail').then((m) => ({ default: m.ItemDetail })));
+const Player = lazy(() => import('./Player').then((m) => ({ default: m.Player })));
 const PersonPage = lazy(() => import('./People').then((m) => ({ default: m.PersonPage })));
 const CollectionsPage = lazy(() =>
   import('./People').then((m) => ({ default: m.CollectionsPage })),
@@ -232,6 +233,8 @@ function Routes({
   if (operator && path === '/servers/sync') return <SyncStatus />;
   const item = matchPath('/items/:id', path);
   if (item?.id) return <ItemDetail key={item.id} id={item.id} />;
+  const watch = matchPath('/watch/:id', path);
+  if (watch?.id) return <Player key={watch.id} id={watch.id} />;
   const person = matchPath('/people/:id', path);
   if (person?.id) return <PersonPage key={person.id} id={person.id} />;
   const collection = matchPath('/collections/:id', path);

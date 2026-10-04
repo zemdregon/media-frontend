@@ -2,6 +2,7 @@ import { render } from '@testing-library/react';
 import { vi } from 'vitest';
 import type { ItemCard, ItemDetail, Me } from '@cinewren/shared';
 import { App } from './App';
+import type { CopyRow, PlaybackDescriptor } from './api-client/playback-types';
 
 export type Reply = [number, unknown];
 export type Handler = (method: string, path: string, body: unknown) => Reply | undefined;
@@ -75,4 +76,41 @@ export function renderApp(path: string, me: Me, handler: Handler) {
   const fetchMock = mockApi((m, p, b) => (p === '/me' ? [200, me] : handler(m, p, b)));
   render(<App />);
   return fetchMock;
+}
+
+export function copyRow(over: Partial<CopyRow> & { sourceId: string }): CopyRow {
+  return {
+    versionId: `v-${over.sourceId}`,
+    serverName: 'Basement NAS',
+    serverType: 'jellyfin',
+    serverStatus: 'active',
+    resolution: { width: 1920, height: 1080, label: '1080p' },
+    hdr: 'none',
+    videoCodec: 'h264',
+    container: 'mp4',
+    audio: [{ codec: 'flac', channels: 2, language: 'en' }],
+    sizeBytes: 14_200_000_000,
+    expectedPlayability: 'direct_play',
+    reasons: ['direct_play'],
+    selected: false,
+    ...over,
+  };
+}
+
+export function descriptor(over: Partial<PlaybackDescriptor> = {}): PlaybackDescriptor {
+  return {
+    sessionId: 'ps1',
+    expiresAt: 4_000_000_000_000,
+    item: { id: 'm1', title: 'Metropolis', runtimeMs: 7_200_000 },
+    source: { id: 's1', versionId: 'v1', serverName: 'Basement NAS', label: '1080p · H.264' },
+    mode: 'direct_play',
+    streamUrl: 'https://media-a.example.net/stream/m1.mp4?token=t1',
+    streamType: 'progressive',
+    audioTracks: [{ index: 1, label: 'English 5.1 (AAC)', language: 'en', selected: true }],
+    subtitleTracks: [],
+    resume: null,
+    reasons: ['direct_play'],
+    alternatives: 1,
+    ...over,
+  };
 }
