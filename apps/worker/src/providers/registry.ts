@@ -4,6 +4,7 @@
  */
 import { embyPlayback } from './emby';
 import { jellyfinProvider } from './jellyfin';
+import { plexProvider } from './plex';
 import { createOriginFetch } from './origin-fetch';
 import type {
   MediaProvider,
@@ -16,6 +17,7 @@ import type {
 /** Adapters that exist today. Emby (T4.1) and Plex (T4.2) register here when they land. */
 const PROVIDERS: Partial<Record<ProviderType, MediaProvider>> = {
   jellyfin: jellyfinProvider,
+  plex: plexProvider,
 };
 
 export function getProvider(type: ProviderType): MediaProvider | null {
@@ -29,6 +31,8 @@ export function getProvider(type: ProviderType): MediaProvider | null {
 const PLAYBACK_PROVIDERS: Partial<Record<ProviderType, PlaybackProvider>> = {
   jellyfin: jellyfinProvider,
   emby: embyPlayback,
+  // Catalog only until B-3: `playbackVerified` is false, so selection excludes it (ADR-0013).
+  plex: plexProvider,
 };
 
 export function getPlaybackProvider(type: ProviderType): PlaybackProvider | null {

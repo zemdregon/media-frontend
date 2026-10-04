@@ -251,6 +251,12 @@ export interface PlaybackProvider {
    * of a bounded pool, since logout leaves device entries behind). Default `per_session`.
    */
   readonly streamDevices?: 'per_session' | 'pooled';
+  /**
+   * False while the adapter's stream-credential model is unverified (Plex until B-3). Selection
+   * excludes such sources from playback with reason `provider_unverified`, so no credential of
+   * an unverified model can reach a browser. Default true.
+   */
+  readonly playbackVerified?: boolean;
   /** FR-PLAY-007. `lease` is set for `pooled` adapters: the pool slot leased to this session. */
   createSessionCredential(
     ctx: ProviderContext,

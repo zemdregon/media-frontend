@@ -21,6 +21,7 @@ import {
   type CardRow,
   type EpisodeRow,
 } from '../db/playback';
+import { getPlaybackProvider } from '../providers/registry';
 import type { DeviceCapabilities } from '../providers/types';
 import { copyTable, type AudioInfo, type Candidate, type SubtitleInfo } from './select';
 
@@ -250,6 +251,7 @@ export function toCandidate(row: CandidateRow): Candidate {
     serverId: row.server_id,
     serverName: row.server_name,
     serverType: row.server_type,
+    playbackVerified: getPlaybackProvider(row.server_type)?.playbackVerified !== false,
     serverStatus: row.server_status,
     priority: row.priority,
     latencyMs: row.last_latency_ms,

@@ -84,11 +84,14 @@ export type PlaybackMode = 'direct_play' | 'direct_stream' | 'transcode';
 /**
  * Selection reason codes (LLD-API table). Clients must ignore codes they do not know.
  * `remux_for_token_auth` is an addition for Jellyfin's forced token-gated HLS (ADR-0013).
+ * `provider_unverified` marks a source whose server type has no verified stream-credential model
+ * yet (Plex until B-3); it is shown instead of offering playback.
  */
 export const REASON_CODES = [
   'direct_play',
   'direct_stream_container',
   'remux_for_token_auth',
+  'provider_unverified',
   'audio_transcoded',
   'transcode_video_codec',
   'subtitle_burn_in',

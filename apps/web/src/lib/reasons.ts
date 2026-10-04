@@ -7,6 +7,8 @@ export const REASON_TEXT: Record<ReasonCode, string> = {
     'The file format is not supported here, so the server repackages it without re-encoding the video.',
   remux_for_token_auth:
     'This server only hands out a stream that is tied to your viewing session, so it repackages the video without re-encoding it. The picture quality is unchanged.',
+  provider_unverified:
+    'Playback from this kind of server is not available yet, so this copy cannot be played. You can still browse it.',
   audio_transcoded: 'Only the audio is re-encoded, because this browser cannot play its codec.',
   transcode_video_codec:
     'The video format, profile or level is not supported here, so the server re-encodes the video. Expect a slower start.',

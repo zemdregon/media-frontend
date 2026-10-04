@@ -117,7 +117,7 @@ const REASON_MESSAGES: Record<string, string> = {
   admin_status_unknown:
     'Cinewren could not confirm that this account is not an administrator, so it was refused.',
   account_disabled: 'That account is disabled on the server.',
-  unsupported_credential: 'This server type needs a username and password.',
+  unsupported_credential: 'This server type needs a different kind of credential.',
   not_a_server: 'The address did not answer like a server of this type.',
   server_id_mismatch: 'This address belongs to a different server than the one registered.',
   redirect_refused:
@@ -261,16 +261,28 @@ export async function register(
       fields: ['type'],
     });
   }
-  if (!('username' in body.credentials)) {
-    throw new AppError('VALIDATION_FAILED', 'This server type needs a username and password.', {
-      fields: ['credentials'],
-    });
+  let secret: ServerSecret;
+  if (body.type === 'plex') {
+    // Plex: the access token of a restricted managed user (owner decision 2026-10-04). How that
+    // token is obtained is open (B-3); the adapter refuses tokens with administrator rights.
+    if (!('token' in body.credentials)) {
+      throw new AppError('VALIDATION_FAILED', 'Plex needs the access token of a managed user.', {
+        fields: ['credentials'],
+      });
+    }
+    secret = { kind: 'token', token: body.credentials.token };
+  } else {
+    if (!('username' in body.credentials)) {
+      throw new AppError('VALIDATION_FAILED', 'This server type needs a username and password.', {
+        fields: ['credentials'],
+      });
+    }
+    secret = {
+      kind: 'password',
+      username: body.credentials.username,
+      password: body.credentials.password,
+    };
   }
-  const secret: ServerSecret = {
-    kind: 'password',
-    username: body.credentials.username,
-    password: body.credentials.password,
-  };
   const baseUrl = parseBaseUrl(c, body.baseUrl);
   // Fail before any credential leaves for the origin if it could not be stored afterwards.
   const keyring = await keyringOrFail(c);

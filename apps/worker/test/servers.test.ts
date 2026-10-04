@@ -286,11 +286,6 @@ describe('WF-1: register a server (FR-SRV-001, FR-SRV-002, FR-SRV-003)', () => {
         'VALIDATION_FAILED',
       );
       expect(err.details).toEqual({ fields: ['type'] });
-      await expectRefused(
-        await register({ ...BODY, type: 'plex', credentials: { token: 'x' } }),
-        400,
-        'VALIDATION_FAILED',
-      );
       expect(current.origin.calls).toHaveLength(0);
     });
 

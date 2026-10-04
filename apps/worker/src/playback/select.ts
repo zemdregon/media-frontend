@@ -41,6 +41,8 @@ export interface Candidate {
   serverId: string;
   serverName: string;
   serverType: ProviderType;
+  /** False when the server type has no verified stream-credential model yet (default true). */
+  playbackVerified?: boolean;
   /** `active`, `degraded` or `unreachable` (other statuses are not visible, BR-1). */
   serverStatus: string;
   priority: number;
@@ -87,7 +89,11 @@ export type SelectOutcome =
   /** The manual choice matches no visible candidate: 404 (LLD-SEL). */
   | { ok: false; error: 'not_found' }
   /** Nothing survived the filter: 409 NO_PLAYABLE_SOURCE with this reason. */
-  | { ok: false; error: 'no_playable'; reason: 'servers_unreachable' | 'none_available' };
+  | {
+      ok: false;
+      error: 'no_playable';
+      reason: 'servers_unreachable' | 'provider_unverified' | 'none_available';
+    };
 
 // --- normalization ---
 
@@ -335,13 +341,20 @@ export function selectCandidates(
   }
   const exclude = new Set(excludeSourceIds);
   const notExcluded = pool.filter((c) => !exclude.has(c.sourceId));
-  const cands = notExcluded.filter((c) => PLAYABLE_STATUS.has(c.serverStatus));
+  // Unverified providers never reach negotiation, so no unverified credential can be issued.
+  const verified = notExcluded.filter((c) => c.playbackVerified !== false);
+  const cands = verified.filter((c) => PLAYABLE_STATUS.has(c.serverStatus));
   if (cands.length === 0) {
-    const anyUnreachable = notExcluded.some((c) => c.serverStatus === 'unreachable');
+    const anyUnreachable = verified.some((c) => c.serverStatus === 'unreachable');
+    const anyUnverified = verified.length < notExcluded.length;
     return {
       ok: false,
       error: 'no_playable',
-      reason: anyUnreachable ? 'servers_unreachable' : 'none_available',
+      reason: anyUnreachable
+        ? 'servers_unreachable'
+        : anyUnverified
+          ? 'provider_unverified'
+          : 'none_available',
     };
   }
   return {
@@ -441,8 +454,10 @@ export function copyTable(visible: Candidate[], caps: DeviceCapabilities | null)
     mse: false,
   };
   const prefs: SelectionPrefs = {};
-  const playable = visible.filter((c) => PLAYABLE_STATUS.has(c.serverStatus));
-  const unreachable = visible.filter((c) => !PLAYABLE_STATUS.has(c.serverStatus));
+  const unverified = visible.filter((c) => c.playbackVerified === false);
+  const usable = visible.filter((c) => c.playbackVerified !== false);
+  const playable = usable.filter((c) => PLAYABLE_STATUS.has(c.serverStatus));
+  const unreachable = usable.filter((c) => !PLAYABLE_STATUS.has(c.serverStatus));
   const maxH = effectiveMaxHeight(effective, prefs);
   const ranked = rankAll(playable, effective, prefs);
   const rows: CopyRow[] = ranked.map((r, i) => ({
@@ -456,6 +471,14 @@ export function copyTable(visible: Candidate[], caps: DeviceCapabilities | null)
       c: r.c,
       expectedPlayability: known ? 'unavailable' : null,
       reasons: known ? ['server_unreachable'] : [],
+      selected: false,
+    });
+  }
+  for (const r of rankAll(unverified, effective, prefs)) {
+    rows.push({
+      c: r.c,
+      expectedPlayability: known ? 'unavailable' : null,
+      reasons: known ? ['provider_unverified'] : [],
       selected: false,
     });
   }
