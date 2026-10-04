@@ -1,4 +1,6 @@
+import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
+import { createApp } from '../src/api/app';
 import { appWith, fakeDb } from './helpers';
 
 describe('GET /api/v1/health', () => {
@@ -72,10 +74,20 @@ describe('SPA fallthrough', () => {
 
 describe('error handling', () => {
   it('maps unexpected errors to INTERNAL with a generic message', async () => {
-    const env = { DB: undefined } as never;
-    const { createApp } = await import('../src/api/app');
+    const ASSETS = {
+      fetch: () => Promise.reject(new Error('leaky detail: secret-value')),
+    } as unknown as Fetcher;
+    const res = await appWith({ ASSETS }).request('/boom');
+    expect(res.status).toBe(500);
+    const body = await res.json<{ error: { code: string; message: string } }>();
+    expect(body.error.code).toBe('INTERNAL');
+    expect(JSON.stringify(body)).not.toContain('secret-value');
+  });
+});
+
+describe('health against the real local D1 binding', () => {
+  it('returns ok', async () => {
     const res = await createApp().request('/api/v1/health', {}, env);
-    // health catches DB errors, so this is degraded, not a crash
-    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: 'ok' });
   });
 });
