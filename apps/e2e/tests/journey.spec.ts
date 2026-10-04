@@ -13,12 +13,15 @@
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { addVirtualAuthenticator } from '../support/authenticator';
-import { BASE_URL, ORIGIN_URL, SETUP_TOKEN } from '../support/env';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { addAuthenticator, exportCredentials } from '../support/authenticator';
+import { BASE_URL, HANDOFF_FILE, OPERATOR_NAME, ORIGIN_URL, SETUP_TOKEN } from '../support/env';
 
 test.describe.configure({ mode: 'serial' });
 
 let page: Page;
+let authenticator: Awaited<ReturnType<typeof addAuthenticator>>;
 const thirdParty: string[] = [];
 const cspMessages: string[] = [];
 const pageErrors: string[] = [];
@@ -29,12 +32,12 @@ const appMediaRequests: string[] = [];
 /** The session events the browser posted, in order. */
 const sentEvents: { type: string; positionMs: number; seq: number }[] = [];
 
-const OPERATOR = 'E2E Operator';
+const OPERATOR = OPERATOR_NAME;
 
 test.beforeAll(async ({ browser }) => {
   const context = await browser.newContext();
   page = await context.newPage();
-  await addVirtualAuthenticator(page);
+  authenticator = await addAuthenticator(page);
   page.on('request', (req) => {
     const url = req.url();
     if (url.startsWith(ORIGIN_URL)) {
@@ -65,6 +68,11 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll(async () => {
+  // Hand the operator's passkey to the a11y spec (ui-a11y.spec.ts), which runs next on the same
+  // database and signs in again with it.
+  const credentials = await exportCredentials(authenticator.cdp, authenticator.authenticatorId);
+  mkdirSync(dirname(HANDOFF_FILE), { recursive: true });
+  writeFileSync(HANDOFF_FILE, JSON.stringify({ credentials }));
   await page.context().close();
 });
 
@@ -87,6 +95,7 @@ async function expectAccessible(name: string) {
 test('first operator is created through /setup with a passkey', async () => {
   await page.goto('/setup');
   await expect(page.getByRole('heading', { level: 1, name: 'Set up Cinewren' })).toBeVisible();
+  await expectAccessible('setup');
   await page.getByLabel('Your name').fill(OPERATOR);
   await page.getByLabel('Setup token').fill(SETUP_TOKEN);
   await page.getByRole('button', { name: 'Create passkey' }).click();

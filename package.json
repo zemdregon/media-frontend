@@ -14,7 +14,8 @@
     "e2e": "pnpm --filter @cinewren/e2e e2e",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check:docs": "node scripts/check-docs.mjs"
+    "check:docs": "node scripts/check-docs.mjs",
+    "perf": "node scripts/perf/run.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

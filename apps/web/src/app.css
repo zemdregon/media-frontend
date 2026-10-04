@@ -792,6 +792,8 @@ a.button-outline {
 }
 
 .table-wrap {
+  /* Positioned, so the visually hidden labels inside the rows are clipped with the table and do not widen the page. */
+  position: relative;
   overflow-x: auto;
   border: 1px solid var(--cw-border);
   border-radius: var(--cw-r-poster-title);
@@ -1359,6 +1361,32 @@ a.button-outline {
 }
 
 .player-menu {
+  /* The menu is dark in both themes (it sits over video), so it takes the dark token set: its
+     text, outline buttons and copy rows must not pick up the light theme's dark ink. */
+  --cw-surface-nav: #14120e;
+  --cw-surface-1: #17150f;
+  --cw-surface-2: #201d16;
+  --cw-surface-selected: #262219;
+  --cw-surface-selected-row: #211d15;
+  --cw-border-row: #221f18;
+  --cw-border: #2a261e;
+  --cw-border-strong: #3a352a;
+  --cw-border-control: #756d5a;
+  --cw-text: #f2ede3;
+  --cw-text-2: #e3dccf;
+  --cw-text-body: #cfc7b8;
+  --cw-text-muted: #a39b8b;
+  --cw-text-placeholder: #8a8272;
+  --cw-border-input: #2e2a21;
+  --cw-accent: #f2a93b;
+  --cw-accent-hover: #ffc56e;
+  --cw-on-accent: #1a1408;
+  --cw-status-ok: #5cc8b0;
+  --cw-status-warn: #f2a93b;
+  --cw-status-bad: #e8735a;
+  --cw-alt-teal: #7fd1c0;
+  --cw-alt-coral: #e8866a;
+  color-scheme: dark;
   position: absolute;
   right: clamp(12px, 3vw, 32px);
   bottom: 150px;
@@ -1446,4 +1474,12 @@ a.button-outline {
 
 .audit-table {
   min-width: 720px;
+}
+
+/* After the player rules above, so it wins: the control bar fades without animation. */
+@media (prefers-reduced-motion: reduce) {
+  .player-top,
+  .player-bottom {
+    transition: none;
+  }
 }

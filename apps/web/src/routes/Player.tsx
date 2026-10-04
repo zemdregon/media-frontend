@@ -373,6 +373,8 @@ function Surface({
   const [muted, setMuted] = useState(false);
   const [visible, setVisible] = useState(true);
   const [menu, setMenu] = useState<Menu>(null);
+  const tracksButton = useRef<HTMLButtonElement>(null);
+  const copyButton = useRef<HTMLButtonElement>(null);
   const [ended, setEnded] = useState(false);
   const textTracks = d.subtitleTracks.filter((t) => t.kind === 'text' && t.url);
   const burnedIn = d.subtitleTracks.some((t) => t.selected && t.kind === 'image');
@@ -381,6 +383,20 @@ function Surface({
   );
   const lastSub = useRef<number | null>(subSel ?? textTracks[0]?.index ?? null);
   const [announce, setAnnounce] = useState('');
+
+  /** Closes the open menu and puts focus back on the button that opened it (no focus loss). */
+  const closeMenu = () => {
+    const trigger = menu === 'copy' ? copyButton : tracksButton;
+    setMenu(null);
+    trigger.current?.focus();
+  };
+
+  // Opening a menu moves focus into it, so a keyboard user does not have to tab past every control.
+  useEffect(() => {
+    if (!menu) return;
+    const el = boxRef.current?.querySelector<HTMLElement>('.player-menu');
+    (el?.querySelector<HTMLElement>('input:checked') ?? el)?.focus();
+  }, [menu]);
 
   const posMs = () => (videoRef.current ? videoRef.current.currentTime * 1000 : 0);
 
@@ -622,6 +638,9 @@ function Surface({
     poke();
     const target = e.target as HTMLElement;
     const onRange = target instanceof HTMLInputElement && target.type === 'range';
+    const onRadio =
+      target.getAttribute('role') === 'radio' ||
+      (target instanceof HTMLInputElement && target.type === 'radio');
     const onControl =
       target instanceof HTMLButtonElement ||
       target instanceof HTMLInputElement ||
@@ -633,7 +652,7 @@ function Surface({
       case 'Escape':
         if (menu) {
           e.preventDefault();
-          setMenu(null);
+          closeMenu();
         }
         return;
       case ' ':
@@ -647,18 +666,18 @@ function Surface({
         togglePlay();
         return;
       case 'ArrowLeft':
-        if (onRange || target.getAttribute('role') === 'radio') return;
+        if (onRange || onRadio) return;
         e.preventDefault();
         seekBy(-10);
         return;
       case 'ArrowRight':
-        if (onRange || target.getAttribute('role') === 'radio') return;
+        if (onRange || onRadio) return;
         e.preventDefault();
         seekBy(10);
         return;
       case 'ArrowUp':
       case 'ArrowDown':
-        if (onRange || target.getAttribute('role') === 'radio' || menu) return;
+        if (onRange || onRadio || menu) return;
         e.preventDefault();
         if (videoRef.current) {
           videoRef.current.volume = Math.max(
@@ -828,10 +847,11 @@ function Surface({
           <button
             type="button"
             className="player-button"
-            aria-haspopup="true"
+            ref={tracksButton}
             aria-expanded={menu === 'tracks'}
             onClick={() => {
-              setMenu(menu === 'tracks' ? null : 'tracks');
+              if (menu === 'tracks') closeMenu();
+              else setMenu('tracks');
             }}
           >
             Audio and subtitles
@@ -839,10 +859,11 @@ function Surface({
           <button
             type="button"
             className="player-button"
-            aria-haspopup="true"
+            ref={copyButton}
             aria-expanded={menu === 'copy'}
             onClick={() => {
-              setMenu(menu === 'copy' ? null : 'copy');
+              if (menu === 'copy') closeMenu();
+              else setMenu('copy');
             }}
           >
             Copy
@@ -854,7 +875,7 @@ function Surface({
       </div>
 
       {menu === 'tracks' && (
-        <div className="player-menu" role="group" aria-label="Audio and subtitles">
+        <div className="player-menu" role="group" aria-label="Audio and subtitles" tabIndex={-1}>
           <fieldset>
             <legend className="mono-label">Audio</legend>
             {d.audioTracks.length === 0 && <p className="helper">One audio track.</p>}
@@ -909,9 +930,7 @@ function Surface({
             setMenu(null);
             onSwitchCopy(c, posMs());
           }}
-          onClose={() => {
-            setMenu(null);
-          }}
+          onClose={closeMenu}
         />
       )}
     </div>
@@ -938,7 +957,7 @@ function CopyMenu({
   const chosen = copies.find((c) => copyKey(c) === picked);
   const playingNow = picked === `${d.source.id}:${d.source.versionId}`;
   return (
-    <div className="player-menu player-menu-wide" role="group" aria-labelledby={h}>
+    <div className="player-menu player-menu-wide" role="group" aria-labelledby={h} tabIndex={-1}>
       <h2 id={h} className="h-card">
         Choose a copy
       </h2>

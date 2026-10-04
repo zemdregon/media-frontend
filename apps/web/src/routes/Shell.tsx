@@ -103,12 +103,15 @@ export function Shell({
   };
 
   const operator = me.role === 'operator';
+  // The player is a full-viewport overlay. The page chrome behind it is inert so keyboard focus
+  // can never land on something the overlay hides (WCAG 2.4.11 Focus Not Obscured).
+  const watching = location.path.startsWith('/watch/');
   return (
     <div className="app">
-      <a href="#main" className="skip-link">
+      <a href="#main" className="skip-link" inert={watching}>
         Skip to content
       </a>
-      <nav aria-label="Main" className="side-nav">
+      <nav aria-label="Main" className="side-nav" inert={watching}>
         <div className="brand">
           <Logo />
           <span className="wordmark-text">Cinewren</span>
@@ -129,7 +132,7 @@ export function Shell({
         </ul>
       </nav>
       <div className="main-col">
-        <Header me={me} />
+        <Header me={me} inert={watching} />
         <main id="main" ref={mainRef} tabIndex={-1} className="main">
           <Suspense fallback={<SkeletonBlock label="Loading page" />}>
             <Routes
@@ -146,7 +149,7 @@ export function Shell({
   );
 }
 
-function Header({ me }: { me: Me }) {
+function Header({ me, inert }: { me: Me; inert: boolean }) {
   const { location, navigate } = useRouter();
   const onSearchRoute = location.path === '/search';
   const urlQuery = onSearchRoute ? (location.search.get('q') ?? '') : '';
@@ -165,7 +168,7 @@ function Header({ me }: { me: Me }) {
   };
 
   return (
-    <header className="topbar">
+    <header className="topbar" inert={inert}>
       <form role="search" className="search" onSubmit={submit}>
         <SearchIcon />
         <label htmlFor="q" className="sr-only">
