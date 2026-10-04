@@ -1085,6 +1085,17 @@ The service account's **API token** (used for sync, health and negotiation) is c
 
 **LLD-API, NFR-SEC-003.** The CSP is built from the `servers` table for HTML document responses (the SPA); JSON and image responses carry the `'self'`-only policy, so API responses never list origin hostnames. For documents: `media-src 'self' blob:` and `connect-src 'self'`, each followed by the `scheme://host[:port]` of every server whose status is `active`, `degraded` or `unreachable` (not `pending_validation`, `disabled` or `removing`). The list is cached per isolate for 15 s and dropped when that isolate handles a write to `/admin/servers`; other isolates catch up within the TTL. `script-src` stays `'self'`. The list cannot depend on the session because the SPA stays loaded across sign-in, so anyone who can load the app can read the hostnames (not secrets; the credentials are, NFR-SEC-001). If the lookup fails the policy falls back to `'self'` only. The `servers_version` counter in TDD §6.1 is not used: the short TTL covers it with no extra write path.
 
+### M4/M5 implementation notes (agent decisions, 2026-10-04)
+
+- **Emby (LLD-PROV):** the catalog code is shared in `providers/mediabrowser.ts` with per-server dialects. Emby uses `/Users/{id}/Views` and `/Users/{id}/Items/{id}`, with minimum version 4.10. Emby artwork auth is unverified (spike §5), so the cached service token is sent only as an `Authorization` header, never in a URL.
+- **Plex (LLD-PROV, LLD-SEL, LLD-TOKEN):**
+  - The registration credential is a token (the managed user's).
+  - Validation checks `/identity` before sending any token, then refuses any token that `GET /:/prefs` does not answer with 401 or 403 (codes `admin_account` and `admin_status_unknown`), then requires version ≥ 1.43.
+  - Providers expose `playbackVerified`. Plex is `false` until B-3 verifies the managed-user token, so selection excludes Plex copies with the new reason `provider_unverified`.
+  - Plex list responses carry only person names and no tracks. Provider person IDs are `tagKey` when known, else `name:<tag>`. BR-10's exact-name rule merges both into one canonical person. Plex WebVTT (SRT→VTT) is not provided.
+- **Health (LLD-SYNC):** each probe round uses a 5 s timeout, 3 attempts and concurrency 6. `HEALTH_PROBE_INTERVAL_MIN` defaults to 5. A play-time origin failure increments `consecutive_failures` immediately. Health-aware selection was already in place from M3, so the "(M5)" note is historical.
+- **Operations (LLD-API):** credential replacement audits as `server.credentials.replace`. The export is built from explicit column lists (no secrets). The metrics endpoint is `GET /admin/metrics?window=24h|7d`, computed from D1. Master-key rotation (`reencrypt` jobs) is not yet implemented.
+
 ## LLD-ERR — Error handling, retries, idempotency & concurrency
 
 ### Error taxonomy

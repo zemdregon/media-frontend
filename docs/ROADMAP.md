@@ -124,8 +124,8 @@
 | M1 | Provider spike, Jellyfin adapter, server registration | M0 | **Partial**: T1.1–T1.4 done; T1.5 real-server demo pending |
 | M2 | Catalog: sync, matching, browse/search/detail, users and grants | M1 | **Partial**: T2.1–T2.11 done; exit (e) staging demo pending (B-4) |
 | M3 | Playback on Jellyfin: selection, session credentials, player, progress | M2 | **Partial**: T3.1–T3.7 done; exit (c) real-browser demo on staging pending (B-4) |
-| M4 | Emby and Plex adapters at parity | M3 (M4 can start after M1 for adapter-only work) | Planned |
-| M5 | Hardening and v1.0 release gate | M3, M4 | Planned |
+| M4 | Emby and Plex adapters at parity | M3 (M4 can start after M1 for adapter-only work) | **Partial**: T4.1 done; T4.2 Plex playback gated on B-3; T4.3 in progress |
+| M5 | Hardening and v1.0 release gate | M3, M4 | **In progress**: T5.1, T5.3, T5.4 done |
 | Later | DEF-1 to DEF-11 | v1.0 and the triggers in PRD §6 | Deferred |
 
 ```mermaid
@@ -227,8 +227,8 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 
 | Task | Objective | Refs | Depends | Done when |
 |---|---|---|---|---|
-| T4.1 | Emby adapter (likely close to Jellyfin; confirm in T1.1) | IR-004 | T1.2, T3.3 | The shared contract suite is green on Emby fixtures, and a playback E2E passes against an Emby fixture origin. |
-| T4.2 | Plex adapter, including the Q-3 terms check | IR-005, Q-3 | T1.2, T3.3 | The Q-3 outcome is recorded in §3. The shared contract suite is green on Plex fixtures, and a playback E2E passes against a Plex fixture origin. |
+| T4.1 | Emby adapter (likely close to Jellyfin; confirm in T1.1) | IR-004 | T1.2, T3.3 | **Done.** Evidence: shared `providers/mediabrowser.ts` with an Emby dialect; contract suite green on Emby fixtures (`test/providers/emby.test.ts`); `test/playback/emby-play.test.ts` (play, stop, revoke, `DirectStreamUrl` on the origin host). The shared contract suite is green on Emby fixtures, and a playback E2E passes against an Emby fixture origin. |
+| T4.2 | Plex adapter, including the Q-3 terms check | IR-005, Q-3 | T1.2, T3.3 | **Partial.** The Plex catalog adapter is done: contract suite green on Plex fixtures; admin tokens refused. Playback is gated (`provider_unverified`) until B-3 verifies the managed-user token. Remaining: B-3 verification, Q-3 terms check, Plex playback e2e. The Q-3 outcome is recorded in §3. The shared contract suite is green on Plex fixtures, and a playback E2E passes against a Plex fixture origin. |
 | T4.3 | Cross-provider matching test: one title on all three server types merges into one item | FR-CAT-001 | T4.1, T4.2 | Integration test green. |
 
 **M4 exit:** T4.1 to T4.3 done. **Demonstration:** one title present on Jellyfin, Emby and Plex shows as one item and plays from each source via manual override.
@@ -237,10 +237,10 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 
 | Task | Objective | Refs | Depends | Done when |
 |---|---|---|---|---|
-| T5.1 | Health probing, status derivation, health-aware selection, health view | FR-OPS-001, FR-OPS-002, FR-OPS-004 | M3 | Tests: probe failures move a server through `degraded` to `unreachable`, and selection excludes or deprioritizes it. The health page is demonstrated. |
+| T5.1 | Health probing, status derivation, health-aware selection, health view | FR-OPS-001, FR-OPS-002, FR-OPS-004 | M3 | **Done.** Evidence: `apps/worker/src/health/`; `test/ops-health.test.ts` (status derivation, isolation); health strip on server cards. Tests: probe failures move a server through `degraded` to `unreachable`, and selection excludes or deprioritizes it. The health page is demonstrated. |
 | T5.2 | Curation: merge, split, conflict list | FR-CAT-007, FR-CAT-010, BR-3 | M2 | Tests: overrides persist across a full re-sync; a resolved conflict leaves the list. |
-| T5.3 | Credential rotation, audit log, export | FR-SRV-005, FR-OPS-005, FR-OPS-006 | M2 | Tests: rotation keeps catalog rows; every operator mutation writes one audit row; the export contains no secrets (asserted by a test). |
-| T5.4 | Per-user rate limits, operational retention, metrics | NFR-SEC-008, DR-003, NFR-OBS-002 | M3 | Tests: limits return 429 above threshold; retention jobs purge per DR-003. A metrics query is demonstrated. |
+| T5.3 | Credential rotation, audit log, export | FR-SRV-005, FR-OPS-005, FR-OPS-006 | M2 | **Done.** Evidence: credential rotation, audit log page and secret-free export; `test/ops.test.ts` asserts one audit row per mutation and no secrets in the export. Tests: rotation keeps catalog rows; every operator mutation writes one audit row; the export contains no secrets (asserted by a test). |
+| T5.4 | Per-user rate limits, operational retention, metrics | NFR-SEC-008, DR-003, NFR-OBS-002 | M3 | **Done.** Evidence: `RL_PLAY` and `RL_MUTATION` per-user limits (429 tests); retention boundary test; metrics endpoint. Tests: limits return 429 above threshold; retention jobs purge per DR-003. A metrics query is demonstrated. |
 | T5.5 | **Self-host packaging** (owner decision 2026-10-04: others may self-host; packaging details are agent decisions): self-host guide, Deploy to Cloudflare button or `wrangler` path, SemVer releases with notes, upgrade path | FR-OPS-008, NFR-MAINT-003, CAP-14 | M4 | **Demonstration:** a fresh Cloudflare account deploys a tagged release by following only the guide, completes `/setup`, then upgrades to the next tag with migrations applied. |
 | T5.6 | Last-operator CLI recovery rehearsal and D1 restore rehearsal | FR-USR-007, NFR-REL-003 | M4 | Both procedures are executed on staging and their notes are linked here. |
 | T5.7 | Accessibility audit; performance and cost analysis at the envelope | NFR-A11Y-001, NFR-PERF-001, NFR-PERF-002, NFR-SCALE-001, NFR-COST-001 | M4 | The audit report has no open WCAG 2.2 AA failures on core journeys. A load test at the NFR-SCALE-001 envelope reports p95 figures and the monthly cost estimate. |
