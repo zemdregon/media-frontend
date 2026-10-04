@@ -75,7 +75,7 @@
 |---|---|---|---|
 | ~~Q-1~~ | Will Cinewren ever be hosted for multiple operators? | — | **Resolved 2026-10-04 by the owner:** no hosted multi-tenancy, but others may self-host |
 | ~~Q-2~~ | Must origin hostnames be hidden from viewers? | — | **Resolved 2026-10-04 by the owner:** no, public HTTPS is fine |
-| Q-3 | Plex API terms and the token model for third-party clients | M4 Plex task | Resolved by the T1.1 spike |
+| Q-3 | Plex API terms and the token model for third-party clients | M4 Plex playback only | **Terms researched 2026-10-04** ([note](spikes/2026-plex-terms-q3.md), not legal advice): permitted in principle for private household use; risk low-to-medium. Constraints adopted: identify via `X-Plex-Product`/`X-Plex-Client-Identifier`, no "Plex" branding in name or domain, no circumvention of Plex Pass features. The token model remains B-3. |
 | Q-5 | Should private-network-only origins be supported? | Nothing in v1 | Unsupported (DEF-10) |
 | Q-6 | Minimum provider versions | M1 / M4 adapters | Fixed by the T1.1 spike |
 | ~~Q-4~~ | Product name | — | **Resolved 2026-10-04 by the owner: Cinewren** |
