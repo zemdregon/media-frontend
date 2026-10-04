@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1 (2026-10-04). Agent-authored under delegation; not owner-reviewed. Nothing described here is implemented. Updated 2026-10-04 for owner decisions (ADR-0014, self-hosting). |
+| **Status** | Draft v0.1 (2026-10-04). Agent-authored under delegation; not owner-reviewed. Nothing described here is implemented. Updated 2026-10-04 for owner decisions (ADR-0014, self-hosting). Updated 2026-10-04 for owner decisions Q-7/Q-8. |
 | **Owns** | Business problem, desired outcomes (BO-n) and proposed success measures, stakeholders, business constraints (C-n), cost and legal context, value proposition, business-level risks, outcome-to-capability trace. |
 | **Does not own** | Capabilities, personas and journeys ([PRD](PRD.md)); workflows and business rules ([FRD](FRD.md)); verifiable requirements ([SRS](SRS.md)); architecture ([HLD](../design/HLD.md)); sequencing ([ROADMAP](../ROADMAP.md)). |
 
@@ -93,7 +93,7 @@ Capabilities are defined in [PRD §2](PRD.md#2-capabilities). Requirement-level 
 
 | Outcome | Primary capabilities | Supporting capabilities |
 |---|---|---|
-| BO-1 Unified library | CAP-2, CAP-3, CAP-4, CAP-5 | CAP-1, CAP-9, CAP-12 |
+| BO-1 Unified library | CAP-2, CAP-3, CAP-4, CAP-5, CAP-15, CAP-16 | CAP-1, CAP-9, CAP-12 |
 | BO-2 Low cost, lightweight operations | CAP-6 (direct-to-origin playback) | CAP-2 (pull-based sync), CAP-13 |
 | BO-3 Best available playback | CAP-6, CAP-11 | CAP-7, CAP-8, CAP-10 |
 | BO-4 Backend-agnostic | CAP-1, CAP-2 | CAP-6, CAP-14 |

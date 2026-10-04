@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1 (2026-10-04). Agent-authored under delegation; not owner-reviewed. Nothing described here is implemented. Updated 2026-10-04 for owner decisions (ADR-0014, self-hosting). |
-| **Owns** | Detailed workflow behaviour (WF-1 to WF-11), business rules (BR-1 to BR-9), permission matrix, state machines, validation rules, user-visible error behaviours. |
+| **Status** | Draft v0.1 (2026-10-04). Agent-authored under delegation; not owner-reviewed. Nothing described here is implemented. Updated 2026-10-04 for owner decisions (ADR-0014, self-hosting). Updated 2026-10-04 for owner decisions Q-7/Q-8. |
+| **Owns** | Detailed workflow behaviour (WF-1 to WF-11), business rules (BR-1 to BR-10), permission matrix, state machines, validation rules, user-visible error behaviours. |
 | **Does not own** | Requirement text ([SRS](SRS.md)); capabilities and journeys ([PRD](PRD.md)); business outcomes ([BRD](BRD.md)); component design ([HLD](../design/HLD.md)); algorithms and schemas ([LLD](../design/LLD.md)); sequencing ([ROADMAP](../ROADMAP.md)). |
 
 Everything here is an **Agent decision (delegated)** (2026-10-04; not yet owner-reviewed) on top of the owner's [concept](../sources/2026-10-04-initial-architecture-concept.md). Requirements are referenced by SRS ID. Behaviour that depends on provider mechanics nobody has verified is marked "(to verify in M1 spike)". Numbers marked *(proposed)* may change; the SRS and the ROADMAP take precedence for any value they also state.
@@ -74,15 +74,16 @@ sequenceDiagram
 | Trigger | Schedule (FR-SYNC-001), operator "sync now" (FR-SYNC-002), or the first sync after WF-1 or re-enable (WF-10). |
 | Actors | System (Operator for on-demand). |
 | Preconditions | Server is `active` or `degraded` and has at least one enabled library. No run is `running` for that server. |
-| Related SRS | FR-SYNC-001 to FR-SYNC-007, FR-SRV-003, NFR-REL-001, NFR-REL-002, DR-003 |
+| Related SRS | FR-SYNC-001 to FR-SYNC-008, FR-SRV-003, NFR-REL-001, NFR-REL-002, DR-003 |
 
 **Main flow**
 1. The system creates a sync run in `queued` for the server and type (full or incremental). The run moves to `running` when picked up.
 2. For each enabled library, the system pages through the provider's items, normalizing each (FR-SYNC-003).
 3. Each normalized item is upserted keyed by (server, provider item ID), so a retry creates no duplicates (FR-SYNC-004).
-4. New or changed sources go through matching (WF-3).
-5. For a full sync, once a library finishes, sources of that library not seen are marked `missing` and sources seen again are restored (BR-4, FR-SYNC-005).
-6. The run records counts and a bounded error summary and ends as `succeeded`, `partial` or `failed` (FR-SYNC-006).
+4. For each item, the system also captures its people (cast and crew, with role or character and order) and its collection memberships, including each collection's name, overview, artwork and external IDs (FR-SYNC-008).
+5. New or changed sources, people and collections go through matching (WF-3).
+6. For a full sync, once a library finishes, sources of that library not seen are marked `missing` and sources seen again are restored (BR-4, FR-SYNC-005).
+7. The run records counts and a bounded error summary and ends as `succeeded`, `partial` or `failed` (FR-SYNC-006).
 
 **Alternate paths**
 - On-demand request while a run is `queued` or `running`: the system refuses with "sync already in progress" and shows the current run (FR-SYNC-002).
@@ -103,13 +104,14 @@ sequenceDiagram
 | Trigger | A source is created or changes its external IDs during WF-2, or a curation action (WF-9). |
 | Actors | System. |
 | Preconditions | Source item normalized. |
-| Related SRS | FR-CAT-001, FR-CAT-007; rules BR-2, BR-3 |
+| Related SRS | FR-CAT-001, FR-CAT-007, FR-CAT-011, FR-CAT-012; rules BR-2, BR-3, BR-10 |
 
 **Main flow**
 1. If a manual override exists for the source, it decides the canonical item (BR-3).
 2. Otherwise the system looks for existing canonical items of the same media type sharing at least one strong external ID (BR-2).
 3. If exactly one matches, the source attaches to it. If none matches, a new canonical item is created.
 4. Episodes attach by (merged series, season number, episode number) or by episode external ID (BR-2).
+5. People and collections are matched per BR-10 (ADR-0015): people on a shared TMDB or IMDb person ID, else an exact normalized name when neither has a conflicting external ID; collections only on a shared TMDB collection ID. Manual overrides take precedence (BR-3).
 
 **Alternate paths**
 - A source gains an ID after a later sync: it is re-evaluated, and may attach to an existing item.
@@ -127,13 +129,15 @@ sequenceDiagram
 | Trigger | A viewer or operator opens a list, the home view, a detail page or searches. |
 | Actors | Viewer, Operator. |
 | Preconditions | Active user. |
-| Related SRS | FR-CAT-002 to FR-CAT-006, FR-CAT-008, FR-CAT-009, NFR-PERF-001, NFR-REL-001 |
+| Related SRS | FR-CAT-002 to FR-CAT-006, FR-CAT-008, FR-CAT-009, FR-CAT-011 to FR-CAT-013, NFR-PERF-001, NFR-REL-001 |
 
 **Main flow**
 1. The system determines the user's visible sources under BR-1 (enabled, non-removed server; `present` source; granted, enabled library).
 2. It returns only canonical items with at least one visible source. Counts, version summaries and server counts use visible sources only.
-3. Search matches tokens and prefixes, ignoring case and diacritics (FR-CAT-004).
-4. Artwork requests go through the platform, not to origins (FR-CAT-009).
+3. Search matches tokens and prefixes, ignoring case and diacritics (FR-CAT-004), and returns grouped results: titles, people and collections (FR-CAT-011, FR-CAT-012).
+4. A person page lists the visible titles the person appears in, with their role. A collection page lists its visible member titles. Both apply BR-1, and a collection with no visible members is hidden (BR-10).
+5. The title view lists each visible copy with its playability on this device and marks the selected one (FR-CAT-013).
+6. Artwork requests go through the platform, not to origins (FR-CAT-009).
 
 **Alternate paths**: all origins down: lists, search and detail still work from last-synced data (NFR-REL-001). Play fails in that case (WF-5).
 
@@ -148,13 +152,13 @@ sequenceDiagram
 | Trigger | A viewer presses Play on an item or episode (or retries after a failed start). |
 | Actors | Viewer, System, origin server. |
 | Preconditions | Active user with at least one visible source (BR-1) for the item. Browser sends its capabilities (FR-PLAY-002). |
-| Related SRS | FR-PLAY-001 to FR-PLAY-009, FR-PROG-002, NFR-SEC-001, NFR-SEC-003, NFR-COMP-001, NFR-PERF-002 |
+| Related SRS | FR-PLAY-001 to FR-PLAY-010, FR-PROG-002, NFR-SEC-001, NFR-SEC-003, NFR-COMP-001, NFR-PERF-002 |
 
 **Main flow**
 1. Browser sends the item (or episode), its capabilities and optionally an override (FR-PLAY-005) and an exclusion list.
 2. The system filters and ranks candidate sources with BR-5.
 3. The system negotiates with the selected source's origin and obtains a stream URL and a credential scoped to one playback session (FR-PLAY-007, ADR-0013). How each provider issues such credentials is **(to verify in M1 spike)**.
-4. The system records a playback session in `authorized` (BR-9) and returns the descriptor (FR-PLAY-001).
+4. The system records a playback session in `authorized` (BR-9) and returns the descriptor (FR-PLAY-001). The descriptor carries machine-readable reason codes for the selection, such as `direct_play`, `hdr_unsupported` or `server_unreachable`, which the UI renders as a one-sentence explanation (FR-PLAY-010).
 5. The browser streams directly from the origin. The system never proxies media bytes (FR-PLAY-008).
 6. On first progress report the session becomes `started` (WF-6). The system reports start, progress and stop to the origin where supported (FR-PLAY-009).
 
@@ -301,12 +305,13 @@ The only routes reachable without a session are static assets, setup (with the t
 | Trigger | Operator selects merge or split on the curation screen. |
 | Actors | Operator. |
 | Preconditions | Operator role. |
-| Related SRS | FR-CAT-007, FR-OPS-005; rules BR-3, BR-8 |
+| Related SRS | FR-CAT-007, FR-OPS-005; rules BR-3, BR-8, BR-10 |
 
 **Main flow**
 1. Merge: the operator selects two canonical items of the same media type. The system moves all sources of one into the other, which becomes the survivor. Child episode matching follows (WF-3).
 2. Split: the operator selects a source of an item and detaches it. It becomes its own canonical item.
 3. Both actions save a persistent override (BR-3) and write an audit entry.
+4. The same merge and split apply to people and collections (BR-10, FR-CAT-007). Merge requires the same kind (person with person, collection with collection). Split detaches a provider record into its own person or collection.
 
 **Failure paths**: different media types are rejected. Splitting the only source of an item is a no-op with a message. Stale selections (item changed since the screen loaded) are rejected with a conflict message and the screen refreshes.
 
@@ -353,7 +358,7 @@ The only routes reachable without a session are static assets, setup (with the t
 
 ## Business rules
 
-This is the canonical home of BR-1 to BR-9. Other documents reference them by ID. Values marked *(proposed)* are agent proposals.
+This is the canonical home of BR-1 to BR-10. Other documents reference them by ID. Values marked *(proposed)* are agent proposals.
 
 | ID | Rule |
 |---|---|
@@ -366,6 +371,7 @@ This is the canonical home of BR-1 to BR-9. Other documents reference them by ID
 | BR-7 | Watched threshold *(proposed)*: an item is marked watched when position reaches 90% of runtime, or when less than 5 minutes remain for items longer than 45 minutes. Resume is offered when position is over 60 s and the item is not watched. |
 | BR-8 | Only operators manage servers, users, grants, curation and sync triggers. At least one active operator must always exist. The last operator cannot be deleted, disabled or demoted. |
 | BR-9 | Playback session *(proposed values)*: authorization expires if playback has not started within 5 minutes. A session ends on stop, or after 4 hours without a progress report. The stream credential is revoked or expires when the session ends. |
+| BR-10 | People merge across servers on a shared TMDB/IMDb person ID, else on an exact normalized name when neither has a conflicting external ID. Collections merge only on a shared TMDB collection ID. Operators can merge or split either (FR-CAT-007). Person and collection pages show only visible titles (BR-1); a collection with no visible members is hidden. (Agent decision, [ADR-0015](../adr/0015-people-and-collection-identity.md).) |
 
 Clarifications of BR-5 and BR-7 that the one-line rules leave open, recorded here as Agent decisions: in BR-7 the two conditions are alternatives ("or"), and the 90% condition applies to every item. In BR-5, when every candidate is `transcode`, ranking continues from criterion (2).
 

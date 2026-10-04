@@ -55,3 +55,4 @@ Files are `NNNN-kebab-title.md`, numbered sequentially from 0001, never reused o
 | [0012](0012-artwork-proxy-with-edge-cache.md) | Artwork proxy with edge cache | Accepted | Agent under delegation; owner review pending | 2026-10-04 |
 | [0013](0013-session-scoped-origin-stream-credentials.md) | Session-scoped origin stream credentials | **Proposed** (pending M1 spike) | Agent under delegation; owner review pending | 2026-10-04 |
 | [0014](0014-passkey-auth-with-invite-links.md) | Passkey authentication with operator invite links | Accepted (supersedes 0007) | **Owner decision 2026-10-04** (passkeys and invite-only signup); details by agent, owner review pending | 2026-10-04 |
+| [0015](0015-people-and-collection-identity.md) | People and collection identity across servers | Accepted | **Owner decision 2026-10-04** (Q-7: collections and people search in v1); merge rules by agent, owner review pending | 2026-10-04 |

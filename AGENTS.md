@@ -21,6 +21,7 @@ Operating instructions for AI coding agents working in this repository. Humans a
 | Subsystem collaboration, module layout, requirement→design map | [docs/design/SDD.md](docs/design/SDD.md) |
 | Stack, config, testing, CI/CD, release, rollback, backup | [docs/design/TDD.md](docs/design/TDD.md) (TDD = Technical Design Document) |
 | Schema, API contracts, algorithms, error handling (LLD-*) | [docs/design/LLD.md](docs/design/LLD.md) |
+| Visual identity, design tokens (dark and light), screens, components, copy | [docs/design/UX.md](docs/design/UX.md), with the owner's [design canvas](https://claude.ai/artifact/LUvVfjGfMr3J4cEmRL44z8) as visual reference |
 | Architectural decisions | [docs/adr/](docs/adr/README.md) |
 
 Reference requirements and rules **by ID**. Never paraphrase them into a second copy.

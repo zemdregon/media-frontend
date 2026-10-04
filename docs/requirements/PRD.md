@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1 (2026-10-04). Agent-authored under delegation; not owner-reviewed. Nothing described here is implemented. Updated 2026-10-04 for owner decisions (ADR-0014, self-hosting). |
-| **Owns** | Personas, capabilities (CAP-1 to CAP-14), user journeys (J-1 to J-6), UX principles, product-level acceptance criteria, scope summary, non-goals and deferred capabilities (DEF-1 to DEF-11). |
+| **Status** | Draft v0.1 (2026-10-04). Agent-authored under delegation; not owner-reviewed. Nothing described here is implemented. Updated 2026-10-04 for owner decisions (ADR-0014, self-hosting). Updated 2026-10-04 for owner decisions Q-7/Q-8. |
+| **Owns** | Personas, capabilities (CAP-1 to CAP-16), user journeys (J-1 to J-7), UX principles, product-level acceptance criteria, scope summary, non-goals and deferred capabilities (DEF-1 to DEF-11). |
 | **Does not own** | Business outcomes and constraints ([BRD](BRD.md)); workflow detail, business rules, state machines ([FRD](FRD.md)); requirement text ([SRS](SRS.md)); design ([HLD](../design/HLD.md)); sequencing ([ROADMAP](../ROADMAP.md)). |
 
 Requirements are referenced by SRS ID and never restated. Priorities follow SRS section 1: `Must` is required for v1.0, `Should` is planned but may slip with a recorded decision, `Could` is only if cheap. Capabilities, priorities and journeys are an **Agent decision (delegated, 2026-10-04; not yet owner-reviewed)** built on the owner's [concept](../sources/2026-10-04-initial-architecture-concept.md).
@@ -25,9 +25,9 @@ Each row links SRS requirements. A requirement may appear under more than one ca
 | CAP-2 | Catalog sync and normalization | Must | The system pulls each enabled server's items on a schedule or on demand and normalizes them into one schema. | FR-SYNC-001 to FR-SYNC-007, FR-SRV-003, NFR-REL-001, NFR-REL-002, DR-003 |
 | CAP-3 | Federated, deduplicated catalog | Must | The same work on several servers appears as one item with multiple sources. | FR-CAT-001, FR-CAT-006, DR-005 |
 | CAP-4 | Browse and search | Must | Unified lists, sorting, filters, token and prefix search, and a home view with recent and continue-watching rows. | FR-CAT-002, FR-CAT-003, FR-CAT-004, FR-CAT-008, NFR-PERF-001, NFR-PERF-003 |
-| CAP-5 | Title detail including versions and seasons/episodes | Must | Metadata, artwork, a summary of available versions and server count, and the season and episode list for series. | FR-CAT-005, FR-CAT-006, FR-CAT-009 |
+| CAP-5 | Title detail including versions and seasons/episodes | Must | Metadata, artwork, a summary of available versions and server count, and the season and episode list for series. The title view also lists every visible copy with its server, resolution, HDR format, audio, size and expected playability on this device, with the automatically selected copy marked. | FR-CAT-005, FR-CAT-006, FR-CAT-009, FR-CAT-013 |
 | CAP-6 | Playback with automatic source selection | Must | One press of play picks the best source for the viewer's device and starts playback directly from the origin. | FR-PLAY-001, FR-PLAY-002, FR-PLAY-003, FR-PLAY-007, FR-PLAY-008, FR-PLAY-009, IR-007, NFR-SEC-003, NFR-COMP-001, NFR-COMPAT-001, NFR-PERF-002 |
-| CAP-7 | Manual version/source override | Should | A viewer can pick a specific version or source instead of the automatic choice. | FR-PLAY-005 |
+| CAP-7 | Manual version/source override | Should | A viewer can pick a specific version or source instead of the automatic choice, using the copy table (FR-CAT-013). The UI also explains in one sentence why a copy was chosen, or why another would transcode or is unavailable ("why this copy", from the descriptor's reason codes). | FR-PLAY-005, FR-PLAY-010, FR-CAT-013 |
 | CAP-8 | Watch progress, resume, watched state, next episode | Must | One position per user per item regardless of source; resume prompt; automatic and manual watched state; next-episode suggestion (Should). | FR-PROG-001 to FR-PROG-004, FR-CAT-008 |
 | CAP-9 | User and access management | Must | Passkey-only sign-in. Accounts exist only through operator invite links, with the first operator created at `/setup`. Operators create and revoke invites, disable and delete users, grant or revoke library access, and issue re-enrollment links. Users manage their own passkeys and sign out. Owner decision (2026-10-04): passkeys only, with invite-only account creation. Recovery and re-enrollment details: Agent decision (delegated). | FR-USR-001 to FR-USR-008, IR-006, NFR-SEC-002, NFR-SEC-004, NFR-SEC-007, NFR-PRIV-001 |
 | CAP-10 | Server health and play-time failover | Should | The system tracks server reachability and, when a selected source fails, offers the next-best source or a clear error. | FR-OPS-001, FR-OPS-002, FR-OPS-004, FR-PLAY-004 |
@@ -35,6 +35,8 @@ Each row links SRS requirements. A requirement may appear under more than one ca
 | CAP-12 | Catalog curation: manual merge/split | Should | The operator corrects wrong or missed merges, and the correction survives later syncs. | FR-CAT-007 |
 | CAP-13 | Operational visibility | Must (sync status); Should/Could for the rest | Sync status per server (Must); health history, audit log (Should); data export, health endpoint (Could/Should). | FR-OPS-003 (Must), FR-OPS-004, FR-OPS-005, FR-OPS-007 (Should), FR-OPS-006 (Could), FR-SYNC-006, NFR-OBS-001, NFR-OBS-002 |
 | CAP-14 | Self-host packaging & upgrades | Should | Each deployment still has one operating party, but Cinewren is packaged so that others can deploy their own instance from a tagged release and upgrade it safely. Owner decision (2026-10-04): others may self-host. Packaging scope and upgrade details: Agent decision (delegated). | FR-OPS-008, NFR-MAINT-003 |
+| CAP-15 | People search and person pages | Must | **Owner decision (2026-10-04, Q-7).** Search also matches people by name. A person page lists the visible titles they appear in, with their role. Sync captures cast and crew from origin metadata, and people are merged across servers per BR-10 ([ADR-0015](../adr/0015-people-and-collection-identity.md)). | FR-SYNC-008, FR-CAT-011, ADR-0015 |
+| CAP-16 | Collections | Must | **Owner decision (2026-10-04, Q-7).** Viewers browse collections (Plex collections, Jellyfin and Emby box sets), open a collection page listing its visible member titles, and find collections in search. Collections merge across servers only on a shared TMDB collection ID (BR-10). A collection with no visible members is hidden. | FR-SYNC-008, FR-CAT-012, ADR-0015 |
 
 Cross-cutting requirements that apply to every capability (security, reliability, accessibility, observability, maintainability) are tracked in the [SRS](SRS.md#6-nonfunctional-requirements-nfr).
 
@@ -124,9 +126,20 @@ Persona P-1. Capabilities CAP-12, CAP-3.
 4. The next sync does not undo the correction (BR-3).
 5. The action appears in the audit log (FR-OPS-005).
 
+### J-7 Viewer searches an actor, opens their person page, opens a collection, plays a title
+
+Persona P-2. Capabilities CAP-15, CAP-16, CAP-4, CAP-5, CAP-6. **Owner decision (2026-10-04, Q-7).**
+
+1. Viewer types an actor's name in search. Results are grouped into titles, people and collections (WF-4, CAP-15).
+2. Viewer opens the person. The person page lists the visible titles the person appears in, with their role (FR-CAT-011).
+3. Viewer opens a title and from it a collection it belongs to. The collection page lists its visible member titles (FR-CAT-012, CAP-16).
+4. Viewer opens a member title. The title view lists the visible copies and marks the selected one (FR-CAT-013, CAP-5).
+5. Viewer presses Play. The system selects a source (WF-5), and the UI can explain why this copy was chosen (FR-PLAY-010, CAP-7).
+6. Only titles the viewer may see appear on the person and collection pages (BR-1, BR-10).
+
 ## 4. UX principles
 
-These are an Agent decision (delegated, 2026-10-04) derived from constraint C-5 and the concept's example of a unified listing.
+These are an Agent decision (delegated, 2026-10-04) derived from constraint C-5 and the concept's example of a unified listing. Visual design (layout, components, tokens, themes) is owned by [UX](../design/UX.md), whose visual reference is the owner's design canvas ([Owner decision](https://claude.ai/artifact/LUvVfjGfMr3J4cEmRL44z8), 2026-10-04). This section keeps only the product-level principles.
 
 1. **Provider-agnostic UI.** Viewers never see "Jellyfin", "Emby" or "Plex" as a concept they must understand. Server display names appear only where the viewer chooses a source (CAP-7).
 2. **Merged presentation.** A merged item shows "Available from N servers" and a version summary such as "4K HDR · 1080p" (FR-CAT-005). Counts and badges include only sources the viewer may see (BR-1).
@@ -135,6 +148,7 @@ These are an Agent decision (delegated, 2026-10-04) derived from constraint C-5 
 5. **Responsive.** Usable on desktop and mobile browsers, per the supported-browser set in NFR-COMPAT-001.
 6. **Accessible.** The target is NFR-A11Y-001: WCAG 2.2 AA (proposed), a fully keyboard-operable player, and captions.
 7. **Fast to first paint.** Initial route payload per NFR-PERF-003.
+8. **Dark and light themes.** The UI ships both, follows the system preference by default and offers a per-user override (NFR-UX-001). **Owner decision (2026-10-04, Q-8).**
 
 ## 5. Product-level acceptance criteria
 
@@ -146,9 +160,9 @@ Criteria are observable on a deployed environment. They summarize; the verifiabl
 | CAP-2 | A sync of a test origin produces the expected item counts. Re-running it with no origin changes produces no changes. Killing one server does not stop another's sync or the browsing of existing data. | FR-SYNC-001, FR-SYNC-004, FR-SYNC-007, NFR-REL-001 |
 | CAP-3 | Two items that share a TMDB or IMDb ID appear as one entry with two sources. Items with conflicting IDs do not merge. | FR-CAT-001 (BR-2) |
 | CAP-4 | Search finds a title by prefix, ignoring case and accents. Lists can be sorted and paged. Response times are within the proposed envelope at the design scale. | FR-CAT-002, FR-CAT-004, NFR-PERF-001 |
-| CAP-5 | The detail page shows metadata, artwork served by Cinewren (not by an origin URL), a version summary and the server count. Series show seasons and episodes. | FR-CAT-005, FR-CAT-009 |
+| CAP-5 | The detail page shows metadata, artwork served by Cinewren (not by an origin URL), a version summary and the server count. Series show seasons and episodes. The copy table lists each visible copy with its playability on this device and marks the selected one. | FR-CAT-005, FR-CAT-009, FR-CAT-013 |
 | CAP-6 | Pressing Play on a multi-source title starts playback using the source the selection rules choose, with the stream coming from the origin's own hostname. A network trace shows no video bytes through Cloudflare hostnames. A stream credential from one session cannot be used for administrative calls. | FR-PLAY-001, FR-PLAY-003, FR-PLAY-007, FR-PLAY-008 |
-| CAP-7 | A viewer can choose a different version before playing, and that source is used for that play. | FR-PLAY-005 |
+| CAP-7 | A viewer can choose a different version before playing, and that source is used for that play. The UI gives a one-sentence reason for the automatic choice. | FR-PLAY-005, FR-PLAY-010 |
 | CAP-8 | Position is saved during playback and offered on the next play, even if the next play is served by another source. Crossing the watched threshold marks the item watched. | FR-PROG-001 to FR-PROG-003 (BR-7) |
 | CAP-9 | There is no way to create an account without a valid invite link (or, once, `/setup` with the token). An expired, revoked or already used invite is refused. Opening a valid invite and creating a passkey yields an active user who can then sign in with that passkey. A signed-out visitor reaches only static assets, setup, invite redemption, login and health. A disabled user is refused immediately. A user cannot remove their last passkey. A viewer cannot reach operator endpoints. After a grant is revoked, the library's items are no longer visible to that user. An operator can restore access for a user who lost their passkeys with a re-enrollment link. | FR-USR-001 to FR-USR-008, FR-CAT-006 |
 | CAP-10 | When a server is unreachable, play selects another source. If the stream does not start, a replacement request returns the next source or a clear error. | FR-OPS-002, FR-PLAY-004 |
@@ -156,6 +170,8 @@ Criteria are observable on a deployed environment. They summarize; the verifiabl
 | CAP-12 | After a manual merge or split and a full sync, the correction is unchanged. | FR-CAT-007 (BR-3) |
 | CAP-13 | The operator can see each server's last sync outcome, next run and recent errors. The audit log lists operator actions. | FR-OPS-003, FR-OPS-005, FR-SYNC-006 |
 | CAP-14 | Following the self-host guide, a second operator deploys their own instance from a tagged release and reaches first-run setup. Upgrading that instance to a newer release keeps its existing data and applies pending migrations. Each deployment has one operating party (A-10). | FR-OPS-008, NFR-MAINT-003 |
+| CAP-15 | Searching an actor's name returns a person entry alongside matching titles. The person page lists only titles visible to the viewer, with the role. The same person on two servers (shared TMDB or IMDb person ID, or exact normalized name with no conflicting ID) appears once. | FR-SYNC-008, FR-CAT-011 (BR-10) |
+| CAP-16 | A collection on one or more servers can be browsed and found in search. Its page lists only visible member titles. Collections that share a TMDB collection ID appear once, and same-name collections without one stay separate. A collection with no visible members is not shown. | FR-SYNC-008, FR-CAT-012 (BR-10) |
 
 ## 6. Non-goals and deferred capabilities
 
@@ -183,6 +199,7 @@ The SRS has no requirements for these items. A "revisit trigger" is the evidence
 | Jellyfin, Emby and Plex origins | Other origin types |
 | Movies and TV series | Music, photos, live TV |
 | One operator per deployment, up to the NFR-SCALE-001 envelope (proposed), with packaging for self-hosting by other operators (CAP-14) | Hosted multi-tenant service |
+| Collections and search across titles, people and collections (CAP-15, CAP-16); dark and light themes (NFR-UX-001) | |
 | Passkey sign-in with operator and viewer roles; accounts only from invite links | Passwords, OAuth or origin-server logins |
 
-Delivery by milestone is in the [ROADMAP](../ROADMAP.md). All capabilities are currently Not started.
+Delivery by milestone is in the [ROADMAP](../ROADMAP.md). All capabilities (CAP-1 to CAP-16) are currently Not started.

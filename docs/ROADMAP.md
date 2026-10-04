@@ -53,7 +53,7 @@
 | A-10 | "Single operator per deployment" (owner decision 2026-10-04) means one operating party. Several accounts may hold the operator role, for example two household admins, which also lets BR-8 keep a spare operator. *Agent interpretation.* | Restrict operator invites to one account, and rely on CLI recovery (FR-USR-007) only. |
 
 ### Material decisions
-14 ADRs are indexed in [adr/README.md](adr/README.md). ADR-0002 records owner direction. **ADR-0014 (passkeys and invite-only signup) is an owner decision**, and it supersedes ADR-0007 (Cloudflare Access). ADR-0003 and ADR-0011 are owner-confirmed. The rest are agent decisions. **ADR-0013 (session-scoped stream credentials) is `Proposed`** until the M1 spike confirms it.
+15 ADRs are indexed in [adr/README.md](adr/README.md). ADR-0002 records owner direction. **ADR-0014 (passkeys and invite-only signup) is an owner decision**, and it supersedes ADR-0007 (Cloudflare Access). ADR-0003 and ADR-0011 are owner-confirmed. The rest are agent decisions. **ADR-0013 (session-scoped stream credentials) is `Proposed`** until the M1 spike confirms it.
 
 **Owner decisions taken on 2026-10-04 through multiple-choice blocker questions (see AGENTS.md §4):**
 
@@ -62,6 +62,9 @@
 | B-1 | Cloudflare account and identity layer | Owner has Workers Paid. Asked why Access was planned, then chose **passkeys only, with operator invite links as the only way to create an account**. | ADR-0014 supersedes ADR-0007, and no Zero Trust team is needed. Agent follow-ups: FR-USR-* rewritten, T0.5 reworked, and bootstrap and recovery details in ADR-0014. |
 | B-2 | Test servers for the T1.1 spike | **Containers (Jellyfin, Emby) plus the owner's Plex** | T1.1 can proceed. The Plex checks use the owner's account or server. |
 | Q-2 | Hide origin hostnames? | **Public HTTPS is fine** | ADR-0003 confirmed. DEF-1 stays deferred. |
+| Q-7 | Collections and people/collection search (shown in the design canvas) | **Add both to v1** | CAP-15, CAP-16, FR-SYNC-008, FR-CAT-011, FR-CAT-012, M2 tasks T2.9 and T2.10. Agent follow-up: merge rules in ADR-0015. |
+| Q-8 | Light theme | **Dark and light at v1** | NFR-UX-001 (M2). Light tokens are agent-proposed in UX.md, pending light artboards (T2.11). |
+| Design | Visual reference | **The owner's design canvas** (https://claude.ai/artifact/LUvVfjGfMr3J4cEmRL44z8) | It is specified in [design/UX.md](design/UX.md). Divergences from the spec are listed there (UX §8). Agent follow-ups: FR-CAT-013 (copy table) and FR-PLAY-010 (why-this-copy reasons). |
 | Q-1 | Audience | **Others may self-host** (one operator per deployment) | ADR-0011 confirmed. Agent follow-ups: CAP-14, FR-OPS-008, NFR-MAINT-003, T5.5, and the A-10 interpretation. |
 
 ### Open questions (none block M0)
@@ -98,6 +101,7 @@
 | [design/HLD.md](design/HLD.md) | High-Level Design | Components C-*, trust boundaries TB-*, data flows DF-*, deployment topology, threat model | Draft v0.1 |
 | [design/SDD.md](design/SDD.md) | Software Design Document | Subsystem collaboration, module layout, shared patterns, requirement→design satisfaction | Draft v0.1 |
 | [design/TDD.md](design/TDD.md) | Technical Design Document | Stack, tooling, config, testing, CI/CD, release, rollback, backup, cross-cutting technical choices | Draft v0.1 |
+| [design/UX.md](design/UX.md) | UX and visual design specification | Visual identity, tokens (dark and light), screen inventory, components, copy; maps the owner's design canvas | Draft v0.1 |
 | [design/LLD.md](design/LLD.md) | Low-Level Design | Schema, API contracts, provider interface, algorithms, credential lifecycle, error handling (sections LLD-*) | Draft v0.1 |
 | [adr/](adr/README.md) | Architecture Decision Records | Individual architectural decisions and their supersession | ADR-0001 to ADR-0012 and ADR-0014 Accepted (ADR-0007 superseded by ADR-0014). ADR-0013 Proposed. |
 | [sources/2026-10-04-initial-architecture-concept.md](sources/2026-10-04-initial-architecture-concept.md) | Archived owner-provided concept | Nothing. Historical input only. | Historical |
@@ -180,6 +184,9 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 | T2.6 | User lifecycle and grants: disable, re-enable and delete with cascades; viewer library grants; operator re-enrollment link; server disable and removal | FR-USR-005, FR-USR-007, FR-USR-008, FR-SRV-004, DR-005, BR-8 | T2.4 | Tests: disabling a user revokes their sessions immediately; deletion cascades per DR-005; the last operator cannot be removed; a re-enrollment link adds a passkey once and then expires; server removal deletes its sources and hides them at once. |
 | T2.7 | Web UI: home, browse, search, detail (versions badge, "Available from N servers"), operator sync-status page | FR-OPS-003, NFR-PERF-003, [PRD](requirements/PRD.md) J-2 | T2.4–T2.6 | Component tests. A bundle-size check fails CI above 250 KB gzipped *(proposed)*. The sync page shows the last run, its outcome and errors. |
 | T2.8 | E2E harness: Playwright against `wrangler dev` with a mock origin | NFR-TEST-001 | T2.7 | CI runs the E2E job on every PR. One journey (sign in, browse, open detail) passes. |
+| T2.9 | People: sync credits, match people (BR-10), people search, person page | FR-SYNC-008, FR-CAT-011, ADR-0015 | T2.3, T2.4 | Fixture tests: the same TMDB person ID merges; identical names without conflicting IDs merge; a conflicting ID creates a conflict flag. The person page lists only visible titles (IDOR test). |
+| T2.10 | Collections: sync membership, match on TMDB collection ID, browse, collection page, collection search | FR-SYNC-008, FR-CAT-012, ADR-0015 | T2.3, T2.4 | Fixture tests: the same TMDB collection ID merges and same-name collections without one don't. A collection whose members are all hidden is absent from browse and search. |
+| T2.11 | Themes: implement the UX.md token set with dark and light themes, `prefers-color-scheme` plus a per-user override; add light artboards to the design canvas | NFR-UX-001, NFR-A11Y-001, [UX](design/UX.md) | T2.7 | An automated a11y contrast check passes in both themes. The override persists per user. Light artboards exist in the canvas, and any changes are reflected in UX.md. |
 
 **M2 exit checks:**
 - (a) The integration test "same movie on two mock servers yields one item with two sources" passes.
@@ -200,6 +207,7 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 | T3.4 | Player: direct play and HLS (hls.js / native), audio and subtitle selection, manual version choice, dynamic CSP | FR-PLAY-005, FR-PLAY-006, FR-PLAY-008, IR-007, NFR-SEC-003 | T3.3 | E2E: direct play and HLS both start against the mock origin; switching subtitle and audio tracks works; the CSP header lists only self plus registered origin hosts. |
 | T3.5 | Progress, resume, watched state, next episode, "Continue watching"; session telemetry to the origin | FR-PROG-001 to FR-PROG-004, FR-PLAY-009, FR-CAT-008, BR-7 | T3.4 | E2E: play, pause, reload, then resume from the stored position. Reaching the BR-7 threshold marks the item watched. The next-episode query passes fixture tests. The mock origin receives start, progress and stop. |
 | T3.6 | Compliance check: the operator setup guide documents non-proxied origin hostnames; a test asserts every descriptor URL host equals a registered origin host | NFR-COMP-001, FR-PLAY-008 | T3.4 | Test green, and the setup-guide section is merged. |
+| T3.7 | Copy table and "why this copy" | FR-CAT-013, FR-PLAY-010, [UX](design/UX.md) | T3.2, T3.4 | Component tests render every reason code. E2E: the table marks the selected copy and shows the playability status per copy. |
 
 **M3 exit checks:**
 - (a) The T3.5 E2E journey passes.
@@ -259,5 +267,6 @@ DEF-1 to DEF-11 per [PRD §6](requirements/PRD.md#6-non-goals-and-deferred-capab
 
 | Date | Change | By |
 |---|---|---|
+| 2026-10-04 | Owner supplied the design canvas (the visual reference, now specified in UX.md) and answered Q-7 (collections and people search in v1) and Q-8 (dark and light themes). ADR-0015 and new requirements added. | Agent, recording owner decisions |
 | 2026-10-04 | Owner answered the blocker questions (B-1, B-2, Q-1, Q-2): passkeys plus invite links replace Cloudflare Access (ADR-0014), origins on public HTTPS confirmed, self-hosting added to M5. | Agent, recording owner decisions |
 | 2026-10-04 | Initial roadmap and document set derived from the owner-provided concept. Product named Cinewren (owner). T0.3 docs check script added and run. | Agent under delegation |

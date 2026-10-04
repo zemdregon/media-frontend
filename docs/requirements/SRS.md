@@ -6,7 +6,7 @@
 | **Owns** | The canonical, uniquely identified, verifiable requirements (functional, interface, data, nonfunctional) and the requirement-level traceability matrix. |
 | **Does not own** | Business rationale ([BRD](BRD.md)), capabilities and journeys ([PRD](PRD.md)), detailed workflow behaviour and business rules ([FRD](FRD.md)), design ([HLD](../design/HLD.md), [SDD](../design/SDD.md), [TDD](../design/TDD.md), [LLD](../design/LLD.md)), sequencing ([ROADMAP](../ROADMAP.md)). |
 
-Other documents must reference requirements here by ID. They must not restate them with different wording. To change a requirement, edit it here and update its trace links.
+Visual and interaction design is owned by [UX](../design/UX.md). Other documents must reference requirements here by ID. They must not restate them with different wording. To change a requirement, edit it here and update its trace links.
 
 ## 1. Conventions
 
@@ -46,6 +46,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 | FR-SYNC-005 | After a full sync of a library completes successfully, every source in that library that the run did not see is marked `missing` (BR-4). A missing source that is seen again is restored. | Must | BR-4 | LLD-SYNC | M2 | T |
 | FR-SYNC-006 | Each sync run records its type, status (`queued`, `running`, `succeeded`, `partial` or `failed`), start and end times, counts (added, updated, missing, errors) and a bounded error summary. The operator can view these. | Must | CAP-13, WF-2 | LLD-SCHEMA, LLD-API | M2 | T |
 | FR-SYNC-007 | A sync failure on one server does not affect other servers' syncs. It also does not affect the availability of already-synced catalog data. | Must | WF-2 | C-SYNC, ADR-0009 | M2 | T |
+| FR-SYNC-008 | Sync also captures, from origin metadata, each item's people (cast and crew, with role or character and order) and its collection memberships (Plex collections, Jellyfin and Emby box sets), including each collection's name, overview, artwork and external IDs. | Must | CAP-15, CAP-16, WF-2 | C-PROV, LLD-PROV, LLD-SCHEMA | M2 | T |
 
 ### 3.3 Catalog (FR-CAT)
 
@@ -61,6 +62,9 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 | FR-CAT-008 | The home view shows "Recently added" (M2) and "Continue watching" (M3) rows. | Should | CAP-4, CAP-8 | C-CAT, LLD-API | M2, M3 | T |
 | FR-CAT-009 | The platform serves artwork. Browsers never receive origin credentials or direct origin artwork URLs. | Must | CAP-5 | C-API, ADR-0012 | M2 | T |
 | FR-CAT-010 | An operator can list the sources flagged as match conflicts under BR-2 and resolve each one with FR-CAT-007. | Should | CAP-12, BR-2 | LLD-MATCH, LLD-API | M5 | T |
+| FR-CAT-011 | Search also matches people by name. A person page lists the visible titles they appear in, with their role. People are merged across servers per BR-10. | Must | CAP-15, BR-10 | C-CAT, C-MATCH, ADR-0015, LLD-MATCH | M2 | T |
+| FR-CAT-012 | Users can browse collections and open a collection page listing its visible member titles. Search also matches collections. Collections are merged across servers per BR-10. A collection with no visible members is hidden (BR-1). | Must | CAP-16, BR-10 | C-CAT, C-MATCH, ADR-0015, LLD-MATCH | M2 | T |
+| FR-CAT-013 | The title view lists every visible copy with its server, resolution, HDR format, audio, file size and expected playability on this device (`direct_play`, `transcode` or `unavailable`). The automatically selected copy is marked. | Should | CAP-5, CAP-7 | C-WEB, LLD-API, [UX](../design/UX.md) | M3 | T |
 
 ### 3.4 Playback (FR-PLAY)
 
@@ -75,6 +79,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 | FR-PLAY-007 | The credential embedded in a stream URL is scoped to one playback session. It cannot authorize administrative actions, and it is revoked or expires when the session ends or expires (BR-6, BR-9). | Must | BR-6, BR-9 | ADR-0013, LLD-TOKEN | M3 | T, I |
 | FR-PLAY-008 | The platform never proxies, relays or caches video or audio stream bytes. Stream URLs in descriptors always point at the origin's own hostname. | Must | WF-5 | ADR-0002, ADR-0003 | M3 | T, I |
 | FR-PLAY-009 | The system reports playback session telemetry (start, position, stop) to the origin, so the origin can track sessions and end transcodes. This is not a write-back of watched state, which is deferred (DEF-4). | Should | WF-5, WF-6 | C-PROV, LLD-PROV | M3 | T |
+| FR-PLAY-010 | The playback descriptor includes machine-readable reason codes for the selection (for example `direct_play`, `hdr_unsupported`, `server_unreachable`). The UI renders them as a one-sentence explanation of why a copy was chosen, or why another copy would transcode or is unavailable. | Should | CAP-6, BR-5 | LLD-SEL, LLD-API, [UX](../design/UX.md) | M3 | T |
 
 ### 3.5 Progress (FR-PROG)
 
@@ -156,6 +161,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 | NFR-COST-001 | No media stream bytes pass through Cloudflare. At the design envelope, Cloudflare spend stays within the Workers Paid base fee plus small usage *(proposed target: ≤ US$10/month)*. | Should | ADR-0002 | M5 | A |
 | NFR-COMP-001 | The deployment complies with Cloudflare's service-specific terms on video delivery. No video is served through proxied (orange-cloud) hostnames or Tunnel public hostnames on Free, Pro or Business plans. | Must | ADR-0002 | M3 | I |
 | NFR-A11Y-001 | The web UI meets WCAG 2.2 AA *(proposed target)*. The player is fully keyboard operable and supports captions. | Should | TDD | M5 | A, T |
+| NFR-UX-001 | The web UI provides dark and light themes. It follows `prefers-color-scheme` by default and offers a per-user override. Both themes are built from one token set ([UX](../design/UX.md)) and each meets NFR-A11Y-001 contrast independently. | Must | [UX](../design/UX.md) | M2 | T, A |
 | NFR-COMPAT-001 | Supported clients *(proposed)* are the latest two major versions of Chrome, Edge, Firefox and Safari, on desktop and mobile. | Must | TDD | M3 | T |
 | NFR-OBS-001 | Logs are structured JSON with request ID, user ID (never display name) and route. They contain no secrets. Sync runs, play decisions and errors are logged. | Must | TDD | M0 | I, T |
 | NFR-OBS-002 | Operational metrics are queryable: sync duration and error counts per server, play-request outcomes and the selection-mode distribution. | Should | TDD | M5 | D |
@@ -176,7 +182,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 |---|---|
 | M0 | FR-USR-001, FR-USR-002, FR-USR-003, FR-USR-004, FR-USR-006, IR-001, IR-006, NFR-SEC-004, NFR-SEC-007, DR-001, DR-004, NFR-SEC-002, NFR-PRIV-001, NFR-OBS-001, NFR-MAINT-002, NFR-TEST-001 |
 | M1 | FR-SRV-001, FR-SRV-002, FR-SRV-003, FR-SRV-007, IR-002, IR-003, DR-002, NFR-SEC-001, NFR-SEC-005, NFR-MAINT-001 |
-| M2 | FR-SRV-004, FR-SYNC-001 to FR-SYNC-007, FR-CAT-001, FR-CAT-002, FR-CAT-004, FR-CAT-005, FR-CAT-006, FR-CAT-009, FR-USR-005, FR-USR-008, FR-OPS-003, DR-003 (catalog retention), DR-005, NFR-REL-001, NFR-REL-002 |
+| M2 | FR-SRV-004, FR-SYNC-001 to FR-SYNC-007, FR-CAT-001, FR-CAT-002, FR-CAT-004, FR-CAT-005, FR-CAT-006, FR-CAT-009, FR-CAT-011, FR-CAT-012, FR-SYNC-008, FR-USR-005, FR-USR-008, NFR-UX-001, FR-OPS-003, DR-003 (catalog retention), DR-005, NFR-REL-001, NFR-REL-002 |
 | M3 | FR-PLAY-001, FR-PLAY-002, FR-PLAY-003, FR-PLAY-006, FR-PLAY-007, FR-PLAY-008, FR-PROG-001, FR-PROG-002, FR-PROG-003, IR-007, NFR-SEC-003, NFR-COMP-001, NFR-COMPAT-001 |
 | M4 | IR-004, IR-005 (Emby and Plex parity for every Must above that touches providers) |
 | M5 | DR-003 (operational retention), NFR-SCALE-001 (verified by analysis); v1.0 release gate re-verifies all Musts |
