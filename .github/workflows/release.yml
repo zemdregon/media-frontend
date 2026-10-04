@@ -1,0 +1,69 @@
+name: Release
+
+# On a SemVer tag: re-run the CI checks, rehearse the upgrade, and publish a GitHub Release with the
+# changelog section and the migration list. It does NOT deploy and holds no Cloudflare secrets:
+# deployments are made by each operator's Workers Builds or wrangler (ADR-0011, TDD §9).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify the tagged commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Tag matches package version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "Not a SemVer tag: $tag"; exit 1; }
+          pkg="v$(node -p "require('./package.json').version")"
+          [ "$tag" = "$pkg" ] || { echo "Tag $tag does not match package.json version $pkg"; exit 1; }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm check:docs
+      - name: Upgrade rehearsal (previous release database to this tag)
+        run: pnpm check:upgrade
+      - name: Release notes
+        run: node scripts/release-notes.mjs "${GITHUB_REF_NAME}" > release-notes.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+
+  release:
+    name: Create GitHub Release
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=()
+          [[ "${GITHUB_REF_NAME}" == *-* ]] && flags+=(--prerelease)
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --title "Cinewren ${GITHUB_REF_NAME}" \
+            --notes-file release-notes.md \
+            "${flags[@]}"
