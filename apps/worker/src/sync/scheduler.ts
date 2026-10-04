@@ -18,6 +18,9 @@ import {
 import { parseCheckpoint } from './run';
 import type { SyncDeps } from './deps';
 
+/** The cron tick cadence (every five minutes); a run due between ticks starts at the next one. */
+export const TICK_INTERVAL_MS = 5 * 60_000;
+
 export type EnqueueResult =
   | { ok: true; runId: string; type: RunType }
   /** The server already has an active run: the API maps this to `409 SYNC_IN_PROGRESS`. */

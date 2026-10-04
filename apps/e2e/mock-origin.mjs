@@ -5,6 +5,10 @@
 // matched to the closest recording on method, path and query. It stands in for a real origin so
 // `wrangler dev` can register and talk to a server without any network or media files.
 //
+// Everything the sync and the adapter ask for is served from the recordings: sign-in, libraries,
+// library item pages (with credits), box sets and their members. Where a recording is missing,
+// a clearly named synthetic_* fixture stands in (see test-fixtures/providers/README.md).
+//
 // Extra endpoints for tests: GET /__requests returns the log of origin requests the Worker made,
 // and DELETE /__requests clears it. No credential value is ever logged.
 import { readdirSync, readFileSync } from 'node:fs';
@@ -17,6 +21,11 @@ export const FIXTURE_DIR = join(here, '..', '..', 'test-fixtures', 'providers', 
 
 // Paging and sorting differ between recordings, so they never decide a match.
 const IGNORED = new Set(['startindex', 'limit', 'enabletotalrecordcount', 'sortby', 'sortorder']);
+
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+  'base64',
+);
 
 function loadFixtures(dir) {
   return readdirSync(dir)
@@ -45,6 +54,13 @@ function pick(fixtures, method, url) {
     if (f.method !== method || f.url.pathname.toLowerCase() !== url.pathname.toLowerCase())
       continue;
     const recorded = queryMap(f.url);
+    // A recording of one library's (or box set's) children never answers another's.
+    if (
+      recorded.has('parentid') &&
+      live.has('parentid') &&
+      recorded.get('parentid') !== live.get('parentid')
+    )
+      continue;
     let score = 0;
     let mismatch = 0;
     for (const [k, v] of recorded) {
@@ -52,8 +68,9 @@ function pick(fixtures, method, url) {
       else mismatch += 1;
     }
     for (const k of live.keys()) if (!recorded.has(k)) mismatch += 0.1;
-    // The service account's sign-in is the one the Worker needs; it wins over the player's.
-    const preferred = f.file === 'auth_svc.json' ? 0.5 : 0;
+    // The service account's sign-in is the one the Worker needs; it wins over the player's. A
+    // synthetic_* fixture fills a gap in the recordings and wins over the recording it extends.
+    const preferred = f.file === 'auth_svc.json' || f.file.startsWith('synthetic_') ? 0.5 : 0;
     const rank = score - mismatch + preferred;
     if (!best || rank > best.rank) best = { rank, f };
   }
@@ -72,6 +89,16 @@ export function createMockOrigin({ fixtureDir = FIXTURE_DIR } = {}) {
       if (method === 'DELETE') log.length = 0;
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify(method === 'DELETE' ? [] : log));
+      return;
+    }
+
+    // Artwork (`GET /Items/{id}/Images/{slot}`): the recordings keep no binary bodies, so every
+    // image is the same synthetic 1x1 PNG. The artwork proxy only needs a well-formed image.
+    if (method === 'GET' && /^\/Items\/[^/]+\/Images\/[^/]+$/i.test(url.pathname)) {
+      req.resume();
+      log.push(`${method} ${url.pathname} (synthetic image)`);
+      res.writeHead(200, { 'content-type': 'image/png', 'content-length': PNG.length });
+      res.end(PNG);
       return;
     }
 

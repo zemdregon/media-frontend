@@ -226,6 +226,31 @@ export interface DueServerRow {
   last_full_ok: number | null;
 }
 
+/** The scheduling facts for one server, or null when the scheduler would skip it. */
+export async function dueServer(db: D1Database, serverId: string): Promise<DueServerRow | null> {
+  const all = await listSchedulableServers(db);
+  return all.find((s) => s.id === serverId) ?? null;
+}
+
+/** Run history, newest first, keyed by `(queued_at, id)` for stable cursor paging. */
+export function listRunsPage(
+  db: D1Database,
+  serverId: string,
+  after: [number, string] | undefined,
+  take: number,
+): Promise<RunRow[]> {
+  const where = after ? 'AND (queued_at < ? OR (queued_at = ? AND id < ?))' : '';
+  const binds = after ? [serverId, after[0], after[0], after[1], take] : [serverId, take];
+  return db
+    .prepare(
+      `SELECT ${RUN_COLUMNS} FROM sync_runs WHERE server_id = ? ${where}
+        ORDER BY queued_at DESC, id DESC LIMIT ?`,
+    )
+    .bind(...binds)
+    .all<RunRow>()
+    .then((r) => r.results);
+}
+
 /** Active and degraded servers with at least one enabled library (WF-2 preconditions). */
 export function listSchedulableServers(db: D1Database): Promise<DueServerRow[]> {
   return db

@@ -57,6 +57,7 @@ Item, user, library and server IDs of the throwaway Jellyfin and Emby containers
 | `items_page_with_people_field.json` | `GET /Items?...&Fields=People,ProviderIds` | `People` is returned inline in list queries |
 | `person_detail.json` | Person item | Person `ProviderIds`: empty on Jellyfin; `tmdb` and `imdb` (lowercase) on Emby |
 | `boxsets.json`, `boxset_members.json` | `IncludeItemTypes=BoxSet`, then `ParentId=<boxset>` | Collections and members |
+| `synthetic_items_library_movies_with_people.json` | Same request as `items_page_movies_0_2.json` | **Synthetic, not a recording.** The two recorded movie pages merged into one, with `People` grafted in from `items_page_with_people_field.json`. Used only by the E2E mock origin (`apps/e2e/mock-origin.mjs`) so one paged request returns every movie with credits |
 | `playbackinfo_mp4_directplay.json` | `POST /Items/{id}/PlaybackInfo` with a DeviceProfile | Direct play. Emby returns `DirectStreamUrl`; Jellyfin does not |
 | `playbackinfo_hevc_mkv_transcode.json` | Same, HEVC MKV with subtitles | `TranscodingUrl` (`master.m3u8`), subtitle `DeliveryUrl` (`Stream.vtt`) |
 | `playbackinfo_h264_mkv.json` | Same, H.264 in MKV | HLS remux or transcode decision |

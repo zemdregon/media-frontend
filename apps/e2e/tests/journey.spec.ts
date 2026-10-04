@@ -1,19 +1,18 @@
 /**
  * T2.8 journey: first-run setup and passkey sign-in through a virtual authenticator, register the
- * mock origin as a server through the UI, browse, open a title, and check accessibility (axe) in
- * both themes. One serial flow on one page, because the journey owns the database.
+ * mock origin as a server through the UI, run a real full sync against it, then browse, open a
+ * title, search, and check accessibility (axe) in both themes. One serial flow on one page,
+ * because the journey owns the database.
  *
- * Real: Worker, D1, sessions, passkey ceremonies, server registration against the mock origin,
- * the catalog read API and PATCH /me/preferences.
- * Mocked (support/catalog-mocks.ts, until workstream A merges): the sync-runs API only.
- * Temporary: with no sync yet, catalog rows are seeded straight into local D1 (seed-catalog.sql).
+ * Everything is real: Worker, D1, the sync queue consumer (wrangler dev runs it locally), sessions,
+ * passkey ceremonies, server registration and the sync itself against the mock origin (recorded
+ * Jellyfin responses, plus synthetic_* fixtures where the recordings have gaps). Nothing is mocked
+ * or seeded in the Worker; the catalog the pages show is the synced one.
  */
-import { execFileSync } from 'node:child_process';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { addVirtualAuthenticator } from '../support/authenticator';
-import { mockSyncApi } from '../support/catalog-mocks';
-import { BASE_URL, ORIGIN_URL, SEED_SQL, SETUP_TOKEN, STATE_DIR, WORKER_DIR } from '../support/env';
+import { BASE_URL, ORIGIN_URL, SETUP_TOKEN } from '../support/env';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -28,7 +27,6 @@ test.beforeAll(async ({ browser }) => {
   const context = await browser.newContext();
   page = await context.newPage();
   await addVirtualAuthenticator(page);
-  await mockSyncApi(page);
   page.on('request', (req) => {
     const url = req.url();
     if (!url.startsWith(BASE_URL) && !url.startsWith('data:') && !url.startsWith('blob:')) {
@@ -84,6 +82,11 @@ test('the operator registers the mock origin as a server', async () => {
   await page.getByLabel('Password').fill('not-a-real-password');
   await page.getByRole('button', { name: 'Add server' }).last().click();
   await expect(page.getByText('Mock Jellyfin is connected')).toBeVisible();
+  // Choose the libraries to index; the Collections view is not offered (movies and TV only).
+  await page.getByRole('checkbox', { name: /Movies/ }).click();
+  await page.getByRole('checkbox', { name: /Shows/ }).click();
+  await expect(page.getByRole('checkbox', { name: /Movies/ })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /Shows/ })).toBeChecked();
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(
     page.getByRole('article').getByRole('heading', { name: 'Mock Jellyfin' }),
@@ -99,32 +102,84 @@ test('the operator registers the mock origin as a server', async () => {
   await expectAccessible('servers');
 });
 
-test('sync status page shows the last run and outcome', async () => {
+interface RunsPage {
+  items: { id: string; status: string; type: string; trigger: string; added: number }[];
+  nextScheduled: number | null;
+}
+
+async function serverId(): Promise<string> {
+  const res = await page.request.get('/api/v1/admin/servers');
+  const servers = (await res.json()) as { id: string; name: string }[];
+  const found = servers.find((s) => s.name === 'Mock Jellyfin');
+  if (!found) throw new Error('Mock Jellyfin is not registered');
+  return found.id;
+}
+
+const runs = async (id: string) =>
+  (await (await page.request.get(`/api/v1/admin/servers/${id}/sync-runs`)).json()) as RunsPage;
+
+test('registration queued the first sync; a real full sync of the mock origin then succeeds', async () => {
+  const id = await serverId();
+  // WF-1: activation queued the first full sync (it ran before any library was enabled).
+  await expect
+    .poll(async () => (await runs(id)).items.at(-1)?.trigger, { timeout: 30_000 })
+    .toBe('schedule');
+  await expect
+    .poll(async () => (await runs(id)).items.every((r) => r.status === 'succeeded'), {
+      timeout: 60_000,
+    })
+    .toBe(true);
+
   await page.getByRole('link', { name: 'Sync status' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Sync status' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Mock Jellyfin' })).toBeVisible();
-  await expect(page.getByText('Last run')).toBeVisible();
   await expect(page.getByText('Next run')).toBeVisible();
+
+  // The operator triggers a full sync now, with the libraries enabled.
+  await page.getByRole('button', { name: 'Full re-index of Mock Jellyfin' }).click();
+  await expect
+    .poll(
+      async () => {
+        const first = (await runs(id)).items[0];
+        return first?.type === 'full' && first.trigger === 'manual' ? first.status : 'waiting';
+      },
+      { timeout: 90_000, intervals: [500, 1000, 2000] },
+    )
+    .toBe('succeeded');
+  const latest = (await runs(id)).items[0];
+  expect(latest?.added).toBeGreaterThan(0);
+  // A second trigger after completion is accepted; while active it would be refused (409).
+  await page.reload();
+  await expect(page.getByText('Succeeded')).toBeVisible();
+  await expect(page.getByText('Last run')).toBeVisible();
   await expectAccessible('sync status');
+
+  // The Worker really listed the origin: sign-in, libraries, item pages and box sets.
+  const log = await page.request.get(`${ORIGIN_URL}/__requests`);
+  const calls = (await log.json()) as string[];
+  expect(calls.some((c) => c.startsWith('GET /Items'))).toBe(true);
+  expect(calls.some((c) => c.includes('(no recording)'))).toBe(false);
 });
 
-test('TEMPORARY: seed catalog rows into local D1 until sync lands', () => {
-  execFileSync(
-    'pnpm',
-    [
-      'exec',
-      'wrangler',
-      'd1',
-      'execute',
-      'cinewren-local',
-      '--local',
-      '--persist-to',
-      STATE_DIR,
-      '--file',
-      SEED_SQL,
-    ],
-    { cwd: WORKER_DIR, stdio: 'inherit', env: { ...process.env, CI: '1' } },
+test('two simultaneous sync triggers: one is queued, the other refused with 409 SYNC_IN_PROGRESS', async () => {
+  const id = await serverId();
+  const post = () =>
+    page.request.post(`/api/v1/admin/servers/${id}/sync`, {
+      data: { type: 'full' },
+      headers: { origin: BASE_URL },
+    });
+  const results = await Promise.all([post(), post()]);
+  expect(results.map((r) => r.status()).sort()).toEqual([202, 409]);
+  const refused = results.find((r) => r.status() === 409);
+  expect(((await refused?.json()) as { error: { code: string } }).error.code).toBe(
+    'SYNC_IN_PROGRESS',
   );
+  // Let the accepted run finish so the catalog is stable for the pages below.
+  await expect
+    .poll(async () => (await runs(id)).items.every((r) => r.status === 'succeeded'), {
+      timeout: 90_000,
+    })
+    .toBe(true);
 });
 
 test('sign out, then sign in again with the passkey', async () => {
@@ -141,6 +196,7 @@ test('sign out, then sign in again with the passkey', async () => {
 test('home lists recently added titles', async () => {
   await expect(page.getByRole('heading', { level: 2, name: /Recently added/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /Night of the Living Dead, 1968/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Plan 9 from Outer Space/ })).toBeVisible();
   await expectAccessible('home');
 });
 
@@ -162,9 +218,9 @@ test('browse Movies with a filter, then open a title', async () => {
   await expect(
     page.getByRole('heading', { level: 1, name: 'Night of the Living Dead' }),
   ).toBeVisible();
-  await expect(page.getByLabel('Versions: 4K HDR, 1080p')).toBeVisible();
-  await expect(page.getByText('Available from 2 servers')).toBeVisible();
-  await expect(page.getByRole('table')).toContainText('Seedbox');
+  await expect(page.getByLabel(/^Versions: /)).toBeVisible();
+  await expect(page.getByText('Available from 1 server', { exact: true })).toBeVisible();
+  await expect(page.getByRole('table')).toContainText('Mock Jellyfin');
   await expectAccessible('title detail');
 });
 
@@ -173,7 +229,7 @@ test('series detail shows seasons and episodes', async () => {
   await page.getByRole('link', { name: /Dragnet/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Dragnet' })).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Season 1' })).toBeChecked();
-  await expect(page.getByRole('link', { name: /Episode 2/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Spike Episode 2/ })).toBeVisible();
   await expectAccessible('series detail');
 });
 
@@ -198,8 +254,10 @@ test('collections browse and a collection page', async () => {
     .click();
   await expect(page.getByRole('heading', { level: 1, name: 'Collections' })).toBeVisible();
   await expectAccessible('collections');
-  await page.getByRole('link', { name: 'Classic Horror' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Classic Horror' })).toBeVisible();
+  await page.getByRole('link', { name: 'Cinewren Spike Horror Collection' }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Cinewren Spike Horror Collection' }),
+  ).toBeVisible();
   await expectAccessible('collection page');
 });
 

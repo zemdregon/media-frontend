@@ -51,6 +51,10 @@ export const updateServerRequest = z
 
 export const updateLibraryRequest = z.object({ enabled: z.boolean() });
 
+/** `POST /admin/servers/{id}/sync` (FR-SYNC-002). */
+export const startSyncRequest = z.object({ type: z.enum(['full', 'incremental']) });
+export type StartSyncRequest = z.input<typeof startSyncRequest>;
+
 export type RegisterServerRequest = z.input<typeof registerServerRequest>;
 export type UpdateServerRequest = z.input<typeof updateServerRequest>;
 

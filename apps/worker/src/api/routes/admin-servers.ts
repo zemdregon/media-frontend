@@ -1,5 +1,13 @@
 import { Hono } from 'hono';
-import { registerServerRequest, updateLibraryRequest, updateServerRequest } from '@cinewren/shared';
+import {
+  pageQuery,
+  registerServerRequest,
+  startSyncRequest,
+  updateLibraryRequest,
+  updateServerRequest,
+} from '@cinewren/shared';
+import { parseQuery } from '../../catalog/service';
+import * as sync from '../../sync/api';
 import { startServerRemoval } from '../../servers/purge';
 import * as servers from '../../servers/service';
 import type { AppEnv } from '../context';
@@ -21,6 +29,12 @@ export const adminServers = new Hono<AppEnv>()
   .delete('/servers/:id', async (c) => c.json(await startServerRemoval(c, c.req.param('id')), 202))
   .post('/servers/:id/validate', async (c) => c.json(await servers.validate(c, c.req.param('id'))))
   .get('/servers/:id/libraries', async (c) => c.json(await servers.libraries(c, c.req.param('id'))))
+  .post('/servers/:id/sync', async (c) =>
+    c.json(await sync.trigger(c, c.req.param('id'), await parseJson(c, startSyncRequest)), 202),
+  )
+  .get('/servers/:id/sync-runs', async (c) =>
+    c.json(await sync.listRuns(c, c.req.param('id'), parseQuery(c, pageQuery))),
+  )
   .patch('/libraries/:id', async (c) => {
     const { enabled } = await parseJson(c, updateLibraryRequest);
     return c.json(await servers.setLibraryEnabled(c, c.req.param('id'), enabled));
