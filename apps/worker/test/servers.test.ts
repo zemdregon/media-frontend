@@ -18,6 +18,12 @@ import {
   type CallOptions,
 } from './auth-harness';
 import {
+  BASE as EMBY_BASE,
+  auth as embyAuth,
+  happy as embyHappy,
+  oldVersionInfo as embyOldVersion,
+} from './providers/emby-routes';
+import {
   createFakeOrigin,
   type FakeOrigin,
   type FakeOriginOptions,
@@ -279,14 +285,22 @@ describe('WF-1: register a server (FR-SRV-001, FR-SRV-002, FR-SRV-003)', () => {
       await expectRefused(res, 400, 'VALIDATION_FAILED');
     });
 
-    it('rejects a provider that has no adapter yet, without contacting it', async () => {
-      const err = await expectRefused(
-        await register({ ...BODY, type: 'emby' }),
-        400,
-        'VALIDATION_FAILED',
-      );
-      expect(err.details).toEqual({ fields: ['type'] });
-      expect(current.origin.calls).toHaveLength(0);
+    it('accepts type emby (IR-004, T4.1): validates against 4.10 and discovers its libraries', async () => {
+      current.origin = createFakeOrigin('emby', embyHappy);
+      const res = await register({ ...BODY, type: 'emby', baseUrl: EMBY_BASE });
+      expect(res.status).toBe(201);
+      const server = await json<{ libraries: { name: string }[] } & Record<string, unknown>>(res);
+      expect(server).toMatchObject({ type: 'emby', version: '4.10.1.0', libraryCount: 2 });
+      expect(server.libraries.map((l) => l.name)).toEqual(['Movies', 'Shows']);
+      expect(current.origin.unmatched).toEqual([]);
+    });
+
+    it('emby: refuses a 4.8 server at the version check', async () => {
+      current.origin = createFakeOrigin('emby', [embyOldVersion, embyAuth]);
+      const res = await register({ ...BODY, type: 'emby', baseUrl: EMBY_BASE });
+      const err = await expectRefused(res, 422, 'SERVER_VALIDATION_FAILED');
+      expect(err.details).toMatchObject({ check: 'version', reason: 'version_too_old' });
+      expect(await count('servers')).toBe(0);
     });
 
     it('rejects a token credential for Jellyfin: it needs a username and password', async () => {

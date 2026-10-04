@@ -4,7 +4,7 @@
 // Jellyfin 12.1 and Emby 4.10. Inline routes marked "synthetic" cover cases no recording has.
 import { must } from './util';
 import { describe, expect, it } from 'vitest';
-import { embyPlayback } from '../../src/providers/emby';
+import { embyProvider } from '../../src/providers/emby';
 import { jellyfinProvider } from '../../src/providers/jellyfin';
 import {
   deviceProfile,
@@ -79,9 +79,9 @@ describe('session credentials (ADR-0013)', () => {
 
   it('Emby mints under a pooled DeviceId and refuses to mint without a lease', async () => {
     const { origin, ctx } = context('emby', [{ fixture: 'auth_session_A.json' }]);
-    expect(embyPlayback.streamDevices).toBe('pooled');
-    await expect(mint(embyPlayback, ctx)).rejects.toMatchObject({ code: 'PROTOCOL' });
-    const cred = await mint(embyPlayback, ctx, { slot: 3 });
+    expect(embyProvider.streamDevices).toBe('pooled');
+    await expect(mint(embyProvider, ctx)).rejects.toMatchObject({ code: 'PROTOCOL' });
+    const cred = await mint(embyProvider, ctx, { slot: 3 });
     expect(cred.deviceId).toBe('cinewren-ps-03');
     expect(cred.accountId).toBe(EMBY_USER);
     expect(origin.calls[0]?.headers.get('authorization')).toContain('DeviceId="cinewren-ps-03"');
@@ -273,7 +273,7 @@ describe('Jellyfin negotiation: token-gated HLS only (owner decision 2026-10-04)
 describe('Emby negotiation', () => {
   it('MP4: direct play from DirectStreamUrl (token-gated original file), carrier api_key', async () => {
     const { origin, ctx } = context('emby', [{ fixture: 'playbackinfo_mp4_directplay.json' }]);
-    const s = await embyPlayback.negotiatePlayback(ctx, {
+    const s = await embyProvider.negotiatePlayback(ctx, {
       providerItemId: '10',
       providerVersionId: 'mediasource_10',
       caps: CAPS,
@@ -295,7 +295,7 @@ describe('Emby negotiation', () => {
 
   it('H.264 in MKV: HLS with the video copied', async () => {
     const { ctx } = context('emby', [{ fixture: 'playbackinfo_h264_mkv.json' }]);
-    const s = await embyPlayback.negotiatePlayback(ctx, {
+    const s = await embyProvider.negotiatePlayback(ctx, {
       providerItemId: '11',
       providerVersionId: 'mediasource_11',
       caps: CAPS,
@@ -307,7 +307,7 @@ describe('Emby negotiation', () => {
 
   it('HEVC in MKV: a transcode (Emby names only the container, the codec change shows it)', async () => {
     const { ctx } = context('emby', [{ fixture: 'playbackinfo_hevc_mkv_transcode.json' }]);
-    const s = await embyPlayback.negotiatePlayback(ctx, {
+    const s = await embyProvider.negotiatePlayback(ctx, {
       providerItemId: '12',
       providerVersionId: 'mediasource_12',
       caps: CAPS,
@@ -373,7 +373,7 @@ describe('telemetry (FR-PLAY-009)', () => {
 
   it('Emby stop goes to the same endpoint', async () => {
     const { origin, ctx } = context('emby', [{ fixture: 'sessions_playing_stopped.json' }]);
-    await embyPlayback.reportPlayback(ctx, embyCred, {
+    await embyProvider.reportPlayback(ctx, embyCred, {
       type: 'stop',
       positionMs: 6000,
       stream: {
