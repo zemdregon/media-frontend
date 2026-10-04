@@ -194,6 +194,13 @@ Counts: critical 0, high 2, medium 3, low 4, info 11. Fixed: 6 (both highs, two 
 
 ## 8. Items that need owner acceptance
 
+**Owner decisions, 2026-10-04:**
+- SR-04: fix (require a fresh login to add a passkey).
+- SR-07: fix (build the rotation job before v1.0).
+- SR-09: **accepted** for v1.0.
+- SR-11: **accepted**.
+- SR-20: **accepted**.
+
 None of these blocks T5.8: no critical or high finding is open. They are listed so the owner can accept them or ask for them to be fixed before v1.0.
 
 | Item | Recommendation | Agent proposal |
