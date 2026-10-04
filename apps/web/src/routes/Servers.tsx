@@ -35,6 +35,10 @@ export function Servers() {
     e.preventDefault();
     navigate('/servers/conflicts');
   };
+  const goUsers = (e: MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    navigate('/servers/users');
+  };
   const [servers, setServers] = useState<Server[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -63,6 +67,9 @@ export function Servers() {
           </a>
           <a className="button button-outline" href="/servers/conflicts" onClick={goConflicts}>
             Match conflicts
+          </a>
+          <a className="button button-outline" href="/servers/users" onClick={goUsers}>
+            Users and invites
           </a>
           <a className="button button-outline" href="/servers/audit" onClick={goAudit}>
             Audit log

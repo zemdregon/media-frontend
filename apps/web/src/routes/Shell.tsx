@@ -39,6 +39,7 @@ const Settings = lazy(() => import('./Settings').then((m) => ({ default: m.Setti
 const Servers = lazy(() => import('./Servers').then((m) => ({ default: m.Servers })));
 const Conflicts = lazy(() => import('./Conflicts').then((m) => ({ default: m.Conflicts })));
 const AuditLog = lazy(() => import('./AuditLog').then((m) => ({ default: m.AuditLog })));
+const Users = lazy(() => import('./Users').then((m) => ({ default: m.Users })));
 const SyncStatus = lazy(() => import('./SyncStatus').then((m) => ({ default: m.SyncStatus })));
 
 interface NavItem {
@@ -238,6 +239,7 @@ function Routes({
   if (operator && path === '/servers/sync') return <SyncStatus />;
   if (operator && path === '/servers/audit') return <AuditLog />;
   if (operator && path === '/servers/conflicts') return <Conflicts />;
+  if (operator && path === '/servers/users') return <Users />;
   const item = matchPath('/items/:id', path);
   if (item?.id) return <ItemDetail key={item.id} id={item.id} operator={operator} />;
   const watch = matchPath('/watch/:id', path);

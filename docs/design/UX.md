@@ -203,7 +203,7 @@ Operator-only items (Servers, and the Users, Sync and Health, Match conflicts an
 | Series detail | Not yet designed | Seasons and episodes | Title header, season tabs, episode rows | FR-CAT-005, FR-CAT-009 |
 | Player overlay | Not yet designed | Watch | Video, controls, track menus, version switch, error panel | FR-PLAY-001 to FR-PLAY-006, FR-PLAY-009, FR-PROG-001 |
 | Settings | Not yet designed | Theme, passkeys, sign out | Segmented selector, passkey list | NFR-UX-001, FR-USR-006 |
-| Operator: users and invites | Not yet designed | Manage people and access | Table, invite dialog, grants checklist | FR-USR-004, FR-USR-005, FR-USR-007, FR-USR-008 |
+| Operator: users and invites | Implemented at `/servers/users` (agent decision 2026-10-04; see divergence (p)) | Manage people and access | Table, invite dialog, grants checklist | FR-USR-004, FR-USR-005, FR-USR-007, FR-USR-008 |
 | Operator: sync status | Not yet designed | Sync outcomes per server | Status table, run history | FR-OPS-003, FR-SYNC-002, FR-SYNC-006 |
 | Operator: health | Not yet designed | Reachability history | Status dots, probe list | FR-OPS-001, FR-OPS-004 |
 | Operator: match conflicts | Not yet designed | Resolve wrong merges | Conflict card pair, merge and split actions | FR-CAT-010, FR-CAT-007 |
@@ -292,6 +292,7 @@ Operator-facing copy may name server types, status codes and counts. Viewer-faci
 | (m) | Continue watching shows progress | No progress data until M3 | Show a quiet placeholder | agent decision 2026-10-04. Superseded in M3 (T3.5): hero cards with progress; the section is not rendered when empty |
 | (n) | Genre filter | Input with dropdown menu | Text input with suggestions | agent decision 2026-10-04 |
 | (o) | Copies table with play actions | No actions until M3 (FR-CAT-013, FR-PLAY-005) | Plain table without play actions | agent decision 2026-10-04. Superseded in M3 (T3.7): radiogroup, Play and manual choice |
+| (p) | Not on the canvas; the wireframe row in section 5 lists Edit access, Re-enrol link, Disable and Delete for every person, and "tabs" | People and Invites use the segmented selector (as for season tabs). Edit access is omitted for operators, who see every enabled library (FR-USR-005; the API returns `GRANTS_NOT_APPLICABLE`). Re-enrol link and Disable are omitted for people still `invited`, whose link is revoked from Invites. Disable becomes Enable for a disabled person. The last-operator protection (BR-8) is applied in the UI only when every person is loaded; the server's `LAST_OPERATOR` reason is shown otherwise | agent decision 2026-10-04 |
 
 Identity of people and collections follows [ADR-0015](../adr/0015-people-and-collection-identity.md): the UI shows one person or collection even when several servers supply it, with no server label on person or collection pages.
 
