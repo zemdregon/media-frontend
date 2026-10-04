@@ -6,6 +6,7 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   {
     ignores: [
+      '.claude/**',
       '**/dist/**',
       '**/.wrangler/**',
       '**/node_modules/**',
