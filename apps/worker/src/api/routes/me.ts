@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import {
   passkeyOptionsRequest,
   passkeyVerifyRequest,
+  reauthVerifyRequest,
   updatePreferencesRequest,
   type Me,
 } from '@cinewren/shared';
@@ -9,6 +10,8 @@ import {
   addPasskeyOptions,
   addPasskeyVerify,
   ownPasskeys,
+  reauthOptions,
+  reauthVerify,
   removePasskey,
 } from '../../auth/passkeys';
 import { currentUser } from '../../auth/sessions';
@@ -31,6 +34,10 @@ export const me = new Hono<AppEnv>()
     const { theme } = await parseJson(c, updatePreferencesRequest);
     return c.json(await setTheme(c, theme));
   })
+  .post('/reauth/options', async (c) => c.json(await reauthOptions(c)))
+  .post('/reauth/verify', async (c) =>
+    c.json(await reauthVerify(c, await parseJson(c, reauthVerifyRequest))),
+  )
   .get('/passkeys', async (c) => c.json(await ownPasskeys(c)))
   .post('/passkeys/options', async (c) => {
     // `label` is accepted here for LLD-API compatibility; it is stored from the verify body.

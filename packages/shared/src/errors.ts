@@ -1,6 +1,7 @@
 /** Error codes and their HTTP status, per LLD-ERR (error taxonomy). */
 export const ERROR_STATUS = {
   AUTH_REQUIRED: 401,
+  REAUTH_REQUIRED: 401,
   FORBIDDEN: 403,
   CSRF_REJECTED: 403,
   WEBAUTHN_VERIFICATION_FAILED: 400,

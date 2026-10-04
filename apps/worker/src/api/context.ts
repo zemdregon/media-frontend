@@ -11,6 +11,8 @@ export interface AuthContext {
   theme: 'system' | 'dark' | 'light';
   sessionIdHash: string;
   passkeyId: string | null;
+  /** When this session last completed a fresh passkey ceremony (SR-04), or null. */
+  reauthAt: number | null;
 }
 
 /** Hono environment shared by every route and middleware. */

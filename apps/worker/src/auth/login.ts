@@ -28,6 +28,8 @@ export async function loginVerify(
   const config = c.get('config');
   const logger = c.get('logger');
   const challenge = await takeChallenge(db, body.challengeId, ['login'], 401);
+  // A user-bound `login` challenge was issued for re-authentication (SR-04), not for sign-in.
+  if (challenge.user_id !== null) throw ceremonyFailed(401);
   const passkey = await findActivePasskey(db, body.response.id);
   if (!passkey) {
     logger.info('auth.login.failed', { reason: 'unknown_credential' });

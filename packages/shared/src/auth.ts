@@ -38,6 +38,8 @@ export const redeemVerifyRequest = z.object({
   label: passkeyLabel.optional(),
 });
 export const loginVerifyRequest = z.object({ challengeId, response: credentialJson });
+/** `POST /api/v1/me/reauth/verify` (SR-04): an assertion from one of the caller's own passkeys. */
+export const reauthVerifyRequest = loginVerifyRequest;
 export const passkeyOptionsRequest = z.object({ label: passkeyLabel.optional() });
 export const passkeyVerifyRequest = z.object({
   challengeId,
@@ -75,6 +77,11 @@ export interface UserSummary {
 /** `GET /api/v1/me`. */
 export interface Me extends UserSummary {
   preferences: { theme: ThemePreference };
+}
+
+/** `POST /api/v1/me/reauth/verify`: adding a passkey is allowed until `freshUntil` (epoch ms). */
+export interface ReauthResult {
+  freshUntil: number;
 }
 
 export interface PasskeySummary {

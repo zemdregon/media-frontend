@@ -1523,3 +1523,37 @@ a.button-outline {
   padding-top: 18px;
   border-top: 1px solid var(--cw-border);
 }
+
+/* ---- Settings: passkey list (UX §5, FR-USR-006) ---- */
+
+.passkey-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--cw-border);
+  border-radius: var(--cw-r-poster-title);
+  background: var(--cw-surface-nav);
+}
+
+.passkey-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--cw-border-row);
+}
+
+.passkey-row:last-child {
+  border-bottom: 0;
+}
+
+.passkey-row p {
+  margin: 0;
+}
+
+.passkey-name {
+  color: var(--cw-text-2);
+  font-weight: 600;
+}

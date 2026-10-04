@@ -183,6 +183,16 @@ export async function login(auth: VirtualAuthenticator, which = 0, origin = ORIG
   return call('POST', '/api/v1/auth/login/verify', { body: { challengeId, response } });
 }
 
+/** Re-authentication (SR-04): an assertion from `auth`'s credential `which` on this session. */
+export async function reauth(cookie: string, auth: VirtualAuthenticator, which = 0) {
+  const optRes = await call('POST', '/api/v1/me/reauth/options', { cookie });
+  expect(optRes.status).toBe(200);
+  const { challengeId, options } =
+    await json<Ceremony<PublicKeyCredentialRequestOptionsJSON>>(optRes);
+  const response = await auth.authenticate(options, ORIGIN, which);
+  return call('POST', '/api/v1/me/reauth/verify', { cookie, body: { challengeId, response } });
+}
+
 export async function addPasskey(cookie: string, auth: VirtualAuthenticator) {
   const optRes = await call('POST', '/api/v1/me/passkeys/options', { cookie });
   expect(optRes.status).toBe(200);

@@ -37,10 +37,12 @@ it('shows the account button and signs out from Settings', async () => {
   const fetchMock = mockFetch((url) =>
     url.endsWith('/auth/logout')
       ? [204, null]
-      : [
-          200,
-          { id: 'u1', displayName: 'Olivia', role: 'operator', preferences: { theme: 'system' } },
-        ],
+      : url.endsWith('/me/passkeys')
+        ? [200, []]
+        : [
+            200,
+            { id: 'u1', displayName: 'Olivia', role: 'operator', preferences: { theme: 'system' } },
+          ],
   );
   render(<App />);
   expect(await screen.findByRole('link', { name: 'Account, Olivia' })).toBeTruthy();

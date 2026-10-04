@@ -88,7 +88,8 @@ CREATE TABLE sessions (                     -- NFR-SEC-007
   passkey_id TEXT REFERENCES passkey_credentials(id) ON DELETE CASCADE,  -- removing a passkey ends its sessions
   created_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL,
   idle_expires_at INTEGER NOT NULL, absolute_expires_at INTEGER NOT NULL,
-  user_agent_hint TEXT);                     -- coarse "Firefox on macOS" label for the user's session list
+  user_agent_hint TEXT,                      -- coarse "Firefox on macOS" label for the user's session list
+  reauth_at INTEGER);                        -- migration 0005: last fresh passkey ceremony; NULL once spent (SR-04, LLD-TOKEN)
 CREATE INDEX sess_user ON sessions(user_id);
 CREATE INDEX sess_expiry ON sessions(idle_expires_at);
 
@@ -377,7 +378,8 @@ Conventions (IR-001):
 | GET | `/api/v1/me` | user | — | `{id, displayName, role, preferences:{theme}}` | 401 | FR-USR-003, NFR-UX-001 |
 | PATCH | `/api/v1/me/preferences` | user | `{theme:"system"\|"dark"\|"light"}` | `{theme}`. Writes `users.theme_preference`; idempotent; not audited (it is not an operator mutation). | 400 `VALIDATION_FAILED`, 401 | NFR-UX-001 |
 | GET | `/api/v1/me/passkeys` | user | — | `[{id, label, createdAt, lastUsedAt, backedUp}]` | — | FR-USR-006 |
-| POST | `/api/v1/me/passkeys/options` · `/verify` | user | `{label?}` · `{challengeId, response, label?}` | `{challengeId, options}` · `201 {passkey}` | 400 | FR-USR-006 |
+| POST | `/api/v1/me/reauth/options` · `/verify` | user | — · `{challengeId, response}` | `{challengeId, options}` (an assertion challenge whose `allowCredentials` are the caller's own passkeys) · `{freshUntil}`. Verify requires a user-verified assertion from one of the caller's own passkeys for a challenge issued to the caller, then sets `sessions.reauth_at = now` on the current session. | 400 `WEBAUTHN_VERIFICATION_FAILED` (another user's passkey, another user's or a sign-in challenge, bad signature; the session is kept) | FR-USR-006 (SR-04) |
+| POST | `/api/v1/me/passkeys/options` · `/verify` | user | `{label?}` · `{challengeId, response, label?}` | `{challengeId, options}` · `201 {passkey}`. Both need `now − sessions.reauth_at ≤ 5 min` *(proposed)*; a successful verify clears `reauth_at` (single use). Sessions start fresh, because setup, invite redemption and login are all user-verified passkey ceremonies. | 400, 401 `REAUTH_REQUIRED` | FR-USR-006 |
 | PATCH / DELETE | `/api/v1/me/passkeys/{id}` | user | `{label}` / — | `{passkey}` / `204` (its sessions end) | 404, 409 `LAST_PASSKEY` | FR-USR-006 |
 | GET / DELETE | `/api/v1/me/sessions` · `/{id}` | user | — | list / `204` | 404 | FR-USR-006 |
 | GET | `/api/v1/home` | user | — | `{recentlyAdded:[ItemCard], continueWatching:[ItemCard+progress]}` | — | FR-CAT-008 |
@@ -981,7 +983,8 @@ These are *not* envelope-encrypted. They are random secrets that are **hashed** 
 | Invite (signup) | The operator creates it. One batch inserts `users(status='invited', role)`, `library_grants` and `invites(token_hash, expires_at=now+7d)`. | Redeem: `token_hash` matches, `redeemed_at IS NULL AND revoked_at IS NULL AND expires_at > now`. | **Redeem**, one batch: CAS `UPDATE invites SET redeemed_at=now WHERE id=? AND redeemed_at IS NULL AND revoked_at IS NULL AND expires_at>now`, insert the passkey, set the user `active`, create the session. The redeem guard (agent decision 2026-10-04): if the CAS changes 0 rows, the batch inserts NULL into a NOT NULL column, aborting and rolling back atomically. **Revoke or expire:** the invited user is deleted (FRD rule), which cascades to grants and the invite. |
 | Invite (reenroll / CLI recovery) | `POST …/reenroll` or the recovery command (TDD §5.1); 24 h *(proposed)*. | As above. | Redeem adds a passkey to the existing user and creates a session; existing passkeys are kept. Expiry or revocation affects only the invite. |
 | Setup | — (token is the `SETUP_TOKEN` secret) | Constant-time compare **and** no operator exists. | Inserting the first operator uses `INSERT … SELECT … WHERE NOT EXISTS (SELECT 1 FROM users WHERE role='operator')`, so two concurrent setups cannot both succeed. |
-| WebAuthn challenge | On `*/options`, with a 5 min TTL *(proposed)* and a purpose binding (and, where relevant, the invite or user). | On `*/verify`, the row is deleted **first** (`DELETE … RETURNING`), then checked for expiry and purpose. That makes it single-use even when verification fails. | Deleted on use; the sweep removes expired rows. |
+| Fresh authentication (SR-04) | `sessions.reauth_at` is set to `created_at` when setup, invite redemption or login creates the session, and to `now` by `POST /me/reauth/verify`. | Adding a passkey (`/me/passkeys/options` and `/verify`) requires `now − reauth_at ≤ 5 min` *(proposed)*, otherwise 401 `REAUTH_REQUIRED`. | A successful add-passkey verify clears it with a compare-and-set (`UPDATE … SET reauth_at = NULL WHERE id_hash = ? AND reauth_at >= now − 5 min`), so each fresh authentication adds at most one passkey, even under concurrent requests. A failed registration does not spend it. Removing a passkey is not gated: it only reduces access, and the last passkey cannot be removed. |
+| WebAuthn challenge | On `*/options`, with a 5 min TTL *(proposed)* and a purpose binding (and, where relevant, the invite or user). Re-authentication challenges use purpose `login` bound to the user (`user_id` set), so the purpose CHECK needs no table rebuild; login verify refuses a user-bound challenge and re-auth verify refuses an unbound one. | On `*/verify`, the row is deleted **first** (`DELETE … RETURNING`), then checked for expiry and purpose. That makes it single-use even when verification fails. | Deleted on use; the sweep removes expired rows. |
 | Passkey sign count | Stored at registration. | On login, if both the stored and the new count are non-zero and the new count is ≤ the stored one, the login is rejected and logged as `auth.passkey.counter_regression` (a possible cloned authenticator). Many synced passkeys always report 0, which is accepted. | — |
 
 `sweepAuth()` runs on the 5-minute tick. It deletes expired challenges and sessions, and for each signup invite past `expires_at` and not redeemed it deletes the invited user (cascade). It runs in chunks of 500 *(proposed)*.
@@ -1114,6 +1117,7 @@ These come from the [security review](../reports/2026-security-review.md) and br
 - **`sweepAuth` is implemented** (`db/auth.ts`) as its own task on the five-minute tick, in chunks of 500, at most 20 chunks per step per tick.
 - **Artwork cache key (ADR-0012).** The key is `entity/id/slot/server/tag`, and an image is stored only under the key of the source that supplied it, so equal tags on two servers never share an entry.
 - **Per-user limits (TDD-D5).** Writes under `/api/v1/me/` count against `RL_MUTATION`.
+- **Fresh authentication to add a passkey (SR-04; owner decision 2026-10-04).** See "Fresh authentication" in the table above and `/me/reauth/*` in LLD-API. Migration `0005_session_reauth.sql` adds the nullable `sessions.reauth_at` (expand-only), so sessions created before it must re-authenticate before adding a passkey.
 
 ## LLD-ERR — Error handling, retries, idempotency & concurrency
 
@@ -1126,6 +1130,7 @@ These come from the [security review](../reports/2026-security-review.md) and br
 | `CSRF_REJECTED` | 403 | State-changing request whose `Origin` is not `APP_ORIGIN` (NFR-SEC-007). |
 | `WEBAUTHN_VERIFICATION_FAILED` | 400 / 401 | Challenge missing, expired or reused; origin or RP ID mismatch; bad signature; unknown credential; disabled user. One generic message. |
 | `INVITE_INVALID` | 404 | Unknown, expired, revoked or redeemed invite. These are indistinguishable on purpose. |
+| `REAUTH_REQUIRED` | 401 | Adding a passkey without a fresh authentication on this session: no `reauth_at`, older than 5 min *(proposed)*, or already spent on another passkey (FR-USR-006, SR-04). The session stays valid; the SPA runs `POST /me/reauth/*` ("Confirm it's you") and retries. It does not redirect to `/login`. |
 | `LAST_PASSKEY` | 409 | FR-USR-006. |
 | `INVITE_ALREADY_REDEEMED` | 409 | Revoking a used invite. |
 | `MIGRATIONS_PENDING` | 503 | Worker newer than the applied schema (TDD §9.3). |

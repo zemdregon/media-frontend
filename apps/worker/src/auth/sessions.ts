@@ -14,6 +14,17 @@ import { randomToken, sha256Hex } from './tokens';
 /** `__Host-` pins the cookie to this host, `Path=/` and `Secure` (TDD §5.1). */
 export const SESSION_COOKIE = '__Host-cw_session';
 const SLIDE_INTERVAL_MS = 3_600_000;
+/** How long a fresh authentication allows adding a passkey (SR-04; 5 min, proposed). */
+export const REAUTH_WINDOW_MS = 300_000;
+
+export function reauthRequired(): AppError {
+  return new AppError('REAUTH_REQUIRED', "Confirm it's you with a passkey you already have.");
+}
+
+/** True when the session completed a passkey ceremony within `REAUTH_WINDOW_MS` of `now`. */
+export function isFresh(reauthAt: number | null, now: number): boolean {
+  return reauthAt !== null && reauthAt <= now && now - reauthAt <= REAUTH_WINDOW_MS;
+}
 
 /** Coarse "Firefox on macOS" label for the user's own session list; never the raw UA. */
 export function userAgentHint(ua: string | undefined): string | null {
@@ -119,6 +130,7 @@ export const requireSession = createMiddleware<AppEnv>(async (c, next) => {
     theme: session.theme_preference,
     sessionIdHash: idHash,
     passkeyId: session.passkey_id,
+    reauthAt: session.reauth_at,
   });
   c.set('logger', c.get('logger').child({ user_id: session.user_id }));
   await next();
