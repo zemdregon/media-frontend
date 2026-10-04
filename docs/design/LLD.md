@@ -55,7 +55,7 @@ erDiagram
 ```sql
 CREATE TABLE users (                        -- created only by setup or invite redemption (FR-USR-002)
   id TEXT PRIMARY KEY,
-  display_name TEXT NOT NULL UNIQUE COLLATE NOCASE,   -- the only personal label; no email is collected (NFR-PRIV-001)
+  display_name TEXT NOT NULL UNIQUE COLLATE NOCASE,   -- 1–64 chars after trimming, unique case-insensitively; the only personal label; no email is collected (NFR-PRIV-001)
   role TEXT NOT NULL CHECK (role IN ('operator','viewer')),
   status TEXT NOT NULL CHECK (status IN ('invited','active','disabled')),  -- 'deleted' = row removed
   theme_preference TEXT NOT NULL DEFAULT 'system' CHECK (theme_preference IN ('system','dark','light')),  -- NFR-UX-001; owner decision Q-8; the only stored preference
@@ -353,7 +353,7 @@ Migrations follow TDD §3: forward-only, expand → migrate → contract. Every 
 
 Conventions (IR-001):
 - JSON over HTTPS. Every response has an `X-Request-Id` header, taken from `cf-ray` plus a ULID.
-- Every route requires a valid session cookie (FR-USR-001; TDD §5.1). The exceptions are the **public** routes marked *public* below: health, setup, invite redemption and login. Operator routes live under `/api/v1/admin/*`, and the role is checked on every request (FR-USR-003).
+- Every route requires a valid session cookie (FR-USR-001; TDD §5.1). The exceptions are the **public** routes marked *public* below: health, setup, invite redemption and login. Operator routes live under `/api/v1/admin/*`, and the role is checked on every request (FR-USR-003). Every unknown `/api/*` route returns 401 `AUTH_REQUIRED` when there is no session, and 404 `NOT_FOUND` with a session (agent decision 2026-10-04).
 - State-changing requests must carry `Origin: <APP_ORIGIN>` (CSRF, NFR-SEC-007), or they get 403 `CSRF_REJECTED`. Public auth routes are rate limited per IP (NFR-SEC-004).
 - A resource the caller may not see returns `404 NOT_FOUND`, never 403, so its existence is not disclosed (BR-1, NFR-SEC-002).
 - Mutating requests accept an `Idempotency-Key` header (LLD-ERR); it is required on `POST /play`.
@@ -366,7 +366,7 @@ Conventions (IR-001):
 | GET | `/api/v1/admin/status` | operator | — | `{db:"ok"\|"error", appVersion, schemaApplied, schemaRequired, queueBacklog?, serversByStatus, keyVersionsInUse}` | — | FR-OPS-007, TDD §9 |
 | GET | `/api/v1/setup` | *public* | — | `{available:boolean}` (false once any operator exists) | — | FR-USR-002 |
 | POST | `/api/v1/setup/options` | *public* | `{setupToken, displayName}` | `{challengeId, options}` (WebAuthn creation options) | 404 `NOT_FOUND` (setup disabled and invalid token are indistinguishable), 429 | FR-USR-002 |
-| POST | `/api/v1/setup/verify` | *public* | `{setupToken, challengeId, response}` | `201 {user}` + session cookie | 404 `NOT_FOUND` (same for disabled setup and invalid token), 400 `WEBAUTHN_VERIFICATION_FAILED`, 429 | FR-USR-002, IR-006 |
+| POST | `/api/v1/setup/verify` | *public* | `{setupToken, challengeId, response, displayName}` | `201 {user}` + session cookie | 404 `NOT_FOUND` (same for disabled setup and invalid token), 400 `WEBAUTHN_VERIFICATION_FAILED`, 429 | FR-USR-002, IR-006 |
 | POST | `/api/v1/invites/inspect` | *public* | `{token}` | `{kind, role, displayName, expiresAt}` | 404 `INVITE_INVALID` (unknown, expired, revoked or used: one code, no oracle), 429 | FR-USR-002 |
 | POST | `/api/v1/invites/redeem/options` | *public* | `{token}` | `{challengeId, options}` (WebAuthn `user.name` = the invited display name) | 404 `INVITE_INVALID`, 429 | FR-USR-002, FR-USR-007 |
 | POST | `/api/v1/invites/redeem/verify` | *public* | `{token, challengeId, response}` | `201 {user}` + session cookie. Signup: the user goes from `invited` to `active`; reenroll: a passkey is added. | 404, 400 `WEBAUTHN_VERIFICATION_FAILED`, 429 | FR-USR-002, FR-USR-005, FR-USR-007 |
@@ -376,7 +376,7 @@ Conventions (IR-001):
 | GET | `/api/v1/me` | user | — | `{id, displayName, role, preferences:{theme}}` | 401 | FR-USR-003, NFR-UX-001 |
 | PATCH | `/api/v1/me/preferences` | user | `{theme:"system"\|"dark"\|"light"}` | `{theme}`. Writes `users.theme_preference`; idempotent; not audited (it is not an operator mutation). | 400 `VALIDATION_FAILED`, 401 | NFR-UX-001 |
 | GET | `/api/v1/me/passkeys` | user | — | `[{id, label, createdAt, lastUsedAt, backedUp}]` | — | FR-USR-006 |
-| POST | `/api/v1/me/passkeys/options` · `/verify` | user | `{label?}` · `{challengeId, response}` | `{challengeId, options}` · `201 {passkey}` | 400 | FR-USR-006 |
+| POST | `/api/v1/me/passkeys/options` · `/verify` | user | `{label?}` · `{challengeId, response, label?}` | `{challengeId, options}` · `201 {passkey}` | 400 | FR-USR-006 |
 | PATCH / DELETE | `/api/v1/me/passkeys/{id}` | user | `{label}` / — | `{passkey}` / `204` (its sessions end) | 404, 409 `LAST_PASSKEY` | FR-USR-006 |
 | GET / DELETE | `/api/v1/me/sessions` · `/{id}` | user | — | list / `204` | 404 | FR-USR-006 |
 | GET | `/api/v1/home` | user | — | `{recentlyAdded:[ItemCard], continueWatching:[ItemCard+progress]}` | — | FR-CAT-008 |
@@ -408,7 +408,7 @@ Conventions (IR-001):
 | GET | `/api/v1/admin/metrics` | operator | `window=24h\|7d` | sync durations/errors per server, play outcomes, mode distribution | — | NFR-OBS-002 |
 | GET | `/api/v1/admin/users` | operator | `cursor` | `Page<User>` with passkey count and last sign-in | — | FR-USR-008 |
 | POST | `/api/v1/admin/invites` | operator | `{displayName, role, libraryIds?}` (`libraryIds` omitted = all enabled; ignored for operators) | `201 {id, userId, link:"https://<host>/invite#t=<token>", expiresAt}`. In one batch this creates the user in state `invited`, their grants and the invite. The token is returned **once** and only its hash is stored. The operator delivers the link; Cinewren sends no email. | 400, 409 `DISPLAY_NAME_TAKEN` | FR-USR-002, FR-USR-004, FR-USR-005 |
-| GET | `/api/v1/admin/invites` | operator | `status=open\|redeemed\|expired\|revoked` | `Page<Invite>` (never the token) | — | FR-USR-004 |
+| GET | `/api/v1/admin/invites` | operator | `status=open\|redeemed\|expired\|revoked` | `Page<Invite>` (never the token). Revoked signup invites are deleted with their users, so `status=revoked` lists only re-enrollment invites (agent decision 2026-10-04). | — | FR-USR-004 |
 | DELETE | `/api/v1/admin/invites/{id}` | operator | — | `204`. Sets `revoked_at`; for a signup invite it also deletes the still-`invited` user (FRD rule). | 404, 409 `INVITE_ALREADY_REDEEMED` | FR-USR-004 |
 | POST | `/api/v1/admin/users/{id}/reenroll` | operator | — | `201 {link, expiresAt}` (24 h, proposed) | 404 | FR-USR-007 |
 | PATCH | `/api/v1/admin/users/{id}` | operator | `{role?, status?:"active"\|"disabled", displayName?}` (disable also deletes the user's sessions) | `User` | 409 `LAST_OPERATOR` | FR-USR-008, BR-8 |
@@ -959,7 +959,7 @@ These are *not* envelope-encrypted. They are random secrets that are **hashed** 
 | Artefact | Created | Validated | Ends |
 |---|---|---|---|
 | Session | On successful setup, invite redemption or login verify: 32 random bytes go into the cookie, the hash into `sessions`. Idle expiry = now + 14 d, absolute = now + 90 d *(proposed)*. | Each request hashes the cookie and looks up `id_hash`, joining `users.status='active'`. It requires `now < idle_expires_at AND now < absolute_expires_at`, and slides `idle_expires_at` at most hourly. | On logout, passkey removal, user disable or delete (FR-USR-008), or expiry. The sweep deletes expired rows. |
-| Invite (signup) | The operator creates it. One batch inserts `users(status='invited', role)`, `library_grants` and `invites(token_hash, expires_at=now+7d)`. | Redeem: `token_hash` matches, `redeemed_at IS NULL AND revoked_at IS NULL AND expires_at > now`. | **Redeem**, one batch: CAS `UPDATE invites SET redeemed_at=now WHERE id=? AND redeemed_at IS NULL AND revoked_at IS NULL AND expires_at>now`, insert the passkey, set the user `active`, create the session. If the CAS changes 0 rows, the whole batch aborts (a guard statement raises a constraint error). **Revoke or expire:** the invited user is deleted (FRD rule), which cascades to grants and the invite. |
+| Invite (signup) | The operator creates it. One batch inserts `users(status='invited', role)`, `library_grants` and `invites(token_hash, expires_at=now+7d)`. | Redeem: `token_hash` matches, `redeemed_at IS NULL AND revoked_at IS NULL AND expires_at > now`. | **Redeem**, one batch: CAS `UPDATE invites SET redeemed_at=now WHERE id=? AND redeemed_at IS NULL AND revoked_at IS NULL AND expires_at>now`, insert the passkey, set the user `active`, create the session. The redeem guard (agent decision 2026-10-04): if the CAS changes 0 rows, the batch inserts NULL into a NOT NULL column, aborting and rolling back atomically. **Revoke or expire:** the invited user is deleted (FRD rule), which cascades to grants and the invite. |
 | Invite (reenroll / CLI recovery) | `POST …/reenroll` or the recovery command (TDD §5.1); 24 h *(proposed)*. | As above. | Redeem adds a passkey to the existing user and creates a session; existing passkeys are kept. Expiry or revocation affects only the invite. |
 | Setup | — (token is the `SETUP_TOKEN` secret) | Constant-time compare **and** no operator exists. | Inserting the first operator uses `INSERT … SELECT … WHERE NOT EXISTS (SELECT 1 FROM users WHERE role='operator')`, so two concurrent setups cannot both succeed. |
 | WebAuthn challenge | On `*/options`, with a 5 min TTL *(proposed)* and a purpose binding (and, where relevant, the invite or user). | On `*/verify`, the row is deleted **first** (`DELETE … RETURNING`), then checked for expiry and purpose. That makes it single-use even when verification fails. | Deleted on use; the sweep removes expired rows. |
