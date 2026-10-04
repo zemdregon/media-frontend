@@ -2,15 +2,15 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1 (2026-10-04). Agent-authored under delegation; not owner-reviewed. Nothing described here is implemented. |
+| **Status** | Draft v0.1 (2026-10-04). Agent-authored under delegation; not owner-reviewed. Nothing described here is implemented. Updated 2026-10-04 for owner decisions (ADR-0014, self-hosting). |
 | **Owns** | Detailed workflow behaviour (WF-1 to WF-11), business rules (BR-1 to BR-9), permission matrix, state machines, validation rules, user-visible error behaviours. |
 | **Does not own** | Requirement text ([SRS](SRS.md)); capabilities and journeys ([PRD](PRD.md)); business outcomes ([BRD](BRD.md)); component design ([HLD](../design/HLD.md)); algorithms and schemas ([LLD](../design/LLD.md)); sequencing ([ROADMAP](../ROADMAP.md)). |
 
-Everything here is an **Agent decision (delegated, 2026-10-04; not yet owner-reviewed)** on top of the owner's [concept](../sources/2026-10-04-initial-architecture-concept.md). Requirements are referenced by SRS ID. Behaviour that depends on provider mechanics nobody has verified is marked "(to verify in M1 spike)". Numbers marked *(proposed)* may change; the SRS and the ROADMAP take precedence for any value they also state.
+Everything here is an **Agent decision (delegated)** (2026-10-04; not yet owner-reviewed) on top of the owner's [concept](../sources/2026-10-04-initial-architecture-concept.md). Requirements are referenced by SRS ID. Behaviour that depends on provider mechanics nobody has verified is marked "(to verify in M1 spike)". Numbers marked *(proposed)* may change; the SRS and the ROADMAP take precedence for any value they also state.
 
 ## Workflows
 
-Common conventions. Actors: **Operator** (P-1), **Viewer** (P-2), **System** (scheduled or internal). Every operator workflow requires the operator role (BR-8). Every API workflow requires a verified Access identity and an active user record (FR-USR-001, FR-USR-002). Failure responses use the user-visible errors in [Error behaviours](#error-behaviours-visible-to-users).
+Common conventions. Actors: **Operator** (P-1), **Viewer** (P-2), **System** (scheduled or internal). Every operator workflow requires the operator role (BR-8). Every API workflow requires a valid session of an active user (FR-USR-001), except the public endpoints listed in WF-7. Failure responses use the user-visible errors in [Error behaviours](#error-behaviours-visible-to-users).
 
 ### WF-1 Register server
 
@@ -216,31 +216,65 @@ sequenceDiagram
 
 **Postconditions**: the stored position is at most one reporting interval behind the viewer.
 
-### WF-7 User provisioning, invitation and sign-in
+### WF-7 Invitation, signup, sign-in and recovery
 
 | | |
 |---|---|
-| Trigger | Operator invites an email, or someone signs in through Access. |
-| Actors | Operator, Viewer. |
-| Preconditions | Cloudflare Access is configured in front of the app. |
-| Related SRS | FR-USR-001 to FR-USR-006, IR-006, NFR-SEC-002, NFR-PRIV-001 |
+| Trigger | The deployment's first visit to `/setup`; an operator creates an invite or re-enrollment link; someone opens such a link; a user signs in or out. |
+| Actors | Operator, Viewer, signed-out visitor, System. |
+| Preconditions | The `SETUP_TOKEN` secret is set (setup only). The browser supports WebAuthn (NFR-COMPAT-001). |
+| Related SRS | FR-USR-001 to FR-USR-007, FR-OPS-007, IR-006, NFR-SEC-002, NFR-SEC-004, NFR-SEC-007, NFR-PRIV-001 |
 
-**Main flow (invitation)**
-1. Operator enters an email and chooses the library grants (default: all enabled libraries) (FR-USR-005).
-2. The system creates a user in `invited` with the role `viewer`. Granting the operator role is a separate, explicit action.
-3. The invited person authenticates through Access. The Worker verifies the JWT (FR-USR-001) and matches the verified email to the user record.
-4. The first match moves the user to `active`. Later sign-ins just refresh the session.
+History: authentication through Cloudflare Access (ADR-0007) was superseded by [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) on 2026-10-04 (Owner decision). This workflow follows ADR-0014. Its token lifetimes and session details are Agent decisions (delegated) pending owner review.
+
+The only routes reachable without a session are setup (with the token), invite redemption (with a valid invite), login, and the public health endpoint (FR-USR-001, FR-OPS-007). Everything else answers 401.
+
+**Main flow A: setup bootstrap**
+1. The first operator opens `/setup` and enters the `SETUP_TOKEN` value.
+2. The system checks that no operator exists and that the token matches.
+3. The visitor completes a WebAuthn registration ceremony. The system creates the user as an active operator with that passkey and a session (FR-USR-002).
+4. `/setup` is disabled permanently.
+
+**Main flow B: invite create**
+1. Operator creates an invite: name for the invitee, role (default `viewer`; granting `operator` is a separate, explicit choice), and library grants (default: all enabled libraries) (FR-USR-004, FR-USR-005).
+2. The system creates the invite (state `issued`) and a user in `invited`. It shows the link once. Only a hash of the token is stored (NFR-SEC-007).
+3. The operator delivers the link out of band. Cinewren sends no email. The operator can list invites and revoke an unredeemed one.
+
+**Main flow C: redeem with passkey registration**
+1. The invitee opens the link. The system validates the invite (see [Validation rules](#validation-rules)) and shows the signup page.
+2. The invitee confirms a display name and completes a WebAuthn registration ceremony.
+3. The system stores the passkey, marks the invite `redeemed`, moves the user to `active` with the invite's role and grants, and starts a session.
+
+**Main flow D: login with passkey**
+1. A signed-out visitor chooses sign-in and completes a WebAuthn authentication ceremony.
+2. The system verifies the assertion and that the user is `active`, then starts a session. The session cookie rules are in NFR-SEC-007.
+
+**Main flow E: logout**
+1. The user signs out. The system revokes the current session (FR-USR-006).
+
+**Main flow F: re-enrollment (lost or replaced device)**
+1. Operator issues a re-enrollment link for an existing user (FR-USR-007). It follows the same lifecycle as an invite and does not change role or grants.
+2. The user opens the link and completes a registration ceremony. The new passkey is added to the existing account.
+
+**Main flow G: last-operator CLI recovery**
+1. An operator who has lost every passkey, with no other operator to help, runs the documented command-line procedure with Cloudflare account access (FR-USR-007).
+2. The command prints a recovery link for that operator. Opening it registers a new passkey as in flow F.
 
 **Alternate paths**
-- A bootstrap operator email (`BOOTSTRAP_OPERATOR_EMAILS`) signs in with no record: an active operator record is created (FR-USR-002).
-- Operator disables a user: their next request is refused. Re-enabling restores the previous grants.
+- An operator disables a user: their sessions end at once and their next request is refused. Re-enabling restores the previous grants, and the user signs in with an existing passkey.
+- A user adds or removes their own passkeys (FR-USR-006).
+- Revoking an invite, or its expiry, removes the `invited` user it created, so nothing lingers.
 
 **Failure paths**
-- Missing or invalid JWT: 401 (FR-USR-001).
-- Valid JWT, no active record (never invited, disabled, or deleted): 403 with a "not invited" message that names no other users (FR-USR-002).
-- Email invited in Cinewren but not allowed by the Access policy: the person is stopped by Access before reaching the app. Keeping the two lists aligned is an operator task. The invite screen reminds the operator (FR-USR-004).
+- Invite expired, revoked or already used: the signup page is not shown and the "invite not valid" error appears. The page does not say which case applies. The operator can issue a new invite.
+- Setup already completed (an operator exists): `/setup` refuses, whatever the token. A wrong or missing token is refused with the same generic error.
+- WebAuthn ceremony fails, times out or is cancelled: nothing is saved. An invite stays `issued` and can be tried again until it expires. Challenges are single-use, so a retry starts a new ceremony.
+- Disabled user: login is refused with the not-allowed error, with no session issued. A deleted or unknown account cannot be told apart from a disabled one.
+- Removing the last passkey is refused (FR-USR-006).
+- Too many attempts on setup, redeem or login: rate limited (NFR-SEC-004).
+- Session missing or expired: 401, and the app shows the sign-in page (FR-USR-001).
 
-**Postconditions**: user records are keyed by verified email. Deleting a user removes their data per DR-005.
+**Postconditions**: an account exists only if it came from `/setup` or a redeemed invite. User records hold passkeys, not passwords. Deleting a user removes their data per DR-005. Setup, invite, revocation, re-enrollment and recovery actions are audited without token values (FR-OPS-005).
 
 ### WF-8 Health probing
 
@@ -337,26 +371,32 @@ Clarifications of BR-5 and BR-7 that the one-line rules leave open, recorded her
 
 ## Permission matrix
 
-Legend: Y = allowed; N = refused; own = only the user's own data; — = not applicable. "Non-invited identity" means a verified Access identity with no active user record (disabled, deleted, never invited). "Unauthenticated" means no valid Access JWT.
+Legend: Y = allowed; N = refused; own = only the user's own data; — = not applicable. "Signed-out visitor" means no valid session, including a disabled or deleted user. A refused signed-out request gets 401.
 
-| Action | Operator | Viewer | Non-invited identity | Unauthenticated |
-|---|---|---|---|---|
-| Open the app, call any API (FR-USR-001, FR-USR-002) | Y | Y | N (403) | N (401) |
-| Health endpoint (FR-OPS-007) | Y | Y | N (403) | N (401). An Access *service token* identity is allowed for this endpoint only. |
-| Browse, search, view detail (visible items only, BR-1) | Y | Y | N | N |
-| Fetch artwork (visible items only) | Y | Y | N | N |
-| Request playback; report progress | Y | Y | N | N |
-| Mark watched or unwatched | own | own | N | N |
-| Manual version or source override | Y | Y | N | N |
-| View own progress and history | own | own | N | N |
-| Register, edit, disable, remove servers; rotate credentials | Y | N | N | N |
-| Enable or disable libraries; set server priority | Y | N | N | N |
-| Trigger sync; view sync status and health history | Y | N | N | N |
-| Invite, disable, enable, delete users; change roles | Y | N | N | N |
-| Grant or revoke library access | Y | N | N | N |
-| Merge, split | Y | N | N | N |
-| View audit log; export data | Y | N | N | N |
-| Sign out (FR-USR-006) | Y | Y | — | — |
+| Action | Operator | Viewer | Signed-out visitor |
+|---|---|---|---|
+| Setup with `SETUP_TOKEN` (only until the first operator exists) | — | — | Y, with the token |
+| Redeem an invite and register a passkey | — | — | Y, with a valid invite |
+| Log in with a passkey | — | — | Y |
+| Health endpoint, overall status only (FR-OPS-007) | Y | Y | Y |
+| Detailed health status (FR-OPS-007) | Y | N | N |
+| Open the app, call any other API (FR-USR-001) | Y | Y | N (401) |
+| Browse, search, view detail (visible items only, BR-1) | Y | Y | N |
+| Fetch artwork (visible items only) | Y | Y | N |
+| Request playback; report progress | Y | Y | N |
+| Mark watched or unwatched | own | own | N |
+| Manual version or source override | Y | Y | N |
+| View own progress and history | own | own | N |
+| List, add and remove own passkeys (not the last one, FR-USR-006) | own | own | N |
+| Register, edit, disable, remove servers; rotate credentials | Y | N | N |
+| Enable or disable libraries; set server priority | Y | N | N |
+| Trigger sync; view sync status and health history | Y | N | N |
+| Create and revoke invites; issue re-enrollment links | Y | N | N |
+| Disable, enable, delete users; change roles | Y | N | N |
+| Grant or revoke library access | Y | N | N |
+| Merge, split | Y | N | N |
+| View audit log; export data | Y | N | N |
+| Sign out (FR-USR-006) | Y | Y | — |
 
 Operators implicitly have access to every enabled library (FR-USR-005). Only viewers have per-library grants. Operator-only endpoints refuse viewers with 403 on every request (FR-USR-003). Refusals never reveal whether a hidden resource exists (BR-1).
 
@@ -465,12 +505,12 @@ Every terminal state revokes or lets expire the stream credential (FR-PLAY-007).
 
 ```mermaid
 stateDiagram-v2
-    [*] --> invited: operator invites
-    [*] --> active: bootstrap operator first sign-in
-    invited --> active: first sign-in
+    [*] --> invited: operator creates invite
+    [*] --> active: first operator via /setup
+    invited --> active: invite redeemed, passkey registered
+    invited --> deleted: invite revoked or expired
     active --> disabled: operator disables
     disabled --> active: operator re-enables
-    invited --> deleted: operator deletes
     active --> deleted: operator deletes
     disabled --> deleted: operator deletes
     deleted --> [*]
@@ -478,11 +518,38 @@ stateDiagram-v2
 
 | From | To | Trigger | Guard |
 |---|---|---|---|
-| (none) | `invited` | Operator invites | Email valid and not already a user |
-| (none) | `active` | Bootstrap email signs in | Email in `BOOTSTRAP_OPERATOR_EMAILS` (FR-USR-002) |
-| `invited` | `active` | Verified Access email matches | |
+| (none) | `invited` | Operator creates an invite | Valid role and grants (FR-USR-004) |
+| (none) | `active` | `/setup` completed with a passkey | `SETUP_TOKEN` matches and no operator exists (FR-USR-002) |
+| `invited` | `active` | Invite redeemed and a passkey registered | Invite is `issued` (see below) |
+| `invited` | `deleted` | Invite revoked or expired | |
 | `active` | `disabled` / back | Operator | Not the last active operator (BR-8) |
-| any | `deleted` | Operator | Not the last active operator (BR-8); data removed per DR-005 |
+| `active`, `disabled` | `deleted` | Operator | Not the last active operator (BR-8); data removed per DR-005 |
+
+Disabling and deleting revoke the user's sessions immediately (FR-USR-004).
+
+### Invite state machine
+
+An invite (and a re-enrollment link, which behaves the same way) has its own small lifecycle.
+
+```mermaid
+stateDiagram-v2
+    [*] --> issued: operator creates link
+    issued --> redeemed: valid redemption completes registration
+    issued --> expired: lifetime elapses
+    issued --> revoked: operator revokes
+    redeemed --> [*]
+    expired --> [*]
+    revoked --> [*]
+```
+
+| From | To | Trigger | Guard |
+|---|---|---|---|
+| (none) | `issued` | Operator creates the link | Operator role |
+| `issued` | `redeemed` | Registration ceremony succeeds | Token matches, not expired, not revoked, not yet used |
+| `issued` | `expired` | Lifetime elapses (FR-USR-002, FR-USR-007) | |
+| `issued` | `revoked` | Operator revokes | |
+
+`redeemed`, `expired` and `revoked` are terminal. A failed or cancelled ceremony leaves the invite `issued`.
 
 ## Validation rules
 
@@ -495,7 +562,10 @@ stateDiagram-v2
 | Identity | The server's unique ID, read at validation, must not match an existing registration. On re-validation and WF-11 it must match the stored one. |
 | Library choice | Only libraries returned by discovery can be enabled. |
 | Priority | Integer (FR-SRV-006). Range in the LLD. |
-| Invitation email | Valid email syntax, case-insensitive, unique among users. Matched later against the verified Access email (FR-USR-002). |
+| Invite | Role is `operator` or `viewer`; the default is `viewer`. Grants may only name enabled libraries and apply to viewers. Invitee name is required and trimmed. The link token is random, single-use, stored only as a hash, and expires (FR-USR-002). Redemption fails if the invite is not `issued`. Redemption never changes an existing user: only a re-enrollment link adds a passkey to an existing account (FR-USR-007). |
+| Signup | Display name required and trimmed. A passkey registration ceremony must complete with a fresh challenge (IR-006, NFR-SEC-007). |
+| Setup | `SETUP_TOKEN` must match, and no operator may exist yet (FR-USR-002). |
+| Passkey removal | The user's last passkey cannot be removed (FR-USR-006). |
 | Grants | May only name enabled libraries. |
 | Track selection | Audio and subtitle choices must be among the tracks in the playback descriptor, or "none" for subtitles (FR-PLAY-006). Text subtitles are WebVTT. Image-based subtitles are only offered when the origin can burn them in, which forces a transcode. |
 | Progress report | The session must belong to the caller and not be ended. Position must be between 0 and the item's runtime. |
@@ -507,8 +577,12 @@ Wording is plain language. The envelope and codes are in [LLD-API](../design/LLD
 
 | Situation | What the user sees | Who |
 |---|---|---|
-| Not signed in (no valid Access JWT) | Sign-in through Cloudflare Access; API returns 401. | All |
-| Signed in but not invited, disabled, or deleted | "You don't have access to this app. Ask the person who runs it to invite you." (403) | All |
+| Not signed in | The sign-in page. API returns 401. | All |
+| Invite expired, revoked or already used | "This invite link is no longer valid. Ask the person who runs this app for a new one." | Signed-out visitor |
+| Setup unavailable (completed, or wrong token) | "Setup isn't available." Does not say which. | Signed-out visitor |
+| Passkey ceremony failed or cancelled | "Passkey step didn't finish. Nothing was saved. Try again." Offered while the invite is still valid. | All |
+| Disabled or unknown user tries to sign in | "You don't have access to this app. Ask the person who runs it." No account details revealed. | All |
+| Remove last passkey | "Add another passkey first. You can't remove your only one." | All signed-in users |
 | Operator-only action by a viewer | Refusal (403). Operator controls are not shown to viewers. | Viewer |
 | Item not found or not visible | "Not found" (identical for both). | All |
 | No playable source | "This title can't be played right now." Shown when every source is hidden, down, excluded or unplayable. Offers retry. | Viewer |
@@ -531,7 +605,7 @@ Gaps found while drafting this document. All were resolved by the orchestrating 
 | Ref | Point | Resolution |
 |---|---|---|
 | OP-1 | Where flagged merge conflicts (BR-2) are shown to the operator is not covered by any SRS requirement. | Added FR-CAT-010 (Should, M5). |
-| OP-2 | FR-USR-001 exempts the health endpoint from the JWT check, while FR-OPS-007 says it is reachable through an Access service token. The unauthenticated column in the permission matrix cannot be fixed until this is clarified. | The health endpoint stays behind Access, and service-token identities are allowed for it only. FR-USR-001, FR-OPS-007 and ADR-0007 were updated. |
-| OP-3 | No requirement says that an invited user must also be allowed by the Cloudflare Access policy. WF-7 relies on the operator keeping both in step. | FR-USR-004 now requires the invite UI and the setup guide to remind the operator. Cinewren does not edit Access policy. |
+| OP-2 | FR-USR-001 and FR-OPS-007 disagreed on whether the health endpoint is public, so the signed-out column of the permission matrix could not be fixed. | Superseded: Access removed (ADR-0014); health is public, detailed status operator-only (FR-OPS-007). |
+| OP-3 | An invited user had to be kept in step with a second, external allow-list, which no requirement covered. | Moot: Access removed (ADR-0014). |
 | OP-4 | The behaviour of the `missing` timer for sources in a library that is later disabled is unspecified. | Resolved in the source state machine notes above. |
 | OP-5 | FR-PLAY-009 (reporting playback to origins) and DEF-4 (no write-back of watch state) are compatible only if "reporting" means session telemetry and not watched flags. This FRD assumes that reading. | Reading confirmed. FR-PLAY-009 was reworded to "session telemetry". |

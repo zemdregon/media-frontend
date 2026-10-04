@@ -11,7 +11,7 @@
 | Label | Meaning in this document |
 |---|---|
 | **Owner direction (2026-10-04)** | The product name Cinewren; the [concept document](../sources/2026-10-04-initial-architecture-concept.md) (Cloudflare as UI, catalog and control plane; Plex, Jellyfin and Emby as media origins; a federated deduplicated library; a provider interface; a recommendation of direct streaming); the agent-routing policy in [AGENTS.md](../../AGENTS.md). The owner supplied the concept and asked for a plan. That is not approval of every detail below. |
-| **Owner decision (2026-10-04)** | Passkey-only sign-in with operator invite links and no Cloudflare Access ([ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)); other operators may self-host while each deployment keeps one operator; viewers seeing origin hostnames is acceptable ([ADR-0003](../adr/0003-direct-to-origin-playback.md)), with origins on public HTTPS. |
+| **Owner decision (2026-10-04)** | Passkey-only sign-in with operator invite links, with no external identity provider or edge access product ([ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)); other operators may self-host while each deployment keeps one operator; viewers seeing origin hostnames is acceptable ([ADR-0003](../adr/0003-direct-to-origin-playback.md)), with origins on public HTTPS. |
 | **Agent decision (delegated, 2026-10-04; not yet owner-reviewed)** | Everything else, including all outcome measures and targets. |
 | **Assumption (A-n)** / **Open question (Q-n)** / *(proposed)* | Recorded in the [ROADMAP](../ROADMAP.md#3-constraints-assumptions-decisions-and-open-questions); the ones this document relies on are repeated in sections 5 and 7. |
 
@@ -52,14 +52,12 @@ Cloudflare and the media-server vendors are external parties whose terms and API
 
 | ID | Constraint | Provenance |
 |---|---|---|
-| C-1 | Cloudflare hosts the web app, API, catalog index and authentication (Workers with Static Assets, D1). Sign-in is passkey-only, with accounts created only from operator invite links (C-7). | Owner direction (2026-10-04) |
+| C-1 | Cloudflare hosts the web app, API, catalog index and authentication (Workers with Static Assets, D1). Sign-in is passkey-only, with accounts created only from operator invite links ([ADR-0014](../adr/0014-passkey-auth-with-invite-links.md), Owner decision 2026-10-04). | Owner direction (2026-10-04) |
 | C-2 | Media bytes never transit Cloudflare (Workers, CDN, or Tunnel public hostnames). | Owner direction (2026-10-04), supported by the Cloudflare video-delivery terms (see below) |
 | C-3 | Media files stay on the origin servers. Nothing is stored in R2. | Owner direction (2026-10-04) |
 | C-4 | Supported origin types are Jellyfin, Emby and Plex. | Owner direction (2026-10-04) |
 | C-5 | The client talks only to the Cinewren API. Provider types are an implementation detail. | Owner direction (2026-10-04) |
 | C-6 | The agent workflow is governed by [AGENTS.md](../../AGENTS.md). | Owner direction (2026-10-04) |
-| C-7 | Authentication is WebAuthn passkeys only. Accounts exist only through operator invite links, and the first operator comes from `/setup`. No external identity provider or edge access product is required ([ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)). | Owner decision (2026-10-04) |
-| C-8 | Each deployment has exactly one operator organization, and Cinewren is packaged so that other operators can self-host their own deployment ([ADR-0011](../adr/0011-single-operator-deployment-model.md)). It is not a hosted multi-tenant service. | Owner decision (2026-10-04) |
 
 **Cost context (A-5).** Agent decision: the operator is assumed to be on the Workers Paid plan. Cloudflare's published Free-plan limits (checked 2026-10-04) are 10 ms CPU and 50 external subrequests per invocation, which are too small for catalog sync ([limits](https://developers.cloudflare.com/workers/platform/limits/)). The Paid plan raises these substantially, and the proposed ceiling for Cloudflare spend is in NFR-COST-001. Per-database size limits for D1 are documented at [D1 limits](https://developers.cloudflare.com/d1/platform/limits/) and are not restated here. The operator also bears the cost of the origin servers and their network egress, which Cinewren does not change.
 

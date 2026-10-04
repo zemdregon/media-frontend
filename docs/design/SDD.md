@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1, 2026-10-04, agent-authored under delegation; not owner-reviewed. Nothing described here is implemented (the repository has no source code). |
+| **Status** | Draft v0.1, 2026-10-04, agent-authored under delegation; not owner-reviewed. Nothing described here is implemented (the repository has no source code). Updated 2026-10-04 for owner decisions (ADR-0014, self-hosting). |
 | **Owns** | Integrated software design: how subsystems collaborate per workflow, module and package structure, shared design patterns, interface ownership, cross-subsystem invariants, and the requirements-to-design satisfaction table. |
 | **Does not own** | System context, trust boundaries, deployment, threat model, capacity ([HLD](HLD.md)); field-level schemas, endpoint contracts and algorithms ([LLD](LLD.md)); test strategy and tooling practice ([TDD](TDD.md)); requirements ([SRS](../requirements/SRS.md)); workflow rules ([FRD](../requirements/FRD.md)); sequencing ([ROADMAP](../ROADMAP.md)). |
 
-All design choices here are **Agent decisions (delegated, 2026-10-04; not yet owner-reviewed)** unless marked otherwise. The component IDs (`C-*`) are defined in the [HLD](HLD.md).
+All design choices here are **Agent decisions (delegated)**, not yet owner-reviewed, unless marked **Owner decision (2026-10-04)**. The owner decisions are those in [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) (passkeys only, invite-link-only signup) and [ADR-0011](../adr/0011-single-operator-deployment-model.md) (self-hosting); the ADR-0014 implementation details are agent decisions. The component IDs (`C-*`) are defined in the [HLD](HLD.md).
 
 ## 1. Design approach
 
@@ -33,7 +33,11 @@ One Worker, one TypeScript codebase, strict typing ([ADR-0005](../adr/0005-singl
 │   └── src/
 │       ├── index.ts            # exports { fetch, scheduled, queue }
 │       ├── api/                # C-API: Hono app, route modules, middleware, envelope
-│       ├── auth/               # C-AUTH: Access JWT verify, user/role/grant resolution
+│       ├── auth/               # C-AUTH (ADR-0014)
+│       │   ├── webauthn/       # registration and login ceremonies, challenge store
+│       │   ├── sessions/       # create, hash, validate, revoke; the one session middleware
+│       │   ├── invites/        # invite, re-enrollment and setup tokens (hashed, single-use)
+│       │   └── users.ts        # user, role and grant resolution
 │       ├── catalog/            # C-CAT: query layer, search, home rows, visibility filter
 │       ├── match/              # C-MATCH: matching and curation
 │       ├── sync/               # C-SYNC: schedule, job handlers, retention purge
@@ -123,7 +127,7 @@ sequenceDiagram
   participant Prov as providers
   participant DB as db
   Web->>Api: POST play (item/episode, capabilities, optional override or exclusions)
-  Api->>Api: verify Access JWT; resolve user, role, grants
+  Api->>Api: session middleware validates the cookie; resolve user, role, grants
   Api->>Play: startPlayback(user ctx, request)
   Play->>Cat: candidate sources visible to user (BR-1 filter)
   Cat-->>Play: sources + versions + server health
@@ -166,34 +170,59 @@ Position is stored per user per canonical item, never per source, so resume work
 
 ### 4.4 WF-7 Authentication and user provisioning
 
+Signup by invite (account creation has no other path except the first-operator `/setup`, which follows the same ceremony with `SETUP_TOKEN` in place of the invite token):
+
 ```mermaid
 sequenceDiagram
   autonumber
   participant B as Browser
-  participant A as Cloudflare Access
-  participant Api as api middleware
+  participant Api as api (rate limit)
   participant Auth as auth (C-AUTH)
   participant DB as db
-  B->>A: request app or API
-  A->>A: authenticate via configured identity provider
-  A->>Api: request + Cf-Access-Jwt-Assertion
-  Api->>Auth: verify JWT (signature, audience, issuer, expiry)
-  alt invalid or missing
-    Auth-->>B: 401
+  B->>Api: open invite link, POST redeem (token)
+  Api->>Auth: redeemInvite(token)
+  Auth->>DB: look up hash(token); check unused, unexpired, not revoked
+  alt invalid, used, expired or revoked
+    Auth-->>B: uniform refusal
   else valid
-    Auth->>DB: find user by verified email
-    alt no record and email in BOOTSTRAP_OPERATOR_EMAILS
-      Auth->>DB: create operator (active)
-    else no active record
-      Auth-->>B: 403
-    else invited
-      Auth->>DB: mark active on first sign-in
-    end
-    Auth-->>Api: user context (id, role, granted library IDs)
+    Auth->>DB: store single-use challenge (short TTL)
+    Auth-->>B: registration options (RP ID, challenge)
+    B->>B: navigator.credentials.create
+    B->>Api: POST attestation response
+    Api->>Auth: verifyRegistration(response)
+    Auth->>DB: consume challenge; verify origin, RP ID and signature
+    Auth->>DB: in one transaction: create user (role and grants from invite, active), store passkey, mark invite used
+    Auth->>DB: create session (store hash of the ID)
+    Auth-->>B: Set-Cookie session (HttpOnly, Secure, SameSite=Lax)
   end
 ```
 
-The user context is computed once per request and passed down; services never re-derive identity. Operator pre-creation (invite) and grants are commands in `auth` plus `catalog`-independent tables (BR-8 last-operator guard lives in the user command, LLD-SCHEMA/LLD-API).
+Login and ongoing requests:
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant B as Browser
+  participant Api as api (rate limit, session middleware)
+  participant Auth as auth (C-AUTH)
+  participant DB as db
+  B->>Api: POST login start
+  Api->>Auth: loginOptions()
+  Auth->>DB: store single-use challenge (short TTL)
+  Auth-->>B: authentication options
+  B->>B: navigator.credentials.get
+  B->>Api: POST assertion
+  Api->>Auth: verifyLogin(assertion)
+  Auth->>DB: consume challenge; load passkey; verify signature and counter; user active
+  Auth->>DB: create session (hash only)
+  Auth-->>B: Set-Cookie session
+  B->>Api: later app request with cookie
+  Api->>Auth: validate session; Origin check if state-changing
+  Auth->>DB: find hash; check idle and absolute expiry, user active
+  Auth-->>Api: user context (id, role, granted library IDs), or 401
+```
+
+The user context is computed once per request in the session middleware and passed down; services never re-derive identity. Invite creation and revocation, re-enrollment links, passkey management, sign-out and user disable or delete (which revoke sessions) are commands in `auth`, with the BR-8 last-operator guard in the user command (LLD-SCHEMA, LLD-API). The wire details are in LLD-API; the choice and rationale are in [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md).
 
 ## 5. Cross-subsystem invariants
 
@@ -207,6 +236,8 @@ The user context is computed once per request and passed down; services never re
 | INV-6 | Sync writes are idempotent and keyed by `(server_id, provider_item_id)`; canonical IDs are stable across syncs and manual overrides win over automatic matching (BR-3). | `sync`, `match`, `db` | Re-run tests (FR-SYNC-004) |
 | INV-7 | Outbound origin requests target only the registered host; cross-host redirects are refused. | Single outbound HTTP helper used by all adapters | Adapter contract tests (NFR-SEC-005) |
 | INV-8 | Primary data (users, grants, progress, overrides, server config, audit) is never rebuilt from origins; derived data (catalog) may be. Migrations never drop primary data. | `db` migrations, retention jobs | Review and restore rehearsal (DR-001, NFR-REL-003) |
+| INV-9 | The session check lives in one middleware (`auth/sessions`). Every route except setup, redeem, login, health and static assets is registered behind it, and it also performs the `Origin` check on state-changing requests. | `api` router composition, `auth/sessions` | Route-table test that fails on any unlisted public route; per-endpoint 401 tests (FR-USR-001, NFR-SEC-007) |
+| INV-10 | Session IDs, invite, re-enrollment and setup tokens are stored only as hashes; the plaintext appears once, in the cookie or link given to its holder, and is never logged. | `auth/sessions`, `auth/invites`, `db` | Schema holds no plaintext token column; log redaction test (NFR-SEC-007, NFR-OBS-001) |
 
 ## 6. Interface responsibilities
 
@@ -214,7 +245,7 @@ The user context is computed once per request and passed down; services never re
 |---|---|---|---|---|
 | Platform HTTP API `/api/v1` | IR-001 | LLD-API in [LLD](LLD.md) | `worker/src/api` | `apps/web` through `packages/shared` types |
 | Provider interface `MediaProvider` | IR-002, IR-003..005 | LLD-PROV in [LLD](LLD.md) | `worker/src/providers/*` | `sync`, `health`, `playback`, `artwork`, server-registration command |
-| Access identity (JWT) | IR-006 | [ADR-0007](../adr/0007-cloudflare-access-identity.md); details in LLD-API | Cloudflare Access | `worker/src/auth` |
+| WebAuthn authentication | IR-006 | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md); details in LLD-API | Browser WebAuthn API | `worker/src/auth` |
 | Browser media playback | IR-007 | [TDD](TDD.md) (player approach); descriptor in LLD-API | origin servers | `apps/web/src/player` |
 | D1 schema | DR-001, DR-004 | LLD-SCHEMA in [LLD](LLD.md) | `worker/migrations` | `worker/src/db` only |
 | Error envelope | IR-001 | LLD-ERR in [LLD](LLD.md) | `api` middleware | `apps/web/src/api-client` |
@@ -223,7 +254,7 @@ The SDD does not repeat endpoint shapes, table definitions or provider method si
 
 ## 7. Requirements-to-design satisfaction
 
-Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). Could items (FR-USR-006, FR-OPS-006) are omitted. "LLD / ADR" gives the detailed design home; "TDD" means practice or tooling, not behaviour. Milestone delivery is in the [ROADMAP](../ROADMAP.md).
+Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). The Could item FR-OPS-006 is omitted. Authentication rows follow [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md). "LLD / ADR" gives the detailed design home; "TDD" means practice or tooling, not behaviour. Milestone delivery is in the [ROADMAP](../ROADMAP.md).
 
 ### 7.1 Functional
 
@@ -266,17 +297,20 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). C
 | FR-PROG-002 | C-WEB | Client reads stored position, prompts resume, passes position to player | LLD-API |
 | FR-PROG-003 | C-PLAY | BR-7 threshold evaluated on each report; manual toggle command | LLD-API |
 | FR-PROG-004 | C-CAT | Next-episode query over series ordering and watched state | LLD-API |
-| FR-USR-001 | C-AUTH | Middleware verifies the JWT on every route; service-token identities are allowed on the health route only | [ADR-0007](../adr/0007-cloudflare-access-identity.md), LLD-API |
-| FR-USR-002 | C-AUTH | Email-keyed user lookup; bootstrap list creates operators; otherwise 403 | LLD-SCHEMA, LLD-API |
+| FR-USR-001 | C-AUTH, C-API | One session middleware guards every route except setup, redeem, login, health and static assets (INV-9); WebAuthn login creates the session | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md), LLD-API |
+| FR-USR-002 | C-AUTH | Invite redemption (WF-7) is the only account-creation path; `/setup` with `SETUP_TOKEN` creates the first operator and is refused once an operator exists | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md), LLD-SCHEMA |
 | FR-USR-003 | C-AUTH, C-API | Role check in command handlers and an operator-only route guard | LLD-API |
-| FR-USR-004 | C-API, db | User commands (invite, disable, enable, delete) with BR-8 guard and cascade | LLD-SCHEMA, LLD-API |
+| FR-USR-004 | C-AUTH, C-API, db | Invite commands (create, list, revoke) and user commands (disable, enable, delete) with BR-8 guard, immediate session revocation and cascade | LLD-SCHEMA, LLD-API |
 | FR-USR-005 | C-AUTH, db | Grants table user x library; defaults chosen at invite | LLD-SCHEMA |
+| FR-USR-006 | C-AUTH, C-WEB | Sign-out command revokes the current session; passkey list, add and remove commands refuse removing the last passkey | LLD-API |
+| FR-USR-007 | C-AUTH | Re-enrollment link is an invite-style token (24 h, single-use) that adds a passkey to an existing user; the documented `wrangler`-run recovery command issues one for a locked-out operator | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md), LLD-API |
 | FR-OPS-001 | C-HEALTH | Cron probe job per server writes probe rows and derived status | LLD-SYNC |
 | FR-OPS-002 | C-PLAY | Health state feeds the selection filter and rank key 4 | LLD-SEL |
 | FR-OPS-003 | C-API, C-WEB | Sync status endpoint and admin view over `sync_run` and schedule | LLD-API |
 | FR-OPS-004 | C-API, C-WEB | Probe history endpoint and admin view | LLD-API |
 | FR-OPS-005 | C-API, db | Command handlers append audit rows (INV-5) | LLD-SCHEMA |
-| FR-OPS-007 | C-API | Unauthenticated-by-JWT route returning liveness and DB ping only | LLD-API |
+| FR-OPS-007 | C-API | Public route returns only overall status; operator-only route returns detail such as the DB ping | LLD-API |
+| FR-OPS-008 | release process, deployment | Tagged releases plus self-host guide (Deploy to Cloudflare or `wrangler`); each instance has its own Worker, D1 and secrets; first-run setup through FR-USR-002 | [HLD](HLD.md) Section 8, [ADR-0011](../adr/0011-single-operator-deployment-model.md), [TDD](TDD.md) |
 
 ### 7.2 Interface, data
 
@@ -287,7 +321,7 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). C
 | IR-003 | C-PROV | Jellyfin adapter, version minimum fixed by M1 spike | LLD-PROV |
 | IR-004 | C-PROV | Emby adapter, version minimum fixed by M1 spike | LLD-PROV |
 | IR-005 | C-PROV | Plex adapter, version minimum fixed by M1 spike | LLD-PROV |
-| IR-006 | C-AUTH | JWT verification against Access team signing keys | [ADR-0007](../adr/0007-cloudflare-access-identity.md) |
+| IR-006 | C-AUTH, C-WEB | Browser `navigator.credentials` calls; server verification by a vetted library in `auth/webauthn`; RP ID is the deployment hostname | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md), [TDD](TDD.md) |
 | IR-007 | C-WEB | `<video>` for direct play; native HLS or hls.js | [TDD](TDD.md) |
 | DR-001 | db | D1 as system of record; primary vs derived separation (INV-8) | [ADR-0006](../adr/0006-d1-system-of-record.md), LLD-SCHEMA |
 | DR-002 | C-CRYPTO | AES-256-GCM envelope, key from Worker secret, key version stored with ciphertext | [ADR-0008](../adr/0008-origin-service-accounts-and-credential-encryption.md), LLD-TOKEN |
@@ -302,8 +336,9 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). C
 | NFR-SEC-001 | C-CRYPTO, C-PROV, C-API | INV-2; log redaction; export excludes secrets | [ADR-0008](../adr/0008-origin-service-accounts-and-credential-encryption.md), LLD-TOKEN |
 | NFR-SEC-002 | C-AUTH, C-CAT | Per-request user context; ID-addressed reads re-check access | LLD-API |
 | NFR-SEC-003 | C-API | HSTS and CSP middleware; `media-src`/`connect-src` built from registered server hostnames | LLD-API |
-| NFR-SEC-004 | C-API | Per-user rate limit middleware on play, progress, mutations (mechanism chosen in TDD/LLD) | [TDD](TDD.md), LLD-API |
+| NFR-SEC-004 | C-API | Per-user rate limit middleware on play, progress, mutations; per-IP limits on setup, redeem and login (mechanism chosen in TDD/LLD) | [TDD](TDD.md), LLD-API |
 | NFR-SEC-005 | C-PROV | Single outbound helper pinned to registered host; redirects refused (INV-7) | LLD-PROV |
+| NFR-SEC-007 | C-AUTH, C-API | Session cookie attributes, hashed session and token storage, expiries, single-use challenges, `Origin` check in the session middleware (INV-9, INV-10) | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md), LLD-TOKEN |
 | NFR-SEC-006 | CI | Dependency and secret scanning in pipeline | [TDD](TDD.md) |
 | NFR-PRIV-001 | db, C-WEB | Minimal user columns; no third-party scripts; CSP blocks them | [TDD](TDD.md), LLD-SCHEMA |
 | NFR-PERF-001 | C-CAT, db | Indexed queries, keyset pagination, FTS index, denormalized columns | LLD-SCHEMA |
@@ -321,6 +356,7 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). C
 | NFR-OBS-002 | platform | Metrics from structured logs or D1 counters (mechanism decided in TDD) | [TDD](TDD.md) |
 | NFR-MAINT-001 | providers | Strict TypeScript; contract-test suite per adapter on recorded fixtures | [TDD](TDD.md) |
 | NFR-MAINT-002 | process | Docs updated with behaviour (AGENTS.md) | [TDD](TDD.md) |
+| NFR-MAINT-003 | release process, db | SemVer tags with release notes; upgrade applies pending forward-only migrations (DR-004) per the self-host guide | [TDD](TDD.md), LLD-SCHEMA |
 | NFR-TEST-001 | CI | Pipeline stages per requirement | [TDD](TDD.md) |
 
 ## 8. Open design items
@@ -329,5 +365,5 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). C
 |---|---|---|
 | OD-1 | Rate-limiting mechanism (Workers rate limiting binding, D1 counters or Cache API); choose in M5 | NFR-SEC-004, [TDD](TDD.md) |
 | OD-2 | Whether `sync` and `health` share one queue or use two | LLD-SYNC |
-| OD-3 | Dev-mode Access bypass design and its safeguards | [TDD](TDD.md) |
+| OD-3 | Closed: Access removed (ADR-0014). Passkeys work on localhost, so no dev bypass is needed. | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) |
 | OD-4 | IP-literal and reserved-range blocking for registered server URLs | LLD-PROV |

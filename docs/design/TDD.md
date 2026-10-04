@@ -63,7 +63,7 @@ Rules:
 
 ## 4. Configuration and secrets
 
-Non-secret settings are Wrangler `vars`, defined per environment. Secrets are set with `wrangler secret put` and listed under `secrets.required`, so a deploy fails when a secret is missing (SPINE verified fact; https://developers.cloudflare.com/workers/configuration/secrets/). A secret is never placed in `vars`. Locally, secrets live in `.dev.vars`, which is git-ignored.
+Non-secret settings are Wrangler `vars`, defined per environment. Secrets are set with `wrangler secret put`. Mandatory secrets are listed under `secrets.required`, so a deploy fails when one is missing (SPINE verified fact; https://developers.cloudflare.com/workers/configuration/secrets/). A secret is never placed in `vars`. Locally, secrets live in `.dev.vars`, which is git-ignored.
 
 | Key | Kind | Default | Purpose / requirement |
 |---|---|---|---|
@@ -71,7 +71,7 @@ Non-secret settings are Wrangler `vars`, defined per environment. Secrets are se
 | `APP_ORIGIN` | var | — | Exact public origin, e.g. `https://cinewren.example.org`. Used as the expected WebAuthn origin, for the CSRF `Origin` check (NFR-SEC-007) and for building invite links. The Worker refuses to serve (500 on every route except health) if it is unset or not `https:` outside local. |
 | `RP_ID` | var | hostname of `APP_ORIGIN` | WebAuthn Relying Party ID (IR-006). Changing it invalidates every registered passkey, so the self-host guide warns that the hostname is effectively permanent. |
 | `RP_NAME` | var | `Cinewren` | Name shown by authenticators. |
-| `SETUP_TOKEN` | **secret** | — | One-time bootstrap token for `/setup` (FR-USR-002). It is ignored once any operator exists, so it can be left set; the guide recommends deleting it after setup. At least 32 random bytes; compared in constant time. |
+| `SETUP_TOKEN` | **secret** | — | One-time bootstrap token for `/setup` (FR-USR-002). It is ignored once any operator exists, so it can be left set; the guide recommends deleting it after setup. For that reason it is **not** listed in `secrets.required`; only `CREDENTIAL_KEYS` is. At least 32 random bytes; compared in constant time. |
 | `CREDENTIAL_KEYS` | **secret** | — | JSON object mapping key version to a base64-encoded 32-byte AES key, for example `{"1":"…","2":"…"}` (DR-002, [LLD-TOKEN](LLD.md#lld-token--credential-vault--playback-credentials)). The operator generates the key locally and keeps an offline copy, such as in a password manager, before running `wrangler secret put`. Secrets cannot be read back from Cloudflare. If the key is lost, server credentials must be re-entered; the catalog and other primary data are not affected. |
 | `CREDENTIAL_KEY_CURRENT` | var | — | Key version used for new encryptions. It must exist in `CREDENTIAL_KEYS`; the Worker checks this on the first request and fails closed. |
 | `ALLOW_INSECURE_ORIGINS` | var | `false` | Allows `http://` base URLs (FR-SRV-007). It is ignored, and an error is logged, unless `ENVIRONMENT=local`. |
@@ -178,13 +178,13 @@ The Cache API is per data centre and does not use tiered caching (same page). At
 | Layer | Tooling | Scope | Covers SRS method |
 |---|---|---|---|
 | Unit | Vitest (Node) | Pure modules: matching ([LLD-MATCH](LLD.md#lld-match--matching--curation-algorithm)), selection ([LLD-SEL](LLD.md#lld-sel--source-selection-algorithm)), BR-7 thresholds, envelope crypto, CSP builder, cursor codec, redaction, capability-to-device-profile mapping | T |
-| Workers integration | `@cloudflare/vitest-pool-workers` with local D1 and Queues | Full Hono app through `SELF.fetch` with signed test JWTs (a test JWKS); migrations applied; the scheduled and queue handlers called directly. Covers BR-1 filtering for every catalog endpoint (FR-CAT-006), role enforcement (FR-USR-003), the sync lock (FR-SYNC-002), idempotency (FR-SYNC-004), missing marking (FR-SYNC-005), cascades (DR-005) and retention (DR-003) | T |
+| Workers integration | `@cloudflare/vitest-pool-workers` with local D1 and Queues | Full Hono app through `SELF.fetch` with session cookies from the test fixture (§5.1); migrations applied; the scheduled and queue handlers called directly. Covers BR-1 filtering for every catalog endpoint (FR-CAT-006), role enforcement (FR-USR-003), the auth flows (setup disabled after the first operator, single-use and expired invites, CSRF `Origin` rejection, session idle and absolute expiry, session revocation on disable; FR-USR-001 to FR-USR-007, NFR-SEC-007), the sync lock (FR-SYNC-002), idempotency (FR-SYNC-004), missing marking (FR-SYNC-005), cascades (DR-005) and retention (DR-003) | T |
 | Provider contract | Vitest plus recorded fixtures | Each adapter runs against fixtures served by the **mock origin server**, a small Hono app in `test/mock-origin/` that replays recorded responses for each provider and version and can inject faults (timeouts, 5xx, redirects to a foreign host, truncated pages). The same contract suite runs against every adapter (NFR-MAINT-001, IR-002 to IR-005). Fixtures are recorded from real servers during the M1 spike and M4, then scrubbed of tokens, hostnames and personal data by a script that CI re-checks. | T |
 | End-to-end | Playwright against `wrangler dev` plus the mock origin (from M2) | Journeys J-1 to J-6 (PRD) with seeded data. Playback uses tiny test media (H.264/AAC MP4 and an HLS variant) served by the mock origin. CSP violations are collected and fail the test. axe-core checks feed NFR-A11Y-001. | T, part of A |
 | Docs checks | Node script in CI | Relative links resolve. Every `FR-/NFR-/IR-/DR-` ID cited in `docs/` exists in the SRS. LLD and PRD headings match the expected IDs. ADR filenames follow the pattern (NFR-MAINT-002). | I |
 | Static and security checks | `tsc --noEmit`, ESLint, `pnpm audit --prod`, GitHub secret scanning or gitleaks, Dependabot | NFR-SEC-006, IR-002 import boundaries | I |
 | Bundle budget | `size-limit` or a Vite manifest check | NFR-PERF-003 | T |
-| Staging demonstration | Scripted checklist run against staging with real test origins | FR-OPS-003, FR-OPS-004, FR-USR-006, NFR-REL-003 rehearsal, real-browser playback on the NFR-COMPAT-001 matrix (manual Safari and iOS) | D |
+| Staging demonstration | Scripted checklist run against staging with real test origins | FR-OPS-003, FR-OPS-004, FR-USR-007 recovery command, FR-OPS-008 fresh self-host install and upgrade from the previous release, NFR-REL-003 rehearsal, passkey sign-in on real devices (platform authenticator and security key), real-browser playback on the NFR-COMPAT-001 matrix (manual Safari and iOS) | D |
 | Analysis | Seeded dataset at the NFR-SCALE-001 envelope in staging; a load script that measures p95 for browse, search, detail and play; a cost worksheet from the Cloudflare dashboard | NFR-PERF-001, NFR-PERF-002, NFR-SCALE-001, NFR-COST-001 | A |
 
 Media bytes never pass through the Worker (FR-PLAY-008). An integration test asserts that every descriptor `stream_url` host equals the selected server's host and that no `/api` route streams `video/*` or `audio/*`.
@@ -196,16 +196,49 @@ flowchart LR
   PR[Pull request] --> C1[typecheck + lint] --> C2[unit] --> C3[workers integration] --> C4[provider contract] --> C5[docs checks] --> C6[audit + secret scan] --> C7[e2e from M2] --> C8[bundle budget]
   M[merge to main] --> S1[apply D1 migrations: staging] --> S2[wrangler deploy --env staging] --> S3[smoke e2e vs staging]
   S3 --> P0{GitHub environment 'production' approval}
-  P0 --> P1[apply D1 migrations: production] --> P2[wrangler deploy --env production] --> P3[smoke: GET /api/v1/health via Access service token]
+  T[tag vX.Y.Z on main] --> R1[build release artifact + changelog + migration list] --> R2[GitHub Release]
+  P0 --> P1[apply D1 migrations: production] --> P2[wrangler deploy --env production] --> P3[smoke: public GET /api/v1/health]
 ```
 
+- These are the project's own pipelines. Self-hosters do not need GitHub Actions (§9.2).
 - GitHub Actions. The Cloudflare API token is stored as a GitHub environment secret, scoped to Workers and D1 edits on the one account. Production uses a separate token behind a protected environment with required reviewers (the operator).
 - Production deploys are manual (`workflow_dispatch`, or promotion from the staging run) and need approval. Staging deploys automatically on every merge to `main`.
 - Each pipeline step's commands live in `package.json` scripts, so a developer can run CI locally.
 
-## 9. Release and rollback
+## 9. Releases, self-hosting, upgrades and rollback
 
-- Releases are tagged `vX.Y.Z`, and the release notes list migrations by number.
+### 9.1 Versioned releases (FR-OPS-008)
+
+- SemVer tags `vX.Y.Z` on `main` produce a GitHub Release with the changelog, the list of migrations by number, any new or changed configuration keys, and upgrade notes.
+- **Major** releases may contain *contract* migrations or breaking configuration changes. **Minor** and **patch** releases contain only *expand* migrations and additive configuration with defaults.
+- The `/api/v1` prefix is versioned separately (IR-001). The SPA and API ship together, so the API version only matters for external scripts.
+- The Worker embeds `APP_VERSION` and `SCHEMA_VERSION_REQUIRED`, the highest migration number it depends on. The operator-only `/api/v1/admin/status` shows both, alongside the applied migration number read from `d1_migrations`.
+
+### 9.2 Self-host install path
+
+Cinewren is still one operator per deployment (ADR-0011). Self-hosting means many independent deployments of the same code, not multi-tenancy.
+
+| Path | Steps |
+|---|---|
+| **Deploy to Cloudflare button** (README) | The button clones the repository into the operator's GitHub or GitLab account, provisions the D1 database and Queues declared in the Wrangler config, and sets up Workers Builds so that pushes to the production branch deploy automatically. Secrets listed in `.dev.vars.example` are offered for entry during deployment (https://developers.cloudflare.com/workers/platform/deploy-buttons/). The Workers Builds deploy command is `pnpm run deploy`, which runs `wrangler d1 migrations apply DB --remote && wrangler deploy`. Whether Workers Builds runs remote migrations with the build token's permissions is to verify in M0. The fallback is for the operator to run migrations once from their machine. |
+| **Wrangler (manual)** | Clone the release tag, `pnpm install`, `wrangler d1 create`, `wrangler queues create` (jobs queue and DLQ), put the IDs into `wrangler.jsonc`, `wrangler secret put CREDENTIAL_KEYS`, `wrangler secret put SETUP_TOKEN`, set `APP_ORIGIN`, then `pnpm run deploy` and attach a custom domain. |
+
+Both paths share these steps:
+- **Prerequisites** (self-host guide): the Workers Paid plan (A-5); a custom domain on Cloudflare for the app; origins on grey-cloud or non-Cloudflare hostnames with public TLS (A-3); an offline copy of `CREDENTIAL_KEYS` (DR-002).
+- **First run:** open `https://<host>/setup`, paste `SETUP_TOKEN`, enter a display name and register a passkey. That creates the first operator (FR-USR-002), after which setup is disabled. Then register servers (J-1).
+- **Preflight:** a `pnpm cinewren:doctor` script checks bindings, secrets present (via `secrets.required`), `APP_ORIGIN` scheme, D1 migration state and the cron triggers, and prints fixes.
+
+### 9.3 Upgrade path on others' deployments
+
+1. The operator records a Time Travel bookmark (`wrangler d1 time-travel info`) as an undo point (§10).
+2. The operator brings the new tag into their repository: merge the upstream tag into their fork (the button path) or check out the tag (the manual path).
+3. The deploy runs `migrations apply`, then `wrangler deploy`. Migrations apply in order, so skipping minor versions within one major is safe: every pending expand migration is compatible with the still-running old Worker (§3).
+4. **Crossing a major** (contract migrations): the release notes require upgrading first to the latest minor of the previous major. A contract migration starts with a guard statement that fails the migration if the database has not reached the required earlier migration number. Nothing is half-applied, because D1 applies each migration file as a unit (to verify in M0).
+5. **Schema-skew guard:** if the deployed Worker sees an applied migration number below `SCHEMA_VERSION_REQUIRED` (migrations were skipped), the API returns 503 `MIGRATIONS_PENDING` on every route except health, setup and status. The SPA explains how to run `pnpm run migrate`. This avoids running new code against an old schema.
+6. If the upgrade misbehaves: `wrangler rollback` for code (§9.4). Restore from the bookmark is the last resort.
+
+### 9.4 Rollback
+
 - **Code rollback:** `wrangler rollback` (or the dashboard) makes a previous version the active deployment immediately (https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/). Because migrations follow expand/contract (§3), the previous version still works against the current schema. Rollbacks have binding-related constraints described on that page, so changes to bindings (adding a Queue or rate limiter) should ship in a release that contains no other risky changes.
 - **Schema rollback** does not exist (forward-only). A bad migration is fixed with a new migration, or in the worst case by Time Travel restore (§10), which also discards data written since.
 - Gradual deployments (traffic split between versions) are available (https://developers.cloudflare.com/workers/versions-and-deployments/gradual-deployments/). They are not used in v1: with ≤ 50 users the signal from a split is too weak to justify the complexity.
@@ -271,6 +304,7 @@ There is no legacy system to migrate from. The design keeps these future changes
 | Future change | What the v1 design keeps open |
 |---|---|
 | Media gateway, DEF-1 (if Q-2 requires hiding origins) | Stream URLs are built only inside adapters, through one `buildStreamUrl` path, and returned in an opaque descriptor (FR-PLAY-001). A gateway would change URL construction and the CSP host list, not the client. |
+| Optional Cloudflare Access in front (operator choice) | Not designed or required. Passkey sessions still apply behind it. The known side-effect is the loss of the Cache API (§6.5). |
 | Multi-tenancy, DEF-3 (Q-1) | IDs are opaque ULIDs, not integers that leak counts. All queries go through the `db/` layer, where a `tenant_id` predicate could be added in one place. Configuration is per deployment. This is real work, not a switch; see ADR-0011. |
 | Origin webhooks (ADR-0009 alternative) | Sync upserts are idempotent and keyed by `(server_id, provider_item_id)`, so a webhook could enqueue a targeted single-item sync message using the same consumer. |
 | Private-network origins (Q-5, DEF-10) | `originFetch` is the single egress point, so a different transport could be swapped in there. |
@@ -283,10 +317,10 @@ There is no legacy system to migrate from. The design keeps these future changes
 |---|---|---|
 | — | Single Worker, TypeScript strict, React+Vite, Hono, pnpm, Vitest, Playwright | Yes: [ADR-0005](../adr/0005-single-worker-typescript-stack.md) |
 | — | D1 as system of record, FTS5 search | Yes: [ADR-0006](../adr/0006-d1-system-of-record.md). FTS5 support is now verified (§2). |
-| — | Access identity | Yes: [ADR-0007](../adr/0007-cloudflare-access-identity.md) |
+| — | Passkey-only authentication, invite-only accounts, setup token, recovery (Owner direction) | Yes: [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md), superseding [ADR-0007](../adr/0007-cloudflare-access-identity.md) |
 | — | Credential encryption | Yes: [ADR-0008](../adr/0008-origin-service-accounts-and-credential-encryption.md) |
 | — | Cron + Queues sync | Yes: [ADR-0009](../adr/0009-pull-based-sync-cron-and-queues.md) |
-| — | Artwork proxy + cache | Yes: [ADR-0012](../adr/0012-artwork-proxy-with-edge-cache.md). **Needs a superseding ADR** because of the Cache API / Access finding (§6.5). |
+| — | Artwork proxy + cache | Yes: [ADR-0012](../adr/0012-artwork-proxy-with-edge-cache.md). It stands now that Access is not used. A custom domain is required for edge caching (§6.5). |
 | — | Session-scoped stream credentials | Yes: [ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md) (Proposed) |
 | TDD-D1 | Raw SQL with typed helpers, no ORM | No: reversible within the `db/` module |
 | TDD-D2 | Wrangler built-in D1 migrations, forward-only, expand/contract | No: implements DR-004 |
@@ -294,8 +328,10 @@ There is no legacy system to migrate from. The design keeps these future changes
 | TDD-D4 | Operational metrics from D1 views; no Analytics Engine in v1 | No |
 | TDD-D5 | Workers rate limiting binding, per user (resolves SDD OD-1) | No |
 | TDD-D6 | Worker runs first for HTML navigations to attach the dynamic CSP | No (mechanism to verify in M0) |
-| TDD-D7 | Interim artwork caching: browser plus `fetch` `cf` cache | Pending: becomes an ADR once verified |
+| TDD-D7 | Artwork cache key scheme and graceful degradation without the Cache API | No: implements ADR-0012 |
 | TDD-D8 | zod for request validation, shared types package | No |
 | TDD-D9 | ULID primary keys; time stored as INTEGER Unix milliseconds | No |
-| TDD-D10 | Local-dev Access bypass: compiled out of non-local builds, plus a runtime gate (§5.1) | No (resolves SDD OD-3) |
-| TDD-D11 | Service-token identities are authorized for the health route only (§5.2) | No |
+| TDD-D10 | No authentication bypass in any mode; real passkeys on `localhost` and test-only session fixtures (§5.1) | No (resolves SDD OD-3) |
+| TDD-D11 | `@simplewebauthn/server` and `browser` for WebAuthn (§1) | No (Workers compatibility to verify in M0) |
+| TDD-D12 | Session cookie `__Host-` prefix, hashed IDs, `Origin` check for CSRF, tokens carried in the URL fragment (§5.1) | No: implements NFR-SEC-007 |
+| TDD-D13 | Self-host packaging: Deploy button and Wrangler paths, `SCHEMA_VERSION_REQUIRED` skew guard, major-only contract migrations (§9) | No: implements FR-OPS-008 |
