@@ -1,10 +1,12 @@
 /** Plain-language text for the reason codes in the LLD-API reasons table (FR-PLAY-010). */
-import type { CopyRow, ReasonCode } from '../api-client/playback-types';
+import type { ItemCopy, ReasonCode } from '@cinewren/shared';
 
 export const REASON_TEXT: Record<ReasonCode, string> = {
   direct_play: 'It plays as stored in this browser, so the server does no conversion.',
   direct_stream_container:
     'The file format is not supported here, so the server repackages it without re-encoding the video.',
+  remux_for_token_auth:
+    'This server only hands out a stream that is tied to your viewing session, so it repackages the video without re-encoding it. The picture quality is unchanged.',
   audio_transcoded: 'Only the audio is re-encoded, because this browser cannot play its codec.',
   transcode_video_codec:
     'The video format, profile or level is not supported here, so the server re-encodes the video. Expect a slower start.',
@@ -38,7 +40,7 @@ export function reasonSentences(codes: readonly string[]): string[] {
   return codes.map(reasonSentence).filter((s): s is string => s !== null);
 }
 
-export function playabilityLabel(p: CopyRow['expectedPlayability']): {
+export function playabilityLabel(p: ItemCopy['expectedPlayability']): {
   text: string;
   tone: 'ok' | 'warn' | 'bad' | 'muted';
 } {
@@ -71,17 +73,17 @@ export function sizeLabel(bytes: number | null): string {
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${String(Math.round(bytes / 1e6))} MB`;
 }
 
-export function audioLabel(a: CopyRow['audio']): string {
+export function audioLabel(a: ItemCopy['audio']): string {
   const first = a[0];
   if (!first) return 'Unknown';
   const ch = first.channels;
   const layout = ch === null ? '' : ch === 6 ? ' 5.1' : ch === 8 ? ' 7.1' : ` ${String(ch)}.0`;
-  return `${first.codec.toUpperCase()}${layout}`;
+  return `${(first.codec ?? 'audio').toUpperCase()}${layout}`;
 }
 
 /** The callout headline, for example "Basement NAS: 1080p, direct play". */
-export function copyHeadline(c: CopyRow): string {
-  const res = c.resolution?.label ?? 'unknown resolution';
+export function copyHeadline(c: ItemCopy): string {
+  const res = c.resolution.label || 'unknown resolution';
   const mode =
     c.expectedPlayability === 'direct_play'
       ? 'direct play'

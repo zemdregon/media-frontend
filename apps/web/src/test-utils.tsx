@@ -1,8 +1,13 @@
 import { render } from '@testing-library/react';
 import { vi } from 'vitest';
-import type { ItemCard, ItemDetail, Me } from '@cinewren/shared';
+import type {
+  ItemCard,
+  ItemCopy,
+  ItemDetailWithCopies,
+  Me,
+  PlaybackDescriptor,
+} from '@cinewren/shared';
 import { App } from './App';
-import type { CopyRow, PlaybackDescriptor } from './api-client/playback-types';
 
 export type Reply = [number, unknown];
 export type Handler = (method: string, path: string, body: unknown) => Reply | undefined;
@@ -48,7 +53,9 @@ export function card(over: Partial<ItemCard> & { id: string; title: string }): I
   };
 }
 
-export function detail(over: Partial<ItemDetail> & { id: string; title: string }): ItemDetail {
+export function detail(
+  over: Partial<ItemDetailWithCopies> & { id: string; title: string },
+): ItemDetailWithCopies {
   return {
     type: 'movie',
     parentId: null,
@@ -66,6 +73,7 @@ export function detail(over: Partial<ItemDetail> & { id: string; title: string }
     children: null,
     cast: [],
     collections: [],
+    copies: [],
     ...over,
   };
 }
@@ -78,7 +86,7 @@ export function renderApp(path: string, me: Me, handler: Handler) {
   return fetchMock;
 }
 
-export function copyRow(over: Partial<CopyRow> & { sourceId: string }): CopyRow {
+export function copyRow(over: Partial<ItemCopy> & { sourceId: string }): ItemCopy {
   return {
     versionId: `v-${over.sourceId}`,
     serverName: 'Basement NAS',
@@ -106,7 +114,16 @@ export function descriptor(over: Partial<PlaybackDescriptor> = {}): PlaybackDesc
     mode: 'direct_play',
     streamUrl: 'https://media-a.example.net/stream/m1.mp4?token=t1',
     streamType: 'progressive',
-    audioTracks: [{ index: 1, label: 'English 5.1 (AAC)', language: 'en', selected: true }],
+    audioTracks: [
+      {
+        index: 1,
+        label: 'English 5.1 (AAC)',
+        language: 'en',
+        codec: 'aac',
+        channels: 6,
+        selected: true,
+      },
+    ],
     subtitleTracks: [],
     resume: null,
     reasons: ['direct_play'],

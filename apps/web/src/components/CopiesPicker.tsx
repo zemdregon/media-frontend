@@ -1,6 +1,6 @@
 /** Source picker radiogroup and the "why this copy" callout (UX §6; FR-CAT-013, FR-PLAY-005, FR-PLAY-010). */
 import { useRef, type KeyboardEvent } from 'react';
-import type { CopyRow } from '../api-client/playback-types';
+import type { ItemCopy } from '@cinewren/shared';
 import {
   audioLabel,
   copyHeadline,
@@ -10,10 +10,10 @@ import {
   sizeLabel,
 } from '../lib/reasons';
 
-export const copyKey = (c: Pick<CopyRow, 'sourceId' | 'versionId'>) =>
+export const copyKey = (c: Pick<ItemCopy, 'sourceId' | 'versionId'>) =>
   `${c.sourceId}:${c.versionId}`;
 
-function serverLine(c: CopyRow): string {
+function serverLine(c: ItemCopy): string {
   const type = c.serverType ? c.serverType.toUpperCase() : 'SERVER';
   const state =
     c.serverStatus === 'active'
@@ -32,7 +32,7 @@ export function CopiesPicker({
   onChange,
   labelledBy,
 }: {
-  copies: CopyRow[];
+  copies: ItemCopy[];
   value: string | null;
   onChange: (key: string) => void;
   /** id of the heading that names the group. */
@@ -131,7 +131,7 @@ export function CopiesPicker({
 }
 
 /** "Why this copy": updates politely when the selection changes (FR-PLAY-010). */
-export function WhyCallout({ copy }: { copy: CopyRow }) {
+export function WhyCallout({ copy }: { copy: ItemCopy }) {
   const sentences = reasonSentences(copy.reasons);
   const bad = copy.expectedPlayability === 'unavailable';
   return (

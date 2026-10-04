@@ -5,6 +5,7 @@
  */
 import { z } from 'zod';
 import type { Page } from './auth';
+import type { ContinueWatchingCard } from './playback';
 
 export type CatalogType = 'movie' | 'series' | 'season' | 'episode';
 export type ArtworkSlot = 'poster' | 'backdrop' | 'thumb';
@@ -39,7 +40,7 @@ export interface CollectionCard {
 /** `GET /api/v1/home`. `continueWatching` is filled from M3 (FR-CAT-008). */
 export interface HomeResponse {
   recentlyAdded: ItemCard[];
-  continueWatching: ItemCard[];
+  continueWatching: ContinueWatchingCard[];
 }
 
 /** `GET /api/v1/search`; each group holds only hits visible under BR-1, with no totals. */

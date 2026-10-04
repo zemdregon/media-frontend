@@ -4,12 +4,14 @@
  */
 import { ApiError } from '../api-client';
 import { sendPlayEvent, sendPlayEventOnHide } from '../api-client/playback';
-import type { PlayEventType } from '../api-client/playback-types';
+import type { PlaybackEvent } from '@cinewren/shared';
+
+type EventType = PlaybackEvent['type'];
 
 export const PROGRESS_INTERVAL_MS = 15_000;
 
 export interface Reporter {
-  send: (type: PlayEventType, errorCode?: string) => void;
+  send: (type: EventType, errorCode?: string) => void;
   /** Page hide: uses sendBeacon, or fetch keepalive. */
   hide: () => void;
   startTicker: () => void;
@@ -28,7 +30,7 @@ export function createReporter(opts: {
   let timer: ReturnType<typeof setInterval> | null = null;
   let closed = false;
 
-  const event = (type: PlayEventType, errorCode?: string) => ({
+  const event = (type: EventType, errorCode?: string) => ({
     seq: ++seq,
     type,
     positionMs: Math.max(0, Math.round(opts.getPositionMs())),
@@ -40,7 +42,7 @@ export function createReporter(opts: {
     timer = null;
   };
 
-  const send = (type: PlayEventType, errorCode?: string) => {
+  const send = (type: EventType, errorCode?: string) => {
     if (closed) return;
     sendPlayEvent(opts.sessionId, event(type, errorCode)).catch((err: unknown) => {
       if (err instanceof ApiError && err.status === 410 && !closed) {

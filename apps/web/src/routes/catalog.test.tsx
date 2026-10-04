@@ -3,7 +3,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it } from 'vitest';
-import { card, detail, operator, page, renderApp, viewer } from '../test-utils';
+import { card, copyRow, detail, operator, page, renderApp, viewer } from '../test-utils';
 
 const url = (fetchMock: ReturnType<typeof renderApp>, includes: string) =>
   fetchMock.mock.calls.some(([u]) => u.includes(includes));
@@ -143,51 +143,42 @@ it('search with no hits says so', async () => {
 
 it('title detail shows the versions badge, server count, copies table and cast', async () => {
   renderApp('/items/m1', viewer, (_m, p) =>
-    p === '/items/m1/versions'
+    p === '/items/m1'
       ? [
           200,
-          [
-            {
-              sourceId: 's1',
-              versionId: 'v1',
-              label: '4K HDR',
-              height: 2160,
-              hdr: 'hdr10',
-              videoCodec: 'hevc',
-              serverName: 'Basement NAS',
-              serverStatus: 'active',
-            },
-            {
-              sourceId: 's2',
-              versionId: 'v2',
-              label: '1080p',
-              height: 1080,
-              hdr: 'none',
-              videoCodec: 'h264',
-              serverName: 'Seedbox',
-              serverStatus: 'unreachable',
-            },
-          ],
+          detail({
+            id: 'm1',
+            title: 'Night of the Living Dead',
+            serverCount: 2,
+            runtimeMs: 96 * 60000,
+            cast: [
+              {
+                person: { id: 'p1', name: 'Duane Jones', artworkUrl: null },
+                role: 'actor',
+                character: 'Ben',
+              },
+            ],
+            collections: [{ id: 'c1', name: 'Classic Horror' }],
+            copies: [
+              copyRow({
+                sourceId: 's1',
+                serverName: 'Basement NAS',
+                resolution: { width: 3840, height: 2160, label: '4K' },
+                hdr: 'hdr10',
+                videoCodec: 'hevc',
+                selected: true,
+              }),
+              copyRow({
+                sourceId: 's2',
+                serverName: 'Seedbox',
+                serverStatus: 'unreachable',
+                expectedPlayability: 'unavailable',
+                reasons: ['server_unreachable'],
+              }),
+            ],
+          }),
         ]
-      : p === '/items/m1'
-        ? [
-            200,
-            detail({
-              id: 'm1',
-              title: 'Night of the Living Dead',
-              serverCount: 2,
-              runtimeMs: 96 * 60000,
-              cast: [
-                {
-                  person: { id: 'p1', name: 'Duane Jones', artworkUrl: null },
-                  role: 'actor',
-                  character: 'Ben',
-                },
-              ],
-              collections: [{ id: 'c1', name: 'Classic Horror' }],
-            }),
-          ]
-        : undefined,
+      : undefined,
   );
   expect(
     await screen.findByRole('heading', { level: 1, name: 'Night of the Living Dead' }),
@@ -195,7 +186,6 @@ it('title detail shows the versions badge, server count, copies table and cast',
   expect(screen.getByLabelText('Versions: 4K HDR, 1080p')).toBeInTheDocument();
   expect(screen.getByText('Available from 2 servers')).toBeInTheDocument();
   expect(screen.getByText('1968 · 1 h 36 min · Horror')).toBeInTheDocument();
-  // Without `copies` on the item, the M2 `/versions` rows still fill the radiogroup.
   const group = await screen.findByRole('radiogroup', { name: 'Copies' });
   expect(within(group).getAllByRole('radio')).toHaveLength(2);
   expect(within(group).getByText('Basement NAS')).toBeInTheDocument();
@@ -209,11 +199,10 @@ it('title detail shows the versions badge, server count, copies table and cast',
 });
 
 it('title detail uses the singular for one server', async () => {
-  renderApp('/items/m1', viewer, (_m, p) =>
-    p === '/items/m1/versions'
-      ? [200, []]
-      : [200, detail({ id: 'm1', title: 'Detour', serverCount: 1 })],
-  );
+  renderApp('/items/m1', viewer, () => [
+    200,
+    detail({ id: 'm1', title: 'Detour', serverCount: 1 }),
+  ]);
   expect(await screen.findByText('Available from 1 server')).toBeInTheDocument();
 });
 

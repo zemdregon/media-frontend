@@ -85,24 +85,26 @@ export type PlaybackMode = 'direct_play' | 'direct_stream' | 'transcode';
  * Selection reason codes (LLD-API table). Clients must ignore codes they do not know.
  * `remux_for_token_auth` is an addition for Jellyfin's forced token-gated HLS (ADR-0013).
  */
-export type ReasonCode =
-  | 'direct_play'
-  | 'direct_stream_container'
-  | 'remux_for_token_auth'
-  | 'audio_transcoded'
-  | 'transcode_video_codec'
-  | 'subtitle_burn_in'
-  | 'hdr_unsupported'
-  | 'hdr_match'
-  | 'resolution_exceeds_device'
-  | 'highest_playable_resolution'
-  | 'server_priority'
-  | 'server_latency'
-  | 'server_degraded'
-  | 'server_unreachable'
-  | 'user_selected'
-  | 'failover'
-  | 'origin_changed_mode';
+export const REASON_CODES = [
+  'direct_play',
+  'direct_stream_container',
+  'remux_for_token_auth',
+  'audio_transcoded',
+  'transcode_video_codec',
+  'subtitle_burn_in',
+  'hdr_unsupported',
+  'hdr_match',
+  'resolution_exceeds_device',
+  'highest_playable_resolution',
+  'server_priority',
+  'server_latency',
+  'server_degraded',
+  'server_unreachable',
+  'user_selected',
+  'failover',
+  'origin_changed_mode',
+] as const;
+export type ReasonCode = (typeof REASON_CODES)[number];
 
 export interface AudioTrackEntry {
   index: number;
@@ -192,6 +194,8 @@ export interface ItemCopy {
   sourceId: string;
   versionId: string;
   serverName: string;
+  /** The origin's type (`jellyfin`, `emby`, `plex`) for the "TYPE · network" line. */
+  serverType: 'jellyfin' | 'emby' | 'plex';
   serverStatus: string;
   resolution: { width: number | null; height: number | null; label: string };
   hdr: string;

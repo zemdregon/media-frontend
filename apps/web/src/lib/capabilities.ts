@@ -2,7 +2,7 @@
  * Device capability detection (FR-PLAY-002, TDD §11.1). Always live: the browser is probed with
  * `canPlayType`, `MediaSource.isTypeSupported` and MediaCapabilities; there is no per-browser table.
  */
-import type { DeviceCapabilities } from '../api-client/playback-types';
+import type { DeviceCapabilitiesPayload } from '@cinewren/shared';
 
 export interface MediaCapabilitiesLike {
   decodingInfo(config: unknown): Promise<{ supported: boolean }>;
@@ -113,7 +113,7 @@ async function decodes(
 export async function detectCapabilities(
   env: CapabilityEnv = browserEnv(),
   opts: { maxHeightPreference?: number | null } = {},
-): Promise<DeviceCapabilities> {
+): Promise<DeviceCapabilitiesPayload> {
   const nativeHls = env.canPlayType(HLS_MIME) !== '';
   const mse = env.isTypeSupported !== null;
 
@@ -123,7 +123,7 @@ export async function detectCapabilities(
   if (env.canPlayType('video/x-matroska') !== '') containers.push('mkv');
   if (nativeHls || mse) containers.push('hls');
 
-  const video: DeviceCapabilities['video'] = [];
+  const video: DeviceCapabilitiesPayload['video'] = [];
   const h264 = H264_LEVELS.find(([, mime]) => supports(env, `video/mp4; codecs="${mime}"`));
   if (h264) video.push({ codec: 'h264', maxLevel: h264[0] });
   for (const c of VIDEO_CODECS) {
@@ -181,10 +181,10 @@ export async function detectCapabilities(
   };
 }
 
-let cached: Promise<DeviceCapabilities> | null = null;
+let cached: Promise<DeviceCapabilitiesPayload> | null = null;
 
 /** Detected once per page load and kept in memory (TDD §11.1). */
-export function getCapabilities(): Promise<DeviceCapabilities> {
+export function getCapabilities(): Promise<DeviceCapabilitiesPayload> {
   cached ??= detectCapabilities().catch(() => FALLBACK);
   return cached;
 }
@@ -194,7 +194,7 @@ export function resetCapabilitiesCache(): void {
 }
 
 /** What we send when detection itself fails: the baseline every supported browser plays. */
-const FALLBACK: DeviceCapabilities = {
+const FALLBACK: DeviceCapabilitiesPayload = {
   containers: ['mp4'],
   video: [{ codec: 'h264' }],
   audio: ['aac'],
@@ -216,10 +216,10 @@ function b64url(text: string): string {
 }
 
 /** `X-Device-Caps` value: base64url JSON, at most 2 KB (LLD-API); trims optional detail if needed. */
-export function encodeCapsHeader(caps: DeviceCapabilities): string {
+export function encodeCapsHeader(caps: DeviceCapabilitiesPayload): string {
   let out = b64url(JSON.stringify(caps));
   if (out.length <= HEADER_LIMIT) return out;
-  const slim: DeviceCapabilities = {
+  const slim: DeviceCapabilitiesPayload = {
     ...caps,
     video: caps.video.map((v) => ({ codec: v.codec })),
   };

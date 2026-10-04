@@ -4,7 +4,7 @@ import type {
   CollectionDetail,
   HomeResponse,
   ItemCard,
-  ItemDetail,
+  ItemDetailWithCopies,
   Page,
   PersonDetail,
   SearchResponse,
@@ -54,7 +54,7 @@ export const search = (q: string, kind?: SearchKind, cursor?: string | null) =>
 
 /** `caps` is the `X-Device-Caps` header value, so the copy table carries per-device playability. */
 export const getItem = (id: string, caps?: Record<string, string>) =>
-  api<ItemDetail>('GET', `/items/${enc(id)}`, undefined, caps ? { headers: caps } : {});
+  api<ItemDetailWithCopies>('GET', `/items/${enc(id)}`, undefined, caps ? { headers: caps } : {});
 
 export const getVersions = (id: string) => api<VersionEntry[]>('GET', `/items/${enc(id)}/versions`);
 

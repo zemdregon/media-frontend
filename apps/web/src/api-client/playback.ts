@@ -1,7 +1,7 @@
 /** Playback, progress and next-episode calls (LLD-API; FR-PLAY-001, FR-PROG-001 to FR-PROG-004). */
 import type { ItemCard } from '@cinewren/shared';
 import { api } from './index';
-import type { PlayEvent, PlayRequest, PlaybackDescriptor, ProgressResult } from './playback-types';
+import type { PlaybackEvent, PlayRequest, PlaybackDescriptor, ProgressResponse } from '@cinewren/shared';
 
 const enc = encodeURIComponent;
 
@@ -17,14 +17,14 @@ export const play = (req: PlayRequest) =>
     headers: { 'Idempotency-Key': idempotencyKey() },
   });
 
-export const sendPlayEvent = (sessionId: string, ev: PlayEvent) =>
+export const sendPlayEvent = (sessionId: string, ev: PlaybackEvent) =>
   api<undefined>('POST', `/play/${enc(sessionId)}/events`, ev);
 
 /**
  * Reports an event while the page is going away (FR-PROG-001): `sendBeacon` first, then `fetch`
  * with `keepalive`. Never throws.
  */
-export function sendPlayEventOnHide(sessionId: string, ev: PlayEvent): void {
+export function sendPlayEventOnHide(sessionId: string, ev: PlaybackEvent): void {
   const url = `/api/v1/play/${enc(sessionId)}/events`;
   const json = JSON.stringify(ev);
   try {
@@ -44,7 +44,7 @@ export function sendPlayEventOnHide(sessionId: string, ev: PlayEvent): void {
 }
 
 export const setWatched = (itemId: string, watched: boolean) =>
-  api<ProgressResult>('PUT', `/progress/${enc(itemId)}`, { watched });
+  api<ProgressResponse>('PUT', `/progress/${enc(itemId)}`, { watched });
 
 export const getNextEpisode = (itemId: string) =>
   api<ItemCard | null>('GET', `/items/${enc(itemId)}/next-episode`);

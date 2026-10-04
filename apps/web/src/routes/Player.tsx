@@ -9,12 +9,11 @@ import { ApiError } from '../api-client';
 import { getItem } from '../api-client/catalog';
 import { getNextEpisode, play } from '../api-client/playback';
 import type {
-  CopyRow,
+  ItemCopy,
   PlaybackDescriptor,
   SubtitlePreference,
-  SubtitleTrack,
-  WithCopies,
-} from '../api-client/playback-types';
+  SubtitleTrackEntry,
+} from '@cinewren/shared';
 import { CopiesPicker, copyKey } from '../components/CopiesPicker';
 import { Alert, usePageTitle } from '../components/ui';
 import { capsHeaders, getCapabilities } from '../lib/capabilities';
@@ -356,7 +355,7 @@ function Surface({
   onBack: () => void;
   onFatal: (code: string, positionMs: number) => void;
   onRequestTracks: (change: Partial<Pick<Spec, 'audio' | 'subtitle'>>, positionMs: number) => void;
-  onSwitchCopy: (copy: CopyRow, positionMs: number) => void;
+  onSwitchCopy: (copy: ItemCopy, positionMs: number) => void;
   onExpired: (positionMs: number) => void;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
@@ -591,7 +590,7 @@ function Surface({
     if (document.fullscreenElement) void document.exitFullscreen();
     else void box.requestFullscreen();
   };
-  const chooseSubtitle = (t: SubtitleTrack | null) => {
+  const chooseSubtitle = (t: SubtitleTrackEntry | null) => {
     if (!t) {
       if (burnedIn) onRequestTracks({ subtitle: { mode: 'off' } }, posMs());
       else setSubSel(null);
@@ -599,7 +598,7 @@ function Surface({
       return;
     }
     if (t.kind === 'image' || burnedIn) {
-      onRequestTracks({ subtitle: { mode: 'track', index: t.index, kind: t.kind } }, posMs());
+      onRequestTracks({ subtitle: { mode: 'track', index: t.index } }, posMs());
       return;
     }
     lastSub.current = t.index;
@@ -726,7 +725,7 @@ function Surface({
               trackEls.current[t.index] = el;
             }}
             kind="subtitles"
-            src={t.url}
+            src={t.url ?? undefined}
             label={t.label}
             {...(t.language ? { srcLang: t.language } : {})}
           />
@@ -926,7 +925,7 @@ function CopyMenu({
   onClose,
 }: {
   d: PlaybackDescriptor;
-  onPick: (c: CopyRow) => void;
+  onPick: (c: ItemCopy) => void;
   onClose: () => void;
 }) {
   const { state, reload } = useLoad(
@@ -935,7 +934,7 @@ function CopyMenu({
   );
   const [picked, setPicked] = useState<string | null>(`${d.source.id}:${d.source.versionId}`);
   const h = useId();
-  const copies = state.status === 'ready' ? ((state.data as WithCopies).copies ?? []) : [];
+  const copies = state.status === 'ready' ? state.data.copies : [];
   const chosen = copies.find((c) => copyKey(c) === picked);
   const playingNow = picked === `${d.source.id}:${d.source.versionId}`;
   return (

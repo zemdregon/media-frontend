@@ -330,6 +330,7 @@ export async function itemCopies(
     sourceId: row.c.sourceId,
     versionId: row.c.versionId,
     serverName: row.c.serverName,
+    serverType: row.c.serverType,
     serverStatus: row.c.serverStatus,
     resolution: {
       width: row.c.width,

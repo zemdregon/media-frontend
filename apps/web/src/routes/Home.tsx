@@ -1,4 +1,4 @@
-import type { ContinueItem } from '../api-client/playback-types';
+import type { ContinueWatchingCard } from '@cinewren/shared';
 import { getHome } from '../api-client/catalog';
 import {
   Alert,
@@ -52,7 +52,7 @@ export function Home() {
 }
 
 /** Continue-watching hero cards (UX §6; FR-CAT-008, FR-PROG-001). Not rendered when empty. */
-function ContinueWatching({ items }: { items: ContinueItem[] }) {
+function ContinueWatching({ items }: { items: ContinueWatchingCard[] }) {
   if (items.length === 0) return null;
   return (
     <section aria-labelledby="cw-h" className="stack">
@@ -68,14 +68,12 @@ function ContinueWatching({ items }: { items: ContinueItem[] }) {
   );
 }
 
-function ContinueHero({ item }: { item: ContinueItem }) {
-  const pos = item.progress?.positionMs ?? 0;
-  const total = item.runtimeMs ?? 0;
+function ContinueHero({ item }: { item: ContinueWatchingCard }) {
+  const pos = item.progress.positionMs;
+  const total = item.progress.runtimeMs ?? 0;
   const percent = total > 0 ? Math.min(100, Math.max(0, Math.round((pos / total) * 100))) : null;
   const left = total > 0 ? runtimeLabel(Math.max(0, total - pos)) : null;
-  const via = item.resumeSource
-    ? `resuming from ${item.resumeSource.serverName}${item.resumeSource.mode ? `, ${item.resumeSource.mode.replace(/_/g, ' ')}` : ''}`
-    : `resuming from ${secondsLabel(pos / 1000)}`;
+  const via = `resuming from ${secondsLabel(pos / 1000)}`;
   const label = [item.title, item.year ? String(item.year) : null].filter(Boolean).join(', ');
   const href = encodeURIComponent(item.id);
   return (

@@ -870,6 +870,7 @@ describe('GET /items/{id}: the copy table (FR-CAT-013)', () => {
     ]);
     expect(detail.copies[0]).toMatchObject({
       serverName: 'Server jf',
+      serverType: 'jellyfin',
       serverStatus: 'active',
       resolution: { width: 1920, height: 1080, label: '1080p' },
       hdr: 'none',
@@ -879,6 +880,7 @@ describe('GET /items/{id}: the copy table (FR-CAT-013)', () => {
       sizeBytes: 1000,
       reasons: ['direct_stream_container'],
     });
+    expect(detail.copies[1]?.serverType).toBe('emby');
     // The same copy the play request picks.
     const d = await playOk(alice, { itemId: 'm-heat' });
     expect(d.source.id).toBe(detail.copies.find((c) => c.selected)?.sourceId);

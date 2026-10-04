@@ -3,12 +3,12 @@ import { useState } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
-import { REASON_CODES, type CopyRow } from '../api-client/playback-types';
+import { REASON_CODES, type ItemCopy } from '@cinewren/shared';
 import { REASON_TEXT } from '../lib/reasons';
 import { copyRow } from '../test-utils';
 import { CopiesPicker, WhyCallout, copyKey } from './CopiesPicker';
 
-const copies: CopyRow[] = [
+const copies: ItemCopy[] = [
   copyRow({
     sourceId: 'a',
     selected: true,
@@ -82,7 +82,7 @@ it('moves the selection with arrow keys using a roving tabindex, and updates the
   expect(radios.map((r) => r.tabIndex)).toEqual([0, -1, -1]);
   radios[0]?.focus();
   await user.keyboard('{ArrowDown}');
-  expect(onChange).toHaveBeenLastCalledWith(copyKey(copies[1] as CopyRow));
+  expect(onChange).toHaveBeenLastCalledWith(copyKey(copies[1] as ItemCopy));
   expect(radios[1]).toHaveFocus();
   expect(radios[1]).toHaveAttribute('aria-checked', 'true');
   expect(radios.map((r) => r.tabIndex)).toEqual([-1, 0, -1]);
@@ -95,7 +95,7 @@ it('moves the selection with arrow keys using a roving tabindex, and updates the
 });
 
 it('the callout is a polite live region', () => {
-  render(<WhyCallout copy={copies[0] as CopyRow} />);
+  render(<WhyCallout copy={copies[0] as ItemCopy} />);
   const live = screen.getByText('Basement NAS: 1080p, direct play').closest('[aria-live]');
   expect(live).toHaveAttribute('aria-live', 'polite');
 });
@@ -108,7 +108,7 @@ it.each(REASON_CODES)('renders the plain-language sentence for reason code %s', 
 it('renders reasons in order, ignores unknown codes and has a fallback without any', () => {
   const { rerender } = render(
     <WhyCallout
-      copy={copyRow({ sourceId: 'x', reasons: ['future_code', 'direct_play', 'failover'] })}
+      copy={copyRow({ sourceId: 'x', reasons: ['future_code', 'direct_play', 'failover'] as unknown as ItemCopy['reasons'] })}
     />,
   );
   expect(

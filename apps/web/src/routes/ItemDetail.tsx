@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import type { ItemDetail as Detail, VersionEntry } from '@cinewren/shared';
-import { getChildren, getItem, getVersions } from '../api-client/catalog';
+import type { ItemDetailWithCopies } from '@cinewren/shared';
+import { getChildren, getItem } from '../api-client/catalog';
 import { getNextEpisode, setWatched } from '../api-client/playback';
-import type { CopyRow, WithCopies } from '../api-client/playback-types';
 import { CopiesPicker, copyKey } from '../components/CopiesPicker';
 import { capsHeaders } from '../lib/capabilities';
 import { playabilityLabel, secondsLabel } from '../lib/reasons';
@@ -94,7 +93,7 @@ export function ItemDetail({ id }: { id: string }) {
   );
 }
 
-function kindLabel(item: Detail): string {
+function kindLabel(item: ItemDetailWithCopies): string {
   switch (item.type) {
     case 'series':
       return 'Series';
@@ -108,7 +107,7 @@ function kindLabel(item: Detail): string {
 }
 
 /** Versions badge and "Available from N servers" (FR-CAT-005). */
-function VersionsLine({ item }: { item: Detail }) {
+function VersionsLine({ item }: { item: ItemDetailWithCopies }) {
   const servers = `Available from ${String(item.serverCount)} ${item.serverCount === 1 ? 'server' : 'servers'}`;
   return (
     <div className="badge-row">
@@ -122,41 +121,17 @@ function VersionsLine({ item }: { item: Detail }) {
   );
 }
 
-/** Legacy `/versions` rows (M2) shown as copies without a device prediction. */
-function fromVersion(v: VersionEntry): CopyRow {
-  return {
-    sourceId: v.sourceId,
-    versionId: v.versionId,
-    serverName: v.serverName,
-    serverStatus: v.serverStatus,
-    resolution: v.height ? { width: 0, height: v.height, label: v.label } : null,
-    hdr: v.hdr,
-    videoCodec: v.videoCodec,
-    container: null,
-    audio: [],
-    sizeBytes: null,
-    expectedPlayability: v.serverStatus === 'unreachable' ? 'unavailable' : null,
-    reasons: v.serverStatus === 'unreachable' ? ['server_unreachable'] : [],
-    selected: false,
-  };
-}
-
 /**
  * Play controls and the copies radiogroup for a movie or episode (FR-CAT-013, FR-PLAY-005).
- * `copies` comes with the item; an older API without it falls back to `/versions`.
+ * `copies` comes with the item (`ItemDetailWithCopies`), one row per visible copy.
  */
-function Playable({ item }: { item: Detail & WithCopies }) {
-  const legacy = useLoad(
-    async () => (item.copies ? [] : (await getVersions(item.id)).map(fromVersion)),
-    `versions:${item.id}`,
-  );
+function Playable({ item }: { item: ItemDetailWithCopies }) {
   const [picked, setPicked] = useState<string | null>(null);
   const [watched, setWatchedState] = useState(item.progress?.watched ?? false);
   const [busy, setBusy] = useState(false);
   const [markError, setMarkError] = useState<string | null>(null);
 
-  const loaded = item.copies ? { status: 'ready' as const, data: item.copies } : legacy.state;
-  const copies = loaded.status === 'ready' ? loaded.data : [];
+  const copies = item.copies;
   const auto = copies.find((c) => c.selected) ?? copies[0];
   const current = copies.find((c) => copyKey(c) === picked) ?? auto;
   const overridden = current && auto && copyKey(current) !== copyKey(auto);
@@ -220,19 +195,16 @@ function Playable({ item }: { item: Detail & WithCopies }) {
         <h2 id="copies-h" className="h-section">
           Copies
         </h2>
-        {loaded.status === 'loading' && <SkeletonBlock label="Loading copies" />}
-        {loaded.status === 'error' && <Alert message={loaded.message} onRetry={legacy.reload} />}
-        {loaded.status === 'ready' &&
-          (copies.length === 0 ? (
-            <p className="helper">No playable copy right now.</p>
-          ) : (
-            <CopiesPicker
-              copies={copies}
-              value={current ? copyKey(current) : null}
-              onChange={setPicked}
-              labelledBy="copies-h"
-            />
-          ))}
+        {copies.length === 0 ? (
+          <p className="helper">No playable copy right now.</p>
+        ) : (
+          <CopiesPicker
+            copies={copies}
+            value={current ? copyKey(current) : null}
+            onChange={setPicked}
+            labelledBy="copies-h"
+          />
+        )}
       </section>
     </>
   );

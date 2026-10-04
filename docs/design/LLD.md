@@ -459,13 +459,14 @@ Pagination uses cursors. `Page<T> = { items: T[], nextCursor: string | null }`. 
 `ItemDetail.copies` has one row per visible `(source, version)` of a movie or episode, and is `[]` for series and seasons (their copies are those of their episodes):
 
 ```json
-{ "sourceId": "01J9…src", "versionId": "01J9…ver", "serverName": "Server B", "serverStatus": "active",
+{ "sourceId": "01J9…src", "versionId": "01J9…ver", "serverName": "Server B", "serverType": "jellyfin", "serverStatus": "active",
   "resolution": { "width": 1920, "height": 1080, "label": "1080p" }, "hdr": "none", "videoCodec": "h264", "container": "mp4",
   "audio": [{ "codec": "aac", "channels": 6, "language": "en" }],
   "sizeBytes": 6400000000,
   "expectedPlayability": "direct_play", "reasons": ["direct_play"], "selected": true }
 ```
 
+- `serverType` is `jellyfin`, `emby` or `plex`; the UI shows it in the copy's "TYPE · network" line.
 - `sizeBytes` is `media_versions.size_bytes`, or `null`.
 - `expectedPlayability` is `direct_play`, `transcode` or `unavailable`. It is a prediction from `predictMode` (LLD-SEL) against the capabilities in `X-Device-Caps`; `direct_stream` is reported as `direct_play` here because both avoid a video transcode. The origin's negotiation at play time stays authoritative. Without the header it is `null` and `reasons` is `[]`.
 - `unavailable` means the copy is visible but cannot be played now (`reasons` contains `server_unreachable`). Copies on `disabled`, `removing` or `pending_validation` servers are not visible at all (BR-1), so they never appear.

@@ -4,7 +4,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import type { PlaybackDescriptor } from '../api-client/playback-types';
+import type { PlaybackDescriptor } from '@cinewren/shared';
 import { resetCapabilitiesCache } from '../lib/capabilities';
 import {
   card,
@@ -381,8 +381,8 @@ it('a copy that never starts fails over after the start timeout', async () => {
 const withTracks = () =>
   descriptor({
     audioTracks: [
-      { index: 1, label: 'English 5.1 (AAC)', language: 'en', selected: true },
-      { index: 2, label: 'Deutsch 2.0 (AAC)', language: 'de', selected: false },
+      { index: 1, label: 'English 5.1 (AAC)', language: 'en', codec: 'aac', channels: 6, selected: true },
+      { index: 2, label: 'Deutsch 2.0 (AAC)', language: 'de', codec: 'aac', channels: 2, selected: false },
     ],
     subtitleTracks: [
       {
@@ -390,6 +390,7 @@ const withTracks = () =>
         label: 'English',
         language: 'en',
         kind: 'text',
+        forced: false,
         url: 'https://media-a.example.net/s3.vtt?token=t',
         selected: false,
       },
@@ -398,10 +399,19 @@ const withTracks = () =>
         label: 'Français',
         language: 'fr',
         kind: 'text',
+        forced: false,
         url: 'https://media-a.example.net/s4.vtt?token=t',
         selected: false,
       },
-      { index: 5, label: 'Japanese (PGS)', language: 'ja', kind: 'image', selected: false },
+      {
+        index: 5,
+        label: 'Japanese (PGS)',
+        language: 'ja',
+        kind: 'image',
+        forced: false,
+        url: null,
+        selected: false,
+      },
     ],
   });
 const tracksMenu = async () => {
@@ -465,7 +475,6 @@ it('an image subtitle is burned in by a new request', async () => {
   expect(calls(f, 'POST', '/play')[1]?.body?.preferences?.subtitle).toEqual({
     mode: 'track',
     index: 5,
-    kind: 'image',
   });
 });
 
@@ -720,9 +729,7 @@ it('home shows continue-watching hero cards with progress, Resume and Choose ano
       continueWatching: [
         {
           ...card({ id: 'm1', title: 'Metropolis', year: 1927 }),
-          runtimeMs: 100 * 60_000,
-          progress: { positionMs: 74 * 60_000 },
-          resumeSource: { serverName: 'Basement NAS', mode: 'direct_play' },
+          progress: { positionMs: 74 * 60_000, runtimeMs: 100 * 60_000 },
         },
       ],
     },
@@ -733,7 +740,7 @@ it('home shows continue-watching hero cards with progress, Resume and Choose ano
     '74',
   );
   expect(
-    within(hero).getByText(/26 min left · resuming from Basement NAS, direct play/),
+    within(hero).getByText(/26 min left · resuming from 1:14:00/),
   ).toBeInTheDocument();
   expect(within(hero).getByRole('link', { name: 'Resume' })).toHaveAttribute(
     'href',
