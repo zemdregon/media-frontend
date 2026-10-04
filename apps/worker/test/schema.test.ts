@@ -33,6 +33,7 @@ const EXPECTED_TABLES = [
   'servers',
   'sessions',
   'sources',
+  'stream_device_leases', // 0003 (T3.3: Emby DeviceId pool)
   'sync_runs',
   'users',
   'watch_progress',

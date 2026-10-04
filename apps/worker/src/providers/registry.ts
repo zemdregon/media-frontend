@@ -2,9 +2,16 @@
  * The only place that maps a provider type to its adapter, and builds the context an adapter
  * runs in. Code outside `providers/` imports from here, never from an adapter (IR-002, lint).
  */
+import { embyPlayback } from './emby';
 import { jellyfinProvider } from './jellyfin';
 import { createOriginFetch } from './origin-fetch';
-import type { MediaProvider, ProviderContext, ProviderType, ServerSecret } from './types';
+import type {
+  MediaProvider,
+  PlaybackProvider,
+  ProviderContext,
+  ProviderType,
+  ServerSecret,
+} from './types';
 
 /** Adapters that exist today. Emby (T4.1) and Plex (T4.2) register here when they land. */
 const PROVIDERS: Partial<Record<ProviderType, MediaProvider>> = {
@@ -13,6 +20,19 @@ const PROVIDERS: Partial<Record<ProviderType, MediaProvider>> = {
 
 export function getProvider(type: ProviderType): MediaProvider | null {
   return PROVIDERS[type] ?? null;
+}
+
+/**
+ * Playback adapters (M3). Emby has its playback half ahead of its full adapter (T4.1); it is
+ * reachable only for servers that already exist, and Emby servers cannot be registered yet.
+ */
+const PLAYBACK_PROVIDERS: Partial<Record<ProviderType, PlaybackProvider>> = {
+  jellyfin: jellyfinProvider,
+  emby: embyPlayback,
+};
+
+export function getPlaybackProvider(type: ProviderType): PlaybackProvider | null {
+  return PLAYBACK_PROVIDERS[type] ?? null;
 }
 
 export function isSupportedProvider(type: ProviderType): boolean {

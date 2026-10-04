@@ -178,15 +178,15 @@ export interface ItemsPage {
   nextCursor: string | null;
 }
 
-// --- playback (signatures only until M3; FR-PLAY-001, FR-PLAY-006, FR-PLAY-007, FR-PLAY-009) ---
+// --- playback (FR-PLAY-001, FR-PLAY-006, FR-PLAY-007, FR-PLAY-009; ADR-0013) ---
 
 /** FR-PLAY-002; the JSON shape is in LLD-API "Device capabilities". */
 export interface DeviceCapabilities {
   containers: string[];
-  video: { codec: string; maxLevel?: string; maxHeight?: number }[];
+  video: { codec: string; maxLevel?: string | undefined; maxHeight?: number | undefined }[];
   audio: string[];
-  maxWidth?: number;
-  maxHeight?: number;
+  maxWidth?: number | undefined;
+  maxHeight?: number | undefined;
   hdr: string[];
   textSubtitles: string[];
   nativeHls: boolean;
@@ -198,6 +198,10 @@ export interface SessionCredential {
   token: string;
   ref?: string;
   expiresAt?: number;
+  /** The DeviceId the token was minted under (Jellyfin: one per session; Emby: a pool slot). */
+  deviceId?: string;
+  /** The origin account the token belongs to (some negotiation calls name it). */
+  accountId?: string;
 }
 
 export interface NegotiatedStream {
@@ -205,7 +209,9 @@ export interface NegotiatedStream {
   streamType: 'progressive' | 'hls';
   /** MUST be on `ctx.server.baseUrl`'s host; the caller asserts it. */
   url: string;
+  /** WebVTT URLs of text subtitle tracks, by track index, on the same host. */
   subtitleUrls: Record<number, string>;
+  /** Opaque to callers: what the adapter needs later for telemetry. Holds no credential. */
   providerSessionRef?: string;
 }
 
@@ -213,16 +219,18 @@ export interface NegotiateRequest {
   providerItemId: string;
   providerVersionId: string;
   caps: DeviceCapabilities;
-  audioIndex?: number;
-  subtitle?: { index: number; kind: 'text' | 'image' } | null;
-  startPositionMs?: number;
+  audioIndex?: number | undefined;
+  subtitle?: { index: number; kind: 'text' | 'image' } | null | undefined;
+  startPositionMs?: number | undefined;
   cred: SessionCredential;
 }
 
 export interface PlaybackEvent {
   type: 'start' | 'progress' | 'stop';
   positionMs: number;
+  /** Only `mode`, `streamType` and `providerSessionRef` are read; `url` may be empty. */
   stream: NegotiatedStream;
+  paused?: boolean;
 }
 
 export interface ProbeResult {
@@ -231,7 +239,33 @@ export interface ProbeResult {
   errorCode?: string;
 }
 
-export interface MediaProvider {
+/**
+ * The playback half of an adapter (LLD-PROV). Emby has only this half until T4.1, so it is its
+ * own interface; `MediaProvider` includes it.
+ */
+export interface PlaybackProvider {
+  readonly type: ProviderType;
+  /**
+   * How stream credentials get their DeviceId (ADR-0013 amendments): `per_session` (Jellyfin:
+   * unique, since re-auth on a DeviceId kills its previous token) or `pooled` (Emby: a leased slot
+   * of a bounded pool, since logout leaves device entries behind). Default `per_session`.
+   */
+  readonly streamDevices?: 'per_session' | 'pooled';
+  /** FR-PLAY-007. `lease` is set for `pooled` adapters: the pool slot leased to this session. */
+  createSessionCredential(
+    ctx: ProviderContext,
+    sessionId: string,
+    lease?: { slot: number },
+  ): Promise<SessionCredential>;
+  /** Idempotent: a credential the origin already rejects counts as revoked. */
+  revokeSessionCredential(ctx: ProviderContext, cred: SessionCredential): Promise<void>;
+  /** FR-PLAY-001, FR-PLAY-006. */
+  negotiatePlayback(ctx: ProviderContext, req: NegotiateRequest): Promise<NegotiatedStream>;
+  /** FR-PLAY-009: telemetry only. */
+  reportPlayback(ctx: ProviderContext, cred: SessionCredential, ev: PlaybackEvent): Promise<void>;
+}
+
+export interface MediaProvider extends PlaybackProvider {
   readonly type: ProviderType;
   /** FR-SRV-002: tls, credentials (refusing admin accounts), identity, version, in that order. */
   validate(ctx: ProviderContext): Promise<ValidationResult>;
@@ -250,11 +284,4 @@ export interface MediaProvider {
   getArtworkRequest(ctx: ProviderContext, ref: ArtworkRef, kind: ArtworkKind): Request;
   /** FR-OPS-001. */
   probe(ctx: ProviderContext): Promise<ProbeResult>;
-  /** FR-PLAY-007. */
-  createSessionCredential(ctx: ProviderContext, sessionId: string): Promise<SessionCredential>;
-  revokeSessionCredential(ctx: ProviderContext, cred: SessionCredential): Promise<void>;
-  /** FR-PLAY-001, FR-PLAY-006. */
-  negotiatePlayback(ctx: ProviderContext, req: NegotiateRequest): Promise<NegotiatedStream>;
-  /** FR-PLAY-009: telemetry only. */
-  reportPlayback(ctx: ProviderContext, cred: SessionCredential, ev: PlaybackEvent): Promise<void>;
 }

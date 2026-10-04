@@ -16,10 +16,19 @@ import type {
   ItemDetail,
   Page,
   PersonCard,
+  ItemDetailWithCopies,
   PersonDetail,
   SearchResponse,
   VersionEntry,
 } from '@cinewren/shared';
+import { DEVICE_CAPS_HEADER } from '@cinewren/shared';
+import {
+  continueWatchingCards,
+  DeviceCapsError,
+  itemCopies,
+  parseDeviceCapsHeader,
+} from '../playback/progress';
+import type { DeviceCapabilities } from '../providers/types';
 import type { AppEnv } from '../api/context';
 import { AppError } from '../api/errors';
 import { currentUser } from '../auth/sessions';
@@ -48,6 +57,8 @@ import {
 import { expectKey, isNumber, isString, openCursor, sealCursor } from './cursor';
 
 const HOME_ROW_SIZE = 20;
+/** BR-7: resume (and "Continue watching") starts above 60 s. */
+const RESUME_FLOOR_MS = 60_000;
 const CAST_SIZE = 12;
 /** Longest token list sent to FTS5; more words add cost, not precision. */
 const MAX_SEARCH_TOKENS = 8;
@@ -129,9 +140,13 @@ async function toPage<R, T>(
 // --- home (FR-CAT-008) ---
 
 export async function home(c: Context<AppEnv>): Promise<HomeResponse> {
-  const rows = await recentlyAdded(c.env.DB, viewerOf(c), HOME_ROW_SIZE);
-  // "Continue watching" arrives with playback progress in M3.
-  return { recentlyAdded: rows.map(itemCard), continueWatching: [] };
+  const viewer = viewerOf(c);
+  const [rows, resumable] = await Promise.all([
+    recentlyAdded(c.env.DB, viewer, HOME_ROW_SIZE),
+    // FR-CAT-008 (M3): resumable items, each card with its progress (ContinueWatchingCard).
+    continueWatchingCards(c.env.DB, viewer, RESUME_FLOOR_MS, HOME_ROW_SIZE),
+  ]);
+  return { recentlyAdded: rows.map(itemCard), continueWatching: resumable };
 }
 
 // --- browse (FR-CAT-002, FR-CAT-003) ---
@@ -295,11 +310,39 @@ function parseGenres(raw: string): string[] {
   }
 }
 
-export async function itemDetail(c: Context<AppEnv>, id: string): Promise<ItemDetail> {
+/** `X-Device-Caps` (FR-CAT-013): absent is fine, malformed is a validation error. */
+function deviceCapsOf(c: Context<AppEnv>): DeviceCapabilities | null {
+  try {
+    return parseDeviceCapsHeader(c.req.header(DEVICE_CAPS_HEADER));
+  } catch (err) {
+    if (err instanceof DeviceCapsError) {
+      throw new AppError('VALIDATION_FAILED', 'The request was invalid.', {
+        fields: [DEVICE_CAPS_HEADER],
+      });
+    }
+    throw err;
+  }
+}
+
+export async function itemDetail(c: Context<AppEnv>, id: string): Promise<ItemDetailWithCopies> {
   const db = c.env.DB;
   const viewer = viewerOf(c);
+  const caps = deviceCapsOf(c);
   const row = await getVisibleItem(db, viewer, id);
   if (!row) throw notFound();
+  return {
+    ...(await itemDetailBase(c, row)),
+    copies: await itemCopies(db, viewer, row, caps),
+  };
+}
+
+async function itemDetailBase(
+  c: Context<AppEnv>,
+  row: NonNullable<Awaited<ReturnType<typeof getVisibleItem>>>,
+): Promise<ItemDetail> {
+  const db = c.env.DB;
+  const viewer = viewerOf(c);
+  const id = row.id;
   const art = (tag: string | null, slot: string) =>
     tag ? `/api/v1/artwork/${row.id}/${slot}?v=${slug(tag)}` : null;
   const childType = row.type === 'series' ? 'season' : row.type === 'season' ? 'episode' : null;
