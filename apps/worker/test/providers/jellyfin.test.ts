@@ -261,11 +261,9 @@ describe('Jellyfin item normalization (spike rows 3d, 4a; LLD-PROV)', () => {
 });
 
 describe('Jellyfin adapter scope', () => {
-  it('leaves playback to M3: the methods refuse rather than guess (owner decision 2026-10-04: always token-gated HLS)', async () => {
-    const { ctx } = context([]);
-    await expect(jellyfinProvider.createSessionCredential(ctx, 'sess')).rejects.toMatchObject({
-      code: 'UNSUPPORTED',
-    });
+  it('mints one stream DeviceId per session (playback: test/playback/negotiate.test.ts)', () => {
+    // Owner decision 2026-10-04: always token-gated HLS; re-auth on a DeviceId kills its token.
+    expect(jellyfinProvider.streamDevices).toBe('per_session');
   });
 
   it('builds unauthenticated artwork requests on the registered host', () => {

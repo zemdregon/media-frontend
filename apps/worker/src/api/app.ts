@@ -15,6 +15,7 @@ import { login, logout } from './routes/auth';
 import { health } from './routes/health';
 import { publicInvites } from './routes/invites';
 import { me } from './routes/me';
+import { playbackRoutes } from './routes/playback';
 import { setup } from './routes/setup';
 
 /**
@@ -68,6 +69,7 @@ export function createApp(options: AppOptions = {}) {
   app.route('/api/v1/me', me);
   app.route('/api/v1/artwork', artwork);
   app.route('/api/v1', catalogRoutes);
+  app.route('/api/v1', playbackRoutes);
 
   app.use('/api/v1/admin/*', requireOperator);
   app.route('/api/v1/admin/invites', adminInvites);

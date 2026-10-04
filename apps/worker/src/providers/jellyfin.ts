@@ -9,6 +9,14 @@
  */
 import { ProviderError } from './errors';
 import { asRec, normalizeCollection, normalizeItem } from './jellyfin-normalize';
+import {
+  JELLYFIN_FLAVOR,
+  mintSessionToken,
+  negotiate,
+  report,
+  revokeSessionToken,
+  streamDeviceId,
+} from './mediabrowser-playback';
 import { statusError } from './origin-fetch';
 import type {
   ArtworkKind,
@@ -414,9 +422,6 @@ async function probe(ctx: ProviderContext): Promise<ProbeResult> {
   }
 }
 
-const notYet = (what: string) => (): Promise<never> =>
-  Promise.reject(new ProviderError('UNSUPPORTED', `${what} is not implemented yet.`, false));
-
 export const jellyfinProvider: MediaProvider = {
   type: 'jellyfin',
   validate,
@@ -426,10 +431,12 @@ export const jellyfinProvider: MediaProvider = {
   getArtworkRequest,
   probe,
   listCollections,
-  // M3. Per the owner decision of 2026-10-04, Jellyfin will always stream through token-gated
-  // HLS and never `static=true` direct play, which the origin does not authenticate.
-  createSessionCredential: notYet('Session credentials (M3)'),
-  revokeSessionCredential: notYet('Session credentials (M3)'),
-  negotiatePlayback: notYet('Playback negotiation (M3)'),
-  reportPlayback: notYet('Playback reporting (M3)'),
+  // Playback (M3, ADR-0013). Owner decision 2026-10-04: Jellyfin always streams through
+  // token-gated HLS and never `static=true` direct play, which the origin does not authenticate.
+  // Re-auth on one DeviceId kills its previous token, so every session gets its own DeviceId.
+  streamDevices: 'per_session',
+  createSessionCredential: (ctx, sessionId) => mintSessionToken(ctx, streamDeviceId(sessionId)),
+  revokeSessionCredential: revokeSessionToken,
+  negotiatePlayback: (ctx, req) => negotiate(ctx, JELLYFIN_FLAVOR, req),
+  reportPlayback: report,
 };
