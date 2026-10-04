@@ -1,5 +1,10 @@
 import { Hono } from 'hono';
-import { passkeyOptionsRequest, passkeyVerifyRequest, type Me } from '@cinewren/shared';
+import {
+  passkeyOptionsRequest,
+  passkeyVerifyRequest,
+  updatePreferencesRequest,
+  type Me,
+} from '@cinewren/shared';
 import {
   addPasskeyOptions,
   addPasskeyVerify,
@@ -7,6 +12,7 @@ import {
   removePasskey,
 } from '../../auth/passkeys';
 import { currentUser } from '../../auth/sessions';
+import { setTheme } from '../../users/service';
 import type { AppEnv } from '../context';
 import { parseJson } from '../validation';
 
@@ -20,6 +26,10 @@ export const me = new Hono<AppEnv>()
       role: u.role,
       preferences: { theme: u.theme },
     });
+  })
+  .patch('/preferences', async (c) => {
+    const { theme } = await parseJson(c, updatePreferencesRequest);
+    return c.json(await setTheme(c, theme));
   })
   .get('/passkeys', async (c) => c.json(await ownPasskeys(c)))
   .post('/passkeys/options', async (c) => {

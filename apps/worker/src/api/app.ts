@@ -8,6 +8,9 @@ import { requestLog } from './middleware/request-log';
 import { securityHeaders } from './middleware/security-headers';
 import { adminInvites } from './routes/admin-invites';
 import { adminServers } from './routes/admin-servers';
+import { adminUsers } from './routes/admin-users';
+import { artwork } from './routes/artwork';
+import { catalogRoutes } from './routes/catalog';
 import { login, logout } from './routes/auth';
 import { health } from './routes/health';
 import { publicInvites } from './routes/invites';
@@ -63,9 +66,12 @@ export function createApp(options: AppOptions = {}) {
   app.use('/api/*', requireSession);
   app.route('/api/v1/auth/logout', logout);
   app.route('/api/v1/me', me);
+  app.route('/api/v1/artwork', artwork);
+  app.route('/api/v1', catalogRoutes);
 
   app.use('/api/v1/admin/*', requireOperator);
   app.route('/api/v1/admin/invites', adminInvites);
+  app.route('/api/v1/admin/users', adminUsers);
   app.route('/api/v1/admin', adminServers);
 
   // Anything else under /api is an unknown API route; everything else is the SPA.
