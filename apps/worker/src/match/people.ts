@@ -4,6 +4,15 @@
  */
 import type { ConflictCandidate, ConflictFlag } from './items';
 
+/**
+ * Provider person IDs that are only the person's name (`name:<tag>`): what the Plex adapter emits
+ * when a list response carries no global `tagKey`. Such an ID does not identify a distinct origin
+ * person, so it never blocks the exact-name merge of BR-10 on its own server.
+ */
+export const NAME_ID_PREFIX = 'name:';
+const nameDerived = (providerPersonId: string): boolean =>
+  providerPersonId.startsWith(NAME_ID_PREFIX);
+
 /** One provider link of a canonical person, as stored in `person_provider_links`. */
 export interface PersonLinkInfo {
   linkId: string;
@@ -115,7 +124,17 @@ export function decidePerson(input: {
   const byName = input.nameCandidates.filter((c) => {
     if (separated.has(c.personId)) return false;
     const links = others(l, c);
-    if (links.some((o) => o.serverId === l.serverId)) return false; // two origin people on one server are distinct
+    // Two origin people on one server are distinct, unless one ID is only the name (Plex list vs detail).
+    if (
+      links.some(
+        (o) =>
+          o.serverId === l.serverId &&
+          !nameDerived(o.providerPersonId) &&
+          !nameDerived(l.providerPersonId),
+      )
+    ) {
+      return false;
+    }
     if (conflictingIds(l, links).length > 0) return false; // two different "Chris Evans": no flag
     return true;
   });

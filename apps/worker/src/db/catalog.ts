@@ -52,17 +52,23 @@ export const visibleSource = (source: string): string =>
                    AND (?1 = 1 OR EXISTS (SELECT 1 FROM library_grants sg
                                            WHERE sg.user_id = ?2 AND sg.library_id = sl.id))))`;
 
-/** A person exists for the caller only through a credit on a visible title (BR-1, BR-10). */
+/**
+ * A person exists for the caller only through a credit on a visible title (BR-1, BR-10), and the
+ * credit itself must come from a source the caller can see: a merged title does not make the
+ * cast of a hidden copy visible.
+ */
 export const visiblePerson = (person: string): string =>
   `EXISTS (SELECT 1 FROM credits pc JOIN media_items pi ON pi.id = pc.media_item_id
-            WHERE pc.person_id = ${person}.id AND ${visibleItem('pi')})`;
+                                     JOIN sources ps ON ps.id = pc.source_id
+            WHERE pc.person_id = ${person}.id AND ${visibleItem('pi')} AND ${visibleSource('ps')})`;
 
-/** A collection exists for the caller only through a visible member (BR-1, BR-10). */
+/** A collection exists for the caller only through a visible member (BR-1, BR-10), listed by a visible source. */
 export const visibleCollection = (collection: string): string =>
   `EXISTS (SELECT 1 FROM collection_provider_links cl
              JOIN collection_members cm ON cm.link_id = cl.id
              JOIN media_items ci ON ci.id = cm.media_item_id
-            WHERE cl.collection_id = ${collection}.id AND ${visibleItem('ci')})`;
+             JOIN sources cs ON cs.id = cm.source_id
+            WHERE cl.collection_id = ${collection}.id AND ${visibleItem('ci')} AND ${visibleSource('cs')})`;
 
 /** Sources of an item or, for series and seasons, of its descendants. */
 const familySources = (item: string, src: string): string =>
@@ -379,6 +385,7 @@ export function itemCast(
               WHERE l.id = pe.metadata_link_id) AS poster_tag
        FROM credits cr JOIN people pe ON pe.id = cr.person_id
       WHERE cr.media_item_id = ${p.add(itemId)}
+        AND EXISTS (SELECT 1 FROM sources cs WHERE cs.id = cr.source_id AND ${visibleSource('cs')})
       GROUP BY pe.id, cr.role
       ORDER BY MIN(cr.sort_order), pe.name, pe.id LIMIT ${p.add(limit)}`,
     p.values,
@@ -396,7 +403,9 @@ export function itemCollections(
     `SELECT DISTINCT c.id, c.name, c.sort_name FROM collection_members cm
        JOIN collection_provider_links cl ON cl.id = cm.link_id
        JOIN collections c ON c.id = cl.collection_id
-      WHERE cm.media_item_id = ${p.add(itemId)} ORDER BY c.sort_name, c.id`,
+      WHERE cm.media_item_id = ${p.add(itemId)}
+        AND EXISTS (SELECT 1 FROM sources ms WHERE ms.id = cm.source_id AND ${visibleSource('ms')})
+      ORDER BY c.sort_name, c.id`,
     p.values,
   );
 }
@@ -456,6 +465,7 @@ export function personCredits(
             -COALESCE(i.year, 0) AS year_key, i.sort_title AS title_key
        FROM credits cr JOIN media_items i ON i.id = cr.media_item_id
       WHERE cr.person_id = ${p.add(personId)} AND ${visibleItem('i')}
+        AND EXISTS (SELECT 1 FROM sources cs WHERE cs.id = cr.source_id AND ${visibleSource('cs')})
       GROUP BY i.id, cr.role
      ${having.length ? `HAVING ${having.join(' AND ')}` : ''}
       ORDER BY year_key, i.sort_title, i.id, cr.role LIMIT ${p.add(limit)}`,
@@ -523,7 +533,8 @@ export function collectionMembers(
   const where = [
     `i.id IN (SELECT cm.media_item_id FROM collection_members cm
                 JOIN collection_provider_links cl ON cl.id = cm.link_id
-               WHERE cl.collection_id = ${p.add(collectionId)})`,
+               WHERE cl.collection_id = ${p.add(collectionId)}
+                 AND EXISTS (SELECT 1 FROM sources ms WHERE ms.id = cm.source_id AND ${visibleSource('ms')}))`,
     visibleItem('i'),
   ];
   if (after) {

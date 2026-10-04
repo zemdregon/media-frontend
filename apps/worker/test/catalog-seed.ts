@@ -283,10 +283,12 @@ export async function seedCollection(c: {
   for (const m of c.members) {
     statements.push(
       db
+        // The origin lists a member through one of the item's own sources (BR-1 reads the source).
         .prepare(
-          'INSERT INTO collection_members (link_id, source_id, media_item_id) VALUES (?, ?, ?)',
+          `INSERT INTO collection_members (link_id, source_id, media_item_id)
+           SELECT ?, id, media_item_id FROM sources WHERE media_item_id = ?`,
         )
-        .bind(link, `src-${m}-${c.server}`, m),
+        .bind(link, m),
     );
   }
   await db.batch(statements);
