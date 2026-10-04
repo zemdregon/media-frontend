@@ -125,9 +125,9 @@
 | Milestone | Goal | Depends on | Status |
 |---|---|---|---|
 | M0 | Foundations: scaffold, CI, auth, schema v1, staging | — | **Done** (2026-10-04): T0.1–T0.7 done; staging deployed by Workers Builds and demonstrated (T0.7) |
-| M1 | Provider spike, Jellyfin adapter, server registration | M0 | **Partial**: T1.1–T1.4 done; T1.5 real-server demo pending |
-| M2 | Catalog: sync, matching, browse/search/detail, users and grants | M1 | **Partial**: T2.1–T2.11 done; exit (e) staging demo pending (needs a reachable Jellyfin server) |
-| M3 | Playback on Jellyfin: selection, session credentials, player, progress | M2 | **Partial**: T3.1–T3.7 done; exit (c) real-browser demo on staging pending (needs a reachable Jellyfin server) |
+| M1 | Provider spike, Jellyfin adapter, server registration | M0 | **Done** (2026-10-04): T1.1–T1.5 done; real Jellyfin registered on staging |
+| M2 | Catalog: sync, matching, browse/search/detail, users and grants | M1 | **Done** (2026-10-04): T2.1–T2.11 done; exit (e) demonstrated on staging |
+| M3 | Playback on Jellyfin: selection, session credentials, player, progress | M2 | **Partial**: T3.1–T3.7 done; exit (c) real-browser demo on staging pending (server registered and synced; owner runs the browser check) |
 | M4 | Emby and Plex adapters at parity | M3 (M4 can start after M1 for adapter-only work) | **Partial**: T4.1 done; T4.2 Plex playback gated on B-3; T4.3 done |
 | M5 | Hardening and v1.0 release gate | M3, M4 | **In progress**: T5.1–T5.4, T5.6–T5.8 done; T5.5 built (demo pending) |
 | Later | DEF-1 to DEF-11 | v1.0 and the triggers in PRD §6 | Deferred |
@@ -176,7 +176,7 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 | T1.2 | `MediaProvider` interface, normalized types, recorded-fixture contract test harness | IR-002, NFR-MAINT-001, ADR-0004 | T1.1 | **Done.** Evidence: `apps/worker/src/providers/types.ts`; shared contract suite `apps/worker/test/providers/contract.ts` run against recorded fixtures. The harness runs one shared contract suite per adapter against fixtures. |
 | T1.3 | Credential vault (AES-256-GCM, versioned keys) | DR-002, NFR-SEC-001, ADR-0008, [LLD-TOKEN](design/LLD.md) | M0 | **Done.** Evidence: `apps/worker/src/vault/`; `apps/worker/test/vault.test.ts` (round-trip, wrong key, rotation, no leakage). Tests: round-trip; wrong key fails; key rotation re-encrypts; ciphertext never appears in API responses or logs. |
 | T1.4 | Jellyfin adapter: validate, list libraries, list items (paged), get item | IR-003, FR-SRV-002, NFR-SEC-005 | T1.2 | **Done.** Evidence: `apps/worker/src/providers/jellyfin*.ts`; 31 Jellyfin contract and adapter tests; off-host redirect refused (`origin-fetch.test.ts`). Contract suite green on fixtures. Redirects off-host refused (test). |
-| T1.5 | Server registration API and minimal operator UI: register, validate, enable libraries, https enforcement | FR-SRV-001 to FR-SRV-003, FR-SRV-007, WF-1 | T1.3, T1.4 | **Partial.** API, validation (refuses admin accounts, https only, version ≥ 12.1) and operator Servers page are done; 61 tests in `apps/worker/test/servers.test.ts`. Remaining: the demonstration (a real Jellyfin server registered on staging) waits on an internet-reachable Jellyfin test server (staging is deployed). Tests for each WF-1 failure path. **Demonstration:** a real Jellyfin server registered on staging with its libraries listed. |
+| T1.5 | Server registration API and minimal operator UI: register, validate, enable libraries, https enforcement | FR-SRV-001 to FR-SRV-003, FR-SRV-007, WF-1 | T1.3, T1.4 | **Done.** API, validation (refuses admin accounts, https only, version ≥ 12.1) and operator Servers page are done; 61 tests in `apps/worker/test/servers.test.ts`. **Demonstrated 2026-10-04:** the owner registered their Jellyfin 12.1.0 (`https://media.zem.systems`, DNS-only, non-admin `cinewren` user) on staging through the Servers page. The server is `active`, and both libraries (Movies, Shows) are listed and enabled. Tests for each WF-1 failure path. **Demonstration:** a real Jellyfin server registered on staging with its libraries listed. |
 
 **M1 exit:** all M1 Must IDs verified. The spike report is merged. No `(to verify in M1 spike)` marker remains for Jellyfin, and the Emby and Plex markers are either resolved or explicitly carried into M4.
 
@@ -203,7 +203,7 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 - (b) The T2.4 IDOR test passes.
 - (c) A killed sync mid-run, when retried, leaves no duplicates.
 - (d) Browse works with all mock origins offline.
-- (e) **Demonstration:** a staging catalog from a real Jellyfin server.
+- (e) **Demonstration:** a staging catalog from a real Jellyfin server. **Done 2026-10-04:** the first manual sync (`sync_runs` incremental, 44 added, 0 errors, both libraries OK) built 31 movies, 1 series, 1 season, 10 episodes and 460 people from 44 sources. Two Fight Club copies merged into one item with two sources by external ID (ADR-0010). No collections, because the origin user sees no box sets.
 
 ### M3 — Playback (Jellyfin) · Planned
 
