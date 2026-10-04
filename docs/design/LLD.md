@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Draft v0.1, 2026-10-04. Agent-authored under delegation; not owner-reviewed. Nothing here is implemented. |
 | **Owns** | Field-level D1 schema and migrations, `/api/v1` endpoint contracts, the `MediaProvider` interface, and the algorithms for sync, health, matching, source selection, credential handling and error handling. |
-| **Does not own** | Requirements ([SRS](../requirements/SRS.md)); workflows, business rules and state machines ([FRD](../requirements/FRD.md)); components and trust boundaries ([HLD](HLD.md)); module structure ([SDD](SDD.md)); tooling, CI, CSP, configuration ([TDD](TDD.md)); decisions ([ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md) and other ADRs); sequencing ([ROADMAP](../ROADMAP.md)). |
+| **Does not own** | Requirements ([SRS](../requirements/SRS.md)); workflows, business rules and state machines ([FRD](../requirements/FRD.md)); components and trust boundaries ([HLD](HLD.md)); module structure ([SDD](SDD.md)); tooling, CI, CSP, configuration, self-hosting ([TDD](TDD.md)); decisions ([ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md), [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) and other ADRs); sequencing ([ROADMAP](../ROADMAP.md)). |
 
 Provenance: everything here is an **Agent decision (delegated, 2026-10-04; not yet owner-reviewed)**. Numbers are *(proposed)*. Provider endpoints and behaviours are written from general knowledge of those APIs and are **(to verify in M1 spike)**; the spike may change the adapter details, but it should not change the interface. Conventions: IDs are ULIDs (`TEXT`); times are `INTEGER` Unix milliseconds; JSON columns are `TEXT` validated by zod at the `db/` boundary (TDD-D1, TDD-D9).
 
@@ -15,6 +15,9 @@ Provenance: everything here is an **Agent decision (delegated, 2026-10-04; not y
 ```mermaid
 erDiagram
   users ||--o{ library_grants : has
+  users ||--o{ passkey_credentials : "signs in with"
+  users ||--o{ sessions : holds
+  users ||--o{ invites : "invited or re-enrolled via"
   libraries ||--o{ library_grants : "granted via"
   servers ||--|| server_credentials : "secured by"
   servers ||--o{ libraries : exposes
@@ -37,11 +40,51 @@ erDiagram
 ### DDL sketch (migration `0001_init.sql`)
 
 ```sql
-CREATE TABLE users (
-  id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, display_name TEXT,
+CREATE TABLE users (                        -- created only by setup or invite redemption (FR-USR-002)
+  id TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL UNIQUE COLLATE NOCASE,   -- the only personal label; no email is collected (NFR-PRIV-001)
   role TEXT NOT NULL CHECK (role IN ('operator','viewer')),
   status TEXT NOT NULL CHECK (status IN ('invited','active','disabled')),  -- 'deleted' = row removed
   created_at INTEGER NOT NULL, last_seen_at INTEGER);
+
+CREATE TABLE passkey_credentials (          -- IR-006; a user may have several (FR-USR-006)
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  credential_id TEXT NOT NULL UNIQUE,        -- base64url WebAuthn credential ID
+  public_key BLOB NOT NULL,                  -- COSE public key
+  sign_count INTEGER NOT NULL DEFAULT 0, transports TEXT NOT NULL DEFAULT '[]',
+  aaguid TEXT, backed_up INTEGER, label TEXT,
+  created_at INTEGER NOT NULL, last_used_at INTEGER);
+CREATE INDEX pk_user ON passkey_credentials(user_id);
+
+CREATE TABLE invites (                      -- invite, re-enrollment and recovery links (FR-USR-002, -004, -007)
+  id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('signup','reenroll')),
+  token_hash TEXT NOT NULL UNIQUE,           -- SHA-256 of the 32-byte token; plaintext never stored (NFR-SEC-007)
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      -- signup: the 'invited' user created with the invite (role + library_grants set then, FR-USR-005)
+      -- reenroll: the existing user who gets an extra passkey
+  created_by TEXT REFERENCES users(id) ON DELETE SET NULL,     -- NULL for CLI recovery links
+  created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL,
+  redeemed_at INTEGER, revoked_at INTEGER);
+CREATE INDEX inv_open ON invites(kind, redeemed_at, revoked_at, expires_at);
+CREATE INDEX inv_user ON invites(user_id);
+
+CREATE TABLE sessions (                     -- NFR-SEC-007
+  id_hash TEXT PRIMARY KEY,                  -- SHA-256 of the cookie value
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  passkey_id TEXT REFERENCES passkey_credentials(id) ON DELETE CASCADE,  -- removing a passkey ends its sessions
+  created_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL,
+  idle_expires_at INTEGER NOT NULL, absolute_expires_at INTEGER NOT NULL,
+  user_agent_hint TEXT);                     -- coarse "Firefox on macOS" label for the user's session list
+CREATE INDEX sess_user ON sessions(user_id);
+CREATE INDEX sess_expiry ON sessions(idle_expires_at);
+
+CREATE TABLE webauthn_challenges (          -- single-use, TTL 5 min (proposed)
+  id TEXT PRIMARY KEY,                       -- opaque handle returned to the client with the options
+  challenge TEXT NOT NULL,
+  purpose TEXT NOT NULL CHECK (purpose IN ('setup','signup','reenroll','login','add_passkey')),
+  invite_id TEXT REFERENCES invites(id) ON DELETE CASCADE, user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+  expires_at INTEGER NOT NULL);
+CREATE INDEX wc_expiry ON webauthn_challenges(expires_at);
 
 CREATE TABLE servers (
   id TEXT PRIMARY KEY, type TEXT NOT NULL CHECK (type IN ('jellyfin','emby','plex')),
@@ -210,7 +253,7 @@ Notes:
 
 | Action | Mechanism |
 |---|---|
-| Delete user | One `batch`: `UPDATE audit_log SET target_id = NULL WHERE target_type='user' AND target_id=?`, then `DELETE FROM users`. FK cascades remove `library_grants`, `watch_progress`, `playback_sessions` and `idempotency_keys` (deleted explicitly, since that table has no FK). `audit_log.actor_user_id` is set to NULL. Audit `details` never contain emails, so no rewrite is needed. Before the batch runs, any live sessions are revoked (LLD-TOKEN). BR-8: the delete fails with `LAST_OPERATOR` if it would leave no active operator, checked by a conditional statement in the same batch. |
+| Delete user | One `batch`: `UPDATE audit_log SET target_id = NULL WHERE target_type='user' AND target_id=?`, then `DELETE FROM users`. FK cascades remove `library_grants`, `watch_progress`, `playback_sessions`, `passkey_credentials`, `sessions` (so access ends immediately, FR-USR-004) and their invites. `idempotency_keys` are deleted explicitly, since that table has no FK. `invites.created_by` is set to NULL on invites the user issued. `audit_log.actor_user_id` is set to NULL. Audit `details` reference users by ID only, never by display name, so no rewrite is needed. Before the batch runs, any live sessions are revoked (LLD-TOKEN). BR-8: the delete fails with `LAST_OPERATOR` if it would leave no active operator, checked by a conditional statement in the same batch. |
 | Remove server | Set `status='removing'`, which hides its sources immediately, delete `server_credentials`, and enqueue `purge_server`. The job deletes `media_versions` and `sources` in chunks of 500 *(proposed)* to stay inside D1 query limits, then deletes the `servers` row (cascades: libraries, grants, sync_runs, health_probes, overrides). Orphaned items are then removed as below. Revoking open sessions comes first. This refines the FRD's "removed" state with a short transitional `removing` status. |
 | Orphan items | After any source purge, `DELETE FROM media_items WHERE id IN (… items of the affected set with no sources …)`, children first. Cascades remove `external_ids`, `curation_overrides`, `match_conflicts`, `item_availability` and `watch_progress`. |
 
@@ -224,7 +267,8 @@ Migrations follow TDD §3: forward-only, expand → migrate → contract. Every 
 
 Conventions (IR-001):
 - JSON over HTTPS. Every response has an `X-Request-Id` header, taken from `cf-ray` plus a ULID.
-- Every route requires a verified Access JWT (FR-USR-001; TDD §5.2). Operator routes live under `/api/v1/admin/*`, and the role is checked on every request (FR-USR-003).
+- Every route requires a valid session cookie (FR-USR-001; TDD §5.1). The exceptions are the **public** routes marked *public* below: health, setup, invite redemption and login. Operator routes live under `/api/v1/admin/*`, and the role is checked on every request (FR-USR-003).
+- State-changing requests must carry `Origin: <APP_ORIGIN>` (CSRF, NFR-SEC-007), or they get 403 `CSRF_REJECTED`. Public auth routes are rate limited per IP (NFR-SEC-004).
 - A resource the caller may not see returns `404 NOT_FOUND`, never 403, so its existence is not disclosed (BR-1, NFR-SEC-002).
 - Mutating requests accept an `Idempotency-Key` header (LLD-ERR); it is required on `POST /play`.
 
@@ -232,8 +276,22 @@ Conventions (IR-001):
 
 | Method | Path | Role | Request | Response (200 unless noted) | Errors | SRS |
 |---|---|---|---|---|---|---|
-| GET | `/api/v1/health` | service token or any user | — | `{status:"ok", db:"ok"\|"error", version}` | 401, 503 when DB down | FR-OPS-007, FR-USR-001 |
-| GET | `/api/v1/me` | user | — | `{id, displayName, role, accessLogoutUrl}` | 401, 403 | FR-USR-002, FR-USR-006 |
+| GET | `/api/v1/health` | *public* | — | `{status:"ok"\|"degraded"}` only | — | FR-OPS-007 |
+| GET | `/api/v1/admin/status` | operator | — | `{db:"ok"\|"error", appVersion, schemaApplied, schemaRequired, queueBacklog?, serversByStatus, keyVersionsInUse}` | — | FR-OPS-007, TDD §9 |
+| GET | `/api/v1/setup` | *public* | — | `{available:boolean}` (false once any operator exists) | — | FR-USR-002 |
+| POST | `/api/v1/setup/options` | *public* | `{setupToken, displayName}` | `{challengeId, options}` (WebAuthn creation options) | 404 `SETUP_DISABLED`, 403 `SETUP_TOKEN_INVALID`, 429 | FR-USR-002 |
+| POST | `/api/v1/setup/verify` | *public* | `{setupToken, challengeId, response}` | `201 {user}` + session cookie | 404, 403, 400 `WEBAUTHN_VERIFICATION_FAILED`, 429 | FR-USR-002, IR-006 |
+| POST | `/api/v1/invites/inspect` | *public* | `{token}` | `{kind, role, displayName, expiresAt}` | 404 `INVITE_INVALID` (unknown, expired, revoked or used: one code, no oracle), 429 | FR-USR-002 |
+| POST | `/api/v1/invites/redeem/options` | *public* | `{token}` | `{challengeId, options}` (WebAuthn `user.name` = the invited display name) | 404 `INVITE_INVALID`, 429 | FR-USR-002, FR-USR-007 |
+| POST | `/api/v1/invites/redeem/verify` | *public* | `{token, challengeId, response}` | `201 {user}` + session cookie. Signup: the user goes from `invited` to `active`; reenroll: a passkey is added. | 404, 400 `WEBAUTHN_VERIFICATION_FAILED`, 429 | FR-USR-002, FR-USR-005, FR-USR-007 |
+| POST | `/api/v1/auth/login/options` | *public* | — | `{challengeId, options}` (no `allowCredentials`: discoverable) | 429 | FR-USR-001 |
+| POST | `/api/v1/auth/login/verify` | *public* | `{challengeId, response}` | `{user}` + session cookie | 401 `WEBAUTHN_VERIFICATION_FAILED` (unknown credential, disabled user and bad signature look the same), 429 | FR-USR-001, IR-006 |
+| POST | `/api/v1/auth/logout` | user | — | `204`, session row deleted, cookie cleared | — | FR-USR-006 |
+| GET | `/api/v1/me` | user | — | `{id, displayName, role}` | 401 | FR-USR-003 |
+| GET | `/api/v1/me/passkeys` | user | — | `[{id, label, createdAt, lastUsedAt, backedUp}]` | — | FR-USR-006 |
+| POST | `/api/v1/me/passkeys/options` · `/verify` | user | `{label?}` · `{challengeId, response}` | `{challengeId, options}` · `201 {passkey}` | 400 | FR-USR-006 |
+| PATCH / DELETE | `/api/v1/me/passkeys/{id}` | user | `{label}` / — | `{passkey}` / `204` (its sessions end) | 404, 409 `LAST_PASSKEY` | FR-USR-006 |
+| GET / DELETE | `/api/v1/me/sessions` · `/{id}` | user | — | list / `204` | 404 | FR-USR-006 |
 | GET | `/api/v1/home` | user | — | `{recentlyAdded:[ItemCard], continueWatching:[ItemCard+progress]}` | — | FR-CAT-008 |
 | GET | `/api/v1/items` | user | `type=movie\|series`, `sort=title\|year\|added`, `order`, `genre`, `yearFrom`, `yearTo`, `minHeight`, `cursor`, `limit` (≤100, default 50) | `Page<ItemCard>` | 400 | FR-CAT-002, FR-CAT-003, FR-CAT-006 |
 | GET | `/api/v1/search` | user | `q` (1–100 chars), `cursor`, `limit` | `Page<ItemCard>` ranked by bm25, then title | 400 | FR-CAT-004 |
@@ -257,8 +315,12 @@ Conventions (IR-001):
 | GET | `/api/v1/admin/servers/{id}/sync-runs` | operator | `cursor`, `limit` | `Page<SyncRun>` plus `nextScheduled` | 404 | FR-SYNC-006, FR-OPS-003 |
 | GET | `/api/v1/admin/servers/{id}/health` | operator | `since` | `{status, probes:[{at,ok,latencyMs,errorCode}]}` | 404 | FR-OPS-004 |
 | GET | `/api/v1/admin/metrics` | operator | `window=24h\|7d` | sync durations/errors per server, play outcomes, mode distribution | — | NFR-OBS-002 |
-| GET / POST | `/api/v1/admin/users` | operator | POST `{email, displayName, role, libraryIds?}` (default: all enabled) | `Page<User>` / `201 User` (status `invited`) | 409 `USER_EXISTS` | FR-USR-004, FR-USR-005 |
-| PATCH | `/api/v1/admin/users/{id}` | operator | `{role?, status?:"active"\|"disabled", displayName?}` | `User` | 409 `LAST_OPERATOR` | FR-USR-004, BR-8 |
+| GET | `/api/v1/admin/users` | operator | `cursor` | `Page<User>` with passkey count and last sign-in | — | FR-USR-004 |
+| POST | `/api/v1/admin/invites` | operator | `{displayName, role, libraryIds?}` (`libraryIds` omitted = all enabled; ignored for operators) | `201 {id, userId, link:"https://<host>/invite#t=<token>", expiresAt}`. In one batch this creates the user in state `invited`, their grants and the invite. The token is returned **once** and only its hash is stored. The operator delivers the link; Cinewren sends no email. | 400, 409 `DISPLAY_NAME_TAKEN` | FR-USR-002, FR-USR-004, FR-USR-005 |
+| GET | `/api/v1/admin/invites` | operator | `status=open\|redeemed\|expired\|revoked` | `Page<Invite>` (never the token) | — | FR-USR-004 |
+| DELETE | `/api/v1/admin/invites/{id}` | operator | — | `204`. Sets `revoked_at`; for a signup invite it also deletes the still-`invited` user (FRD rule). | 404, 409 `INVITE_ALREADY_REDEEMED` | FR-USR-004 |
+| POST | `/api/v1/admin/users/{id}/reenroll` | operator | — | `201 {link, expiresAt}` (24 h, proposed) | 404 | FR-USR-007 |
+| PATCH | `/api/v1/admin/users/{id}` | operator | `{role?, status?:"active"\|"disabled", displayName?}` (disable also deletes the user's sessions) | `User` | 409 `LAST_OPERATOR` | FR-USR-004, BR-8 |
 | DELETE | `/api/v1/admin/users/{id}` | operator | — | `204` | 409 `LAST_OPERATOR` | FR-USR-004, DR-005 |
 | PUT | `/api/v1/admin/users/{id}/grants` | operator | `{libraryIds:[…]}` (viewers only) | `{libraryIds}` | 409 `GRANTS_NOT_APPLICABLE` for operators | FR-USR-005 |
 | POST | `/api/v1/admin/curation/merge` | operator | `{intoItemId, fromItemId}` | `{itemId}` | 409 `TYPE_MISMATCH` | FR-CAT-007 |
@@ -270,7 +332,7 @@ Conventions (IR-001):
 | GET | `/api/v1/admin/audit-log` | operator | `cursor`, `action?`, `from?`, `to?` | `Page<AuditEntry>` | — | FR-OPS-005 |
 | GET | `/api/v1/admin/export` | operator | — | `application/json` attachment: `{schemaVersion, exportedAt, users, grants, progress, curationOverrides, servers:[{id,type,name,baseUrl,priority,libraries}]}`, with no credentials (NFR-SEC-001) | — | FR-OPS-006 |
 
-Every operator mutation writes one `audit_log` row in the same `batch` (FR-OPS-005). Sign-out (FR-USR-006) is a client link to `${ACCESS_TEAM_DOMAIN}/cdn-cgi/access/logout`, not an API call.
+Every operator mutation, including invite creation and revocation and re-enrollment links, writes one `audit_log` row in the same `batch` (FR-OPS-005). Successful and failed sign-ins are logged (`auth.login.*`, NFR-OBS-001) but not audited.
 
 ### Error envelope
 
@@ -433,6 +495,7 @@ Consumer config *(proposed)*: `max_batch_size=1`, `max_retries=3`, `retry_delay=
 ```
 every 5 min:
   sweepPlaybackSessions()                                  # LLD-TOKEN (BR-9)
+  sweepAuth()                                              # LLD-TOKEN: expired challenges, sessions, invites
   if tick % (HEALTH_PROBE_INTERVAL_MIN/5) == 0: probeAll()  # FR-OPS-001
   for s in servers where status in (active, degraded):     # unreachable: skip sync, keep probing
     due = full if now - lastSucceeded(s, any type full)  >= SYNC_FULL_INTERVAL_H
@@ -442,7 +505,7 @@ every 5 min:
   if any reencrypt pending: enqueue {kind:'reencrypt'}
 enqueueRun(s, type, trigger):
   INSERT INTO sync_runs(... status='queued') -- fails on sync_one_active ⇒ already queued/running (FR-SYNC-002)
-  on success: SYNC_QUEUE.send({kind:'sync', runId})
+  on success: JOBS_QUEUE.send({kind:'sync', runId})
 ```
 
 A manual trigger (`POST …/sync`) calls `enqueueRun`. A unique-index violation maps to `409 SYNC_IN_PROGRESS`. A full run requested while an incremental is queued (not yet running) upgrades that run's `type` to `full` by a conditional update.
@@ -469,7 +532,7 @@ onMessage({runId, leaseToken}):
     cp = page.nextCursor ? {cp.libraryIdx, page.nextCursor} : {cp.libraryIdx+1, null}
     if !page.nextCursor: stmts += finishLibrary(run, lib)       # missing marking (full runs only)
     DB.batch(stmts + [UPDATE sync_runs SET checkpoint=cp, counts…, lease_expires_at=now+16min WHERE id=runId AND lease_token=newToken])
-    if now > deadline: SYNC_QUEUE.send({kind:'sync', runId, leaseToken:newToken}); ack; return   # continuation
+    if now > deadline: JOBS_QUEUE.send({kind:'sync', runId, leaseToken:newToken}); ack; return   # continuation
   status = libraries_failed empty ? 'succeeded' : (libraries_ok empty ? 'failed' : 'partial')
   UPDATE sync_runs SET status, ended_at=now, lease_token=NULL WHERE id=runId AND lease_token=newToken
   bump meta.catalog_version
@@ -666,6 +729,21 @@ AAD = "cinewren|" + purpose + "|" + rowId      # purpose ∈ {server_secret, ser
 
 **Key loss:** decryption fails for every server. Servers are shown as "credentials unavailable"; the catalog, users and progress are untouched. The operator re-enters each server's credentials (FR-SRV-005).
 
+### Auth sessions, invites and challenges (FR-USR-001 to FR-USR-007, NFR-SEC-007, ADR-0014)
+
+These are *not* envelope-encrypted. They are random secrets that are **hashed** (SHA-256), because the server only needs to recognise them, never to read them back.
+
+| Artefact | Created | Validated | Ends |
+|---|---|---|---|
+| Session | On successful setup, invite redemption or login verify: 32 random bytes go into the cookie, the hash into `sessions`. Idle expiry = now + 14 d, absolute = now + 90 d *(proposed)*. | Each request hashes the cookie and looks up `id_hash`, joining `users.status='active'`. It requires `now < idle_expires_at AND now < absolute_expires_at`, and slides `idle_expires_at` at most hourly. | On logout, passkey removal, user disable or delete (FR-USR-004), or expiry. The sweep deletes expired rows. |
+| Invite (signup) | The operator creates it. One batch inserts `users(status='invited', role)`, `library_grants` and `invites(token_hash, expires_at=now+7d)`. | Redeem: `token_hash` matches, `redeemed_at IS NULL AND revoked_at IS NULL AND expires_at > now`. | **Redeem**, one batch: CAS `UPDATE invites SET redeemed_at=now WHERE id=? AND redeemed_at IS NULL AND revoked_at IS NULL AND expires_at>now`, insert the passkey, set the user `active`, create the session. If the CAS changes 0 rows, the whole batch aborts (a guard statement raises a constraint error). **Revoke or expire:** the invited user is deleted (FRD rule), which cascades to grants and the invite. |
+| Invite (reenroll / CLI recovery) | `POST …/reenroll` or the recovery command (TDD §5.1); 24 h *(proposed)*. | As above. | Redeem adds a passkey to the existing user and creates a session; existing passkeys are kept. Expiry or revocation affects only the invite. |
+| Setup | — (token is the `SETUP_TOKEN` secret) | Constant-time compare **and** no operator exists. | Inserting the first operator uses `INSERT … SELECT … WHERE NOT EXISTS (SELECT 1 FROM users WHERE role='operator')`, so two concurrent setups cannot both succeed. |
+| WebAuthn challenge | On `*/options`, with a 5 min TTL *(proposed)* and a purpose binding (and, where relevant, the invite or user). | On `*/verify`, the row is deleted **first** (`DELETE … RETURNING`), then checked for expiry and purpose. That makes it single-use even when verification fails. | Deleted on use; the sweep removes expired rows. |
+| Passkey sign count | Stored at registration. | On login, if both the stored and the new count are non-zero and the new count is ≤ the stored one, the login is rejected and logged as `auth.passkey.counter_regression` (a possible cloned authenticator). Many synced passkeys always report 0, which is accepted. | — |
+
+`sweepAuth()` runs on the 5-minute tick. It deletes expired challenges and sessions, and for each signup invite past `expires_at` and not redeemed it deletes the invited user (cascade). It runs in chunks of 500 *(proposed)*.
+
 ### Playback session lifecycle (FR-PLAY-001, FR-PLAY-007, FR-PLAY-009, BR-9)
 
 ```mermaid
@@ -719,20 +797,27 @@ Events for a session that has reached a terminal status return `410 SESSION_EXPI
 
 | Code | HTTP | When |
 |---|---|---|
-| `AUTH_REQUIRED` | 401 | JWT missing or invalid (FR-USR-001). |
-| `FORBIDDEN` | 403 | Unknown or disabled user, viewer calling `/admin`, service token on a non-health route. |
+| `AUTH_REQUIRED` | 401 | No session cookie, or the session is unknown or expired (FR-USR-001). The SPA redirects to `/login`. |
+| `FORBIDDEN` | 403 | Viewer calling `/admin`. |
+| `CSRF_REJECTED` | 403 | State-changing request whose `Origin` is not `APP_ORIGIN` (NFR-SEC-007). |
+| `WEBAUTHN_VERIFICATION_FAILED` | 400 / 401 | Challenge missing, expired or reused; origin or RP ID mismatch; bad signature; unknown credential; disabled user. One generic message. |
+| `INVITE_INVALID` | 404 | Unknown, expired, revoked or redeemed invite. These are indistinguishable on purpose. |
+| `SETUP_DISABLED` / `SETUP_TOKEN_INVALID` | 404 / 403 | FR-USR-002. |
+| `LAST_PASSKEY` | 409 | FR-USR-006. |
+| `INVITE_ALREADY_REDEEMED` | 409 | Revoking a used invite. |
+| `MIGRATIONS_PENDING` | 503 | Worker newer than the applied schema (TDD §9.3). |
 | `NOT_FOUND` | 404 | Resource missing **or not visible** (BR-1). |
 | `VALIDATION_FAILED` | 400 | Request schema (zod) failure; `details.fields`. |
 | `INSECURE_ORIGIN_URL` / `BLOCKED_ORIGIN_URL` | 400 | FR-SRV-007, OD-4 policy. |
 | `SERVER_VALIDATION_FAILED` | 422 | FR-SRV-002; `details.check`. |
-| `SERVER_ALREADY_REGISTERED`, `USER_EXISTS` | 409 | Uniqueness. |
+| `SERVER_ALREADY_REGISTERED`, `DISPLAY_NAME_TAKEN` | 409 | Uniqueness. |
 | `SYNC_IN_PROGRESS`, `SERVER_DISABLED` | 409 | FR-SYNC-002. |
 | `LAST_OPERATOR` | 409 | BR-8. |
 | `TYPE_MISMATCH`, `LAST_SOURCE`, `GRANTS_NOT_APPLICABLE` | 409 | Curation and grants. |
 | `NO_PLAYABLE_SOURCE` | 409 | No candidate after filtering; `details.reason`. |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | Same key with a different request hash. |
 | `SESSION_EXPIRED` | 410 | Event for a terminal session. |
-| `RATE_LIMITED` | 429 | NFR-SEC-004; includes `Retry-After`. |
+| `RATE_LIMITED` | 429 | NFR-SEC-004, per user or, on public auth routes, per IP; includes `Retry-After`. |
 | `ORIGIN_UNAVAILABLE` / `ORIGIN_TIMEOUT` / `ORIGIN_REDIRECT_REFUSED` / `ORIGIN_PROTOCOL` | 502 / 504 / 502 / 502 | Provider errors on the request path (NFR-SEC-005). |
 | `CREDENTIAL_KEY_MISSING` | 500 | DR-002 key loss; operator-facing. |
 | `INTERNAL` | 500 | Anything else; message generic, details only in logs. |

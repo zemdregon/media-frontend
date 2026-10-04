@@ -420,11 +420,12 @@ stateDiagram-v2
     degraded --> disabled: operator disables
     unreachable --> disabled: operator disables
     disabled --> pending_validation: operator re-enables
-    pending_validation --> removed: operator removes
-    active --> removed: operator removes
-    degraded --> removed: operator removes
-    unreachable --> removed: operator removes
-    disabled --> removed: operator removes
+    pending_validation --> removing: operator removes
+    active --> removing: operator removes
+    degraded --> removing: operator removes
+    unreachable --> removing: operator removes
+    disabled --> removing: operator removes
+    removing --> removed: chunked deletion completes
     removed --> [*]
 ```
 
@@ -435,7 +436,8 @@ stateDiagram-v2
 | `active` / `degraded` / `unreachable` | each other | Health derivation (WF-8) | Thresholds in LLD. `unreachable` excludes sources from selection. |
 | `active` / `degraded` / `unreachable` | `disabled` | Operator disables | Sync and probes stop. |
 | `disabled` | `pending_validation` | Operator re-enables | Re-validates; on success the server moves on to `active`, and failure leaves it `disabled` (WF-10). |
-| any | `removed` | Operator removes | Terminal. Data deleted per DR-005. |
+| any | `removing` | Operator removes | Transitional. The server is hidden at once (BR-1). Sync and probes stop. Sources are deleted in chunks (LLD-SYNC). |
+| `removing` | `removed` | Chunked deletion completes | Terminal. Data deleted per DR-005. |
 
 ### Sync run state machine
 

@@ -363,7 +363,7 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). T
 
 | ID | Item | Home |
 |---|---|---|
-| OD-1 | Rate-limiting mechanism (Workers rate limiting binding, D1 counters or Cache API); choose in M5 | NFR-SEC-004, [TDD](TDD.md) |
-| OD-2 | Whether `sync` and `health` share one queue or use two | LLD-SYNC |
+| OD-1 | Rate-limiting mechanism. **Closed:** the Workers rate limiting binding ([TDD](TDD.md)). | NFR-SEC-004, [TDD](TDD.md) |
+| OD-2 | Queue topology. **Closed:** one jobs queue with typed messages plus a dead-letter queue. Health probes run inline in a cron handler, with two cron triggers (LLD-SYNC). | LLD-SYNC |
 | OD-3 | Closed: Access removed (ADR-0014). Passkeys work on localhost, so no dev bypass is needed. | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) |
-| OD-4 | IP-literal and reserved-range blocking for registered server URLs | LLD-PROV |
+| OD-4 | Server URL host restrictions. **Closed:** IP-literal and local or internal hostnames are blocked outside local mode. Resolved private IPs are an accepted residual risk (LLD-PROV). | LLD-PROV |

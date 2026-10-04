@@ -44,6 +44,10 @@ The artwork reference stored in the catalog identifies the origin image, not a U
 - Negative: cache can hold art after access is revoked, but only served after the authorization check.
 - Obligation: cap response size and content type allowlist for proxied images (NFR-SEC-005 still applies).
 
+## Notes
+
+- 2026-10-04: Cloudflare documents that the Cache API works on custom domains and not for Workers placed behind Cloudflare Access (https://developers.cloudflare.com/workers/runtime-apis/cache/). Self-hosters should serve Cinewren on a custom domain for edge caching. Artwork still works without the cache, just with more origin load. ADR-0014 removed Access from the design, so the default deployment is unaffected.
+
 ## Revisit when
 
 - Image volume makes Worker request cost or latency significant.

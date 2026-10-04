@@ -146,8 +146,8 @@ frame-ancestors 'none'; base-uri 'none'; form-action 'self'
 
 ### 6.2 Logging and observability (NFR-OBS-001, NFR-OBS-002)
 
-- One logger writes single-line JSON with `ts`, `level`, `request_id`, `user_id` (the internal ID; never the email), `route`, `event`, `duration_ms` and event fields. Output goes to `console.log` and is collected by Workers Logs (log retention and limits to verify in M0).
-- Redaction happens in the logger, not at call sites. Keys matching `/token|password|secret|authorization|credential|api_key/i` are replaced. Before logging, URLs are stripped of query strings, which may carry stream tokens (NFR-SEC-001). A unit test sends known secrets through every log path.
+- One logger writes single-line JSON with `ts`, `level`, `request_id`, `user_id` (the internal ID; never the display name), `route`, `event`, `duration_ms` and event fields. Output goes to `console.log` and is collected by Workers Logs (log retention and limits to verify in M0).
+- Redaction happens in the logger, not at call sites. Keys matching `/token|password|secret|authorization|credential|api_key|cookie|display_?name/i` are replaced. The session cookie and any invite, setup or re-enrollment token are never logged. Before logging, URLs are stripped of query strings, which may carry stream tokens (NFR-SEC-001). A unit test sends known secrets through every log path.
 - Events that must be logged: `sync.run.*`, `sync.page`, `probe.result`, `play.decision` (the candidates with their ranking keys, the chosen source and mode), `play.session.*`, `auth.denied`, `error`.
 - **Decision TDD-D4: metrics come from D1, not from an extra product.** NFR-OBS-002 metrics are SQL views over `sync_runs` (duration and errors per server), `playback_sessions` (outcome and mode distribution) and `health_probes`. An operator page shows them. Workers Analytics Engine is an option if query cost becomes a problem; it is not adopted.
 - There are no third-party analytics or error trackers (NFR-PRIV-001).
