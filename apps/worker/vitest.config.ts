@@ -4,9 +4,7 @@ import { defineConfig } from 'vitest/config';
 // Migrations are read in Node and applied to the local D1 inside the Workers runtime by
 // test/apply-migrations.ts (T0.4, TDD §7), the same files `wrangler d1 migrations apply` uses.
 export default defineConfig(async () => {
-  const migrations = await readD1Migrations(
-    decodeURIComponent(new URL('./migrations', (import.meta as { url: string }).url).pathname),
-  );
+  const migrations = await readD1Migrations(`${import.meta.dirname}/migrations`);
   return {
     plugins: [
       cloudflareTest({
