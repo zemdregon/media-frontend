@@ -1096,6 +1096,15 @@ The service account's **API token** (used for sync, health and negotiation) is c
 - **Health (LLD-SYNC):** each probe round uses a 5 s timeout, 3 attempts and concurrency 6. `HEALTH_PROBE_INTERVAL_MIN` defaults to 5. A play-time origin failure increments `consecutive_failures` immediately. Health-aware selection was already in place from M3, so the "(M5)" note is historical.
 - **Operations (LLD-API):** credential replacement audits as `server.credentials.replace`. The export is built from explicit column lists (no secrets). The metrics endpoint is `GET /admin/metrics?window=24h|7d`, computed from D1. Master-key rotation (`reencrypt` jobs) is not yet implemented.
 
+- **Curation (LLD-MATCH, LLD-API):**
+  - `GET /admin/curation/entities/{kind}/{id}` was added.
+  - Operator merges apply to movies and series only; a series merge or split carries its seasons and episodes.
+  - Resolving a conflict by merge folds the whole current item into the candidate.
+  - A stale or already-resolved conflict returns 404 `NOT_FOUND`.
+  - Each mutation writes one audit row (`curation.merge`, `curation.split`, `curation.conflict.resolve`, `curation.override.delete`).
+  - Name-derived person IDs (`name:<tag>`) do not block BR-10's same-server exclusion.
+- **BR-1 (LLD-SCHEMA):** credits and collection members are filtered by source visibility, so a merged item never exposes a hidden copy's cast or membership.
+
 ## LLD-ERR — Error handling, retries, idempotency & concurrency
 
 ### Error taxonomy
