@@ -35,6 +35,7 @@ import {
   deleteSessionsOfUserStmt,
   deleteUserStmt,
   getAdminUser,
+  isLastActiveOperator,
   listUsers,
   revokeOpenReenrollInvitesStmt,
   setThemeStmt,
@@ -42,6 +43,8 @@ import {
   type AdminUserRow,
 } from '../db/users';
 import { ulid } from '../platform/ids';
+import { createPlaybackDeps } from '../playback/deps';
+import { revokeAllSessions } from '../playback/lifecycle';
 
 /** Re-enrollment link lifetime (FR-USR-007, proposed 24 h). */
 export const REENROLL_TTL_MS = 24 * 3_600_000;
@@ -173,19 +176,42 @@ export async function update(
     if (!(await getAdminUser(db, id))) throw notFound();
     throw lastOperator();
   }
+  if (patch.status === 'disabled') {
+    // FR-USR-008, FR-PLAY-007 (T5.8 SR-01): a disabled user's stream credentials end now, not
+    // when BR-9 idles their sessions out. Failures stay revoke_pending for the sweep.
+    await revokeAllSessions(playbackDepsOf(c), { userId: id }, 'user_disabled');
+  }
   return toAdminUser(await loadUser(c, id));
 }
 
+function playbackDepsOf(c: Context<AppEnv>) {
+  return createPlaybackDeps(c.env, { fetchImpl: c.get('originFetch'), logger: c.get('logger') });
+}
+
 /**
- * Deletes a user and their personal data (DR-005, FR-USR-008). One batch: audit rows lose the
- * pointer to the user, idempotency keys go, and the guarded `DELETE` cascades passkeys, sessions
- * (access ends at once), invites, grants, progress and playback sessions. If it would leave no
- * active operator the guard aborts the whole batch (BR-8).
+ * Deletes a user and their personal data (DR-005, FR-USR-008). First their open playback
+ * sessions are ended and their origin stream credentials revoked (LLD-SCHEMA: revoking open
+ * sessions comes first), because the delete cascades the session rows the revocation needs
+ * (T5.8 SR-01). Then one batch: audit rows lose the pointer to the user, idempotency keys go,
+ * and the guarded `DELETE` cascades passkeys, sessions (access ends at once), invites, grants,
+ * progress and playback sessions. If it would leave no active operator the guard aborts the
+ * whole batch (BR-8).
  */
 export async function remove(c: Context<AppEnv>, id: string): Promise<void> {
   const db = c.env.DB;
   const operator = currentUser(c);
   const row = await loadUser(c, id);
+  if (await isLastActiveOperator(db, id)) throw lastOperator();
+  const { unrevoked } = await revokeAllSessions(playbackDepsOf(c), { userId: id }, 'user_deleted');
+  if (unrevoked > 0) {
+    // The origin could not be reached; the rows go with the user, so nothing can retry. The
+    // operator sees this in the logs (residual risk, T5.8 report).
+    c.get('logger').error('playback.revoke_abandoned', {
+      reason: 'user_deleted',
+      user_id: id,
+      sessions: unrevoked,
+    });
+  }
   const now = Date.now();
   try {
     await db.batch([

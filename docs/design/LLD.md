@@ -1105,6 +1105,15 @@ The service account's **API token** (used for sync, health and negotiation) is c
   - Name-derived person IDs (`name:<tag>`) do not block BR-10's same-server exclusion.
 - **BR-1 (LLD-SCHEMA):** credits and collection members are filtered by source visibility, so a merged item never exposes a hidden copy's cast or membership.
 
+### T5.8 security review notes (agent decisions, 2026-10-04)
+
+These come from the [security review](../reports/2026-security-review.md) and bring the code in line with the rules above.
+- **Revocation before removal (LLD-SCHEMA cascades, FR-PLAY-007).** Deleting a user, disabling a user and removing a server first end every live playback session of that user or server, then revoke every origin credential that is still held (stop, then logout). Only after that does the delete or removal batch run. A disabled user's sessions end with `end_reason = 'user_disabled'`. Revocations that fail are logged as `playback.revoke_abandoned` when the rows or credentials are about to go, and stay `revoke_pending` otherwise. Deleting the last operator is refused before any playback is touched.
+- **BR-1 for the whole session.** Every `POST /play/{id}/events` re-checks that the session's source is still visible to the caller. If the grant, the library or the server is gone, the session ends with `end_reason = 'access_revoked'`, its credential is revoked and the event gets `410 SESSION_EXPIRED`. Without this, progress events would keep a session, and its token, alive indefinitely.
+- **`sweepAuth` is implemented** (`db/auth.ts`) as its own task on the five-minute tick, in chunks of 500, at most 20 chunks per step per tick.
+- **Artwork cache key (ADR-0012).** The key is `entity/id/slot/server/tag`, and an image is stored only under the key of the source that supplied it, so equal tags on two servers never share an entry.
+- **Per-user limits (TDD-D5).** Writes under `/api/v1/me/` count against `RL_MUTATION`.
+
 ## LLD-ERR — Error handling, retries, idempotency & concurrency
 
 ### Error taxonomy

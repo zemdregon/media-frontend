@@ -450,6 +450,42 @@ export function clearCredential(db: D1Database, id: string): Promise<unknown> {
     .run();
 }
 
+/**
+ * Every session of a user or a server that still holds an origin credential: live ones, and ended
+ * ones whose revocation has not happened yet. Used before a user or server is removed, so the
+ * credentials are revoked while the rows and the server credentials still exist (T5.8 SR-01,
+ * SR-02; LLD-SCHEMA "Cascades and deletion": revoking open sessions comes first).
+ */
+export function listCredentialHoldingSessions(
+  db: D1Database,
+  by: { userId: string } | { serverId: string },
+): Promise<SessionRow[]> {
+  const column = 'userId' in by ? 'user_id' : 'server_id';
+  return all(
+    db,
+    `SELECT ${SESSION_COLUMNS} FROM playback_sessions
+      WHERE ${column} = ? AND credential_envelope IS NOT NULL
+        AND (status IN ('authorized','started') OR revoke_pending = 1)
+      ORDER BY authorized_at`,
+    ['userId' in by ? by.userId : by.serverId],
+  );
+}
+
+/** Whether the caller may still see a session's source (BR-1), checked on every event (SR-06). */
+export async function sourceStillVisible(
+  db: D1Database,
+  viewer: Viewer,
+  sourceId: string,
+): Promise<boolean> {
+  const p = new Params(viewer);
+  const rows = await all<{ x: number }>(
+    db,
+    `SELECT 1 AS x FROM sources s WHERE s.id = ${p.add(sourceId)} AND ${visibleSource('s')}`,
+    p.values,
+  );
+  return rows.length > 0;
+}
+
 /** Marks a live session for revocation without changing status (used before an inline revoke). */
 export function markRevokePending(db: D1Database, id: string): Promise<unknown> {
   return db

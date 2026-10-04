@@ -110,6 +110,19 @@ export function deleteUserStmt(db: D1Database, id: string): D1PreparedStatement 
     .bind(id);
 }
 
+/** True when `id` is the only active operator (BR-8); a pre-check, the batch guard stays final. */
+export async function isLastActiveOperator(db: D1Database, id: string): Promise<boolean> {
+  const row = await db
+    .prepare(
+      `SELECT 1 AS x FROM users WHERE id = ?1 AND role = 'operator' AND status = 'active'
+         AND NOT EXISTS (SELECT 1 FROM users o WHERE o.role = 'operator'
+                          AND o.status = 'active' AND o.id <> ?1)`,
+    )
+    .bind(id)
+    .first();
+  return row !== null;
+}
+
 export function clearGrantsStmt(db: D1Database, userId: string): D1PreparedStatement {
   return db.prepare('DELETE FROM library_grants WHERE user_id = ?').bind(userId);
 }

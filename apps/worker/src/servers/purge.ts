@@ -3,9 +3,10 @@
  * "Cascades and deletion"). Removal is two-phase so it is safe on large catalogs inside D1's
  * per-query limits:
  *
- *  1. `startServerRemoval` (one batch): the server becomes `removing`, which hides its sources
- *     from every catalog query at once (BR-1), its credentials are deleted, its open playback
- *     credentials are marked for revocation, and the audit row is written.
+ *  1. `startServerRemoval`: open playback sessions are ended and their origin credentials revoked
+ *     first, while the server credentials still exist. Then one batch: the server becomes
+ *     `removing`, which hides its sources from every catalog query at once (BR-1), its
+ *     credentials are deleted, and the audit row is written.
  *  2. `purgeServer` deletes versions, sources, availability and provider links in chunks (500,
  *     proposed), removes items left with no sources (children first, with their search rows),
  *     then deletes the `servers` row, whose cascades take the libraries, grants, sync runs and
@@ -20,6 +21,8 @@ import { auditStmt } from '../db/auth';
 import type { Env } from '../platform/env';
 import { createLogger } from '../platform/logger';
 import { ulid } from '../platform/ids';
+import { createPlaybackDeps } from '../playback/deps';
+import { revokeAllSessions } from '../playback/lifecycle';
 
 export const PURGE_CHUNK = 500;
 /** Chunks one invocation may run before handing the rest to a queue message. */
@@ -184,13 +187,29 @@ export async function startServerRemoval(
   if (!server) throw new AppError('NOT_FOUND', 'Not found.');
 
   if (server.status !== 'removing') {
+    // Revoking open sessions comes first (LLD-SCHEMA "Cascades and deletion"): revocation needs
+    // the server credentials this batch deletes, so done afterwards it could never succeed and
+    // the origin tokens would stay valid (T5.8 SR-02; FR-PLAY-007, BR-9).
+    const { unrevoked } = await revokeAllSessions(
+      createPlaybackDeps(c.env, { fetchImpl: c.get('originFetch'), logger: c.get('logger') }),
+      { serverId },
+      'server_removed',
+    );
+    if (unrevoked > 0) {
+      c.get('logger').error('playback.revoke_abandoned', {
+        reason: 'server_removed',
+        server_id: serverId,
+        sessions: unrevoked,
+      });
+    }
     const now = Date.now();
     await db.batch([
       db
         .prepare("UPDATE servers SET status = 'removing', updated_at = ? WHERE id = ?")
         .bind(now, serverId),
       db.prepare('DELETE FROM server_credentials WHERE server_id = ?').bind(serverId),
-      // M3 revokes these origin credentials (BR-9); marking is enough to make them due.
+      // A play that raced the revocation above is only marked; with the credentials gone the
+      // sweep can just clear it (a millisecond-wide residual, T5.8 report).
       db
         .prepare(
           `UPDATE playback_sessions SET revoke_pending = 1

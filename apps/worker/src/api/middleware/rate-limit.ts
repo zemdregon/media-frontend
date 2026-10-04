@@ -21,13 +21,15 @@ export type UserLimitClass = 'play' | 'mutation';
 
 /**
  * Which per-user limiter a request counts against (NFR-SEC-008, TDD-D5): `POST /play` has its
- * own, tighter budget; progress events and operator mutations share the other.
+ * own, tighter budget; progress events, operator mutations and own-account writes share the other.
  */
 export function classifyUserLimit(method: string, path: string): UserLimitClass | null {
   if (method === 'POST' && path === '/api/v1/play') return 'play';
   if (method === 'POST' && /^\/api\/v1\/play\/[^/]+\/events$/.test(path)) return 'mutation';
   if (method === 'PUT' && path.startsWith('/api/v1/progress/')) return 'mutation';
   if (path.startsWith('/api/v1/admin/') && method !== 'GET' && method !== 'HEAD') return 'mutation';
+  // Own-account writes (passkey ceremonies, preferences) store rows too (T5.8 SR-08).
+  if (path.startsWith('/api/v1/me/') && method !== 'GET' && method !== 'HEAD') return 'mutation';
   return null;
 }
 

@@ -151,17 +151,30 @@ export async function serveArtwork(
   if (!preferred) throw notFound();
   const ordered = [preferred, ...candidates.filter((cand) => cand !== preferred)];
 
+  // The key names the source server as well as the tag, and an image is stored only under the
+  // key of the candidate that supplied it: two copies whose tags happen to be equal (Plex tags
+  // are timestamps) never share an entry, so a caller is only ever served bytes from a source
+  // they may see (T5.8 SR-05, ADR-0012).
   const cache = caches.default;
-  const key = new Request(
-    `${c.get('config').appOrigin}/__artwork/${target.kind}/${target.id}/${slot}/${encodeURIComponent(preferred.tag)}`,
-  );
-  const hit = await cache.match(key);
-  if (hit) {
-    return browserResponse(hit.body, hit.headers.get('content-type') ?? 'application/octet-stream');
+  const appOrigin = c.get('config').appOrigin;
+  const keyOf = (cand: ArtworkCandidate) =>
+    new Request(
+      `${appOrigin}/__artwork/${target.kind}/${encodeURIComponent(target.id)}/${slot}/${encodeURIComponent(cand.server_id)}/${encodeURIComponent(cand.tag)}`,
+    );
+  const tries = ordered.slice(0, MAX_ATTEMPTS);
+  for (const cand of tries) {
+    const hit = await cache.match(keyOf(cand));
+    if (hit) {
+      return browserResponse(
+        hit.body,
+        hit.headers.get('content-type') ?? 'application/octet-stream',
+      );
+    }
   }
 
   let sawNotFound = false;
-  for (const cand of ordered.slice(0, MAX_ATTEMPTS)) {
+  for (const cand of tries) {
+    const key = keyOf(cand);
     const { image, notFound: missing } = await fetchFromOrigin(c, cand, slot);
     sawNotFound ||= missing;
     if (!image) continue;
