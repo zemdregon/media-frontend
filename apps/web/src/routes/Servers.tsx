@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState, type SyntheticEvent } from 'react';
+import { useCallback, useEffect, useState, type MouseEvent, type SyntheticEvent } from 'react';
 import type { Library, Server, ServerDetail } from '@cinewren/shared';
 import { api, ApiError } from '../api-client';
 import { Alert } from './AuthCard';
+import { useRouter } from '../lib/router';
 
 /** Operator "Servers" page: the server list and the add-server form (UX §8a, FR-SRV-001..003). */
 
@@ -20,6 +21,11 @@ function messageFor(err: unknown): string {
 }
 
 export function Servers() {
+  const { navigate } = useRouter();
+  const goSync = (e: MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    navigate('/servers/sync');
+  };
   const [servers, setServers] = useState<Server[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -39,20 +45,25 @@ export function Servers() {
   useEffect(load, [load]);
 
   return (
-    <main className="shell-main servers-page">
+    <div className="servers-page">
       <div className="page-head">
         <h1>Servers</h1>
-        {!adding && (
-          <button
-            className="button button-primary-inline"
-            type="button"
-            onClick={() => {
-              setAdding(true);
-            }}
-          >
-            Add server
-          </button>
-        )}
+        <div className="actions">
+          <a className="button button-outline" href="/servers/sync" onClick={goSync}>
+            Sync status
+          </a>
+          {!adding && (
+            <button
+              className="button button-primary-inline"
+              type="button"
+              onClick={() => {
+                setAdding(true);
+              }}
+            >
+              Add server
+            </button>
+          )}
+        </div>
       </div>
       <Alert message={error} />
       {adding && (
@@ -78,7 +89,7 @@ export function Servers() {
           <ServerCard key={s.id} server={s} onChanged={load} />
         ))}
       </div>
-    </main>
+    </div>
   );
 }
 

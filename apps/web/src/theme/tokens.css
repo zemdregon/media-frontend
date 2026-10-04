@@ -27,12 +27,21 @@
   --cw-status-ok: #5cc8b0;
   --cw-status-warn: #f2a93b;
   --cw-status-bad: #e8735a;
+  --cw-alt-teal: #7fd1c0;
+  --cw-alt-coral: #e8866a;
+  --cw-poster-hairline: #ffffff14;
+  --cw-scrim: #00000099;
 
   --cw-r-chip: 6px;
+  --cw-r-nav: 8px;
   --cw-r-button: 10px;
   --cw-r-callout: 12px;
+  --cw-r-poster-title: 14px;
+  --cw-r-server: 16px;
   --cw-r-card: 18px;
+  --cw-r-circle: 22px;
   --cw-r-pill: 24px;
+  --cw-r-pill-lg: 26px;
 
   --cw-font-display: 'Bricolage Grotesque', system-ui, sans-serif;
   --cw-font-body: 'Instrument Sans', system-ui, sans-serif;
@@ -64,6 +73,9 @@
     --cw-status-ok: #0e7360;
     --cw-status-warn: #9a5700;
     --cw-status-bad: #b3361e;
+    --cw-alt-teal: #1f7a6b;
+    --cw-alt-coral: #b04a2e;
+    --cw-poster-hairline: #00000014;
   }
 }
 
@@ -91,4 +103,7 @@
   --cw-status-ok: #0e7360;
   --cw-status-warn: #9a5700;
   --cw-status-bad: #b3361e;
+  --cw-alt-teal: #1f7a6b;
+  --cw-alt-coral: #b04a2e;
+  --cw-poster-hairline: #00000014;
 }

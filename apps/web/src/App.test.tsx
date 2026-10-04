@@ -32,7 +32,8 @@ it('shows sign-in when there is no session', async () => {
   expect(screen.getByRole('button', { name: 'Use your passkey' })).toBeTruthy();
 });
 
-it('shows the display name and signs out', async () => {
+it('shows the account button and signs out from Settings', async () => {
+  window.history.replaceState(null, '', '/settings');
   const fetchMock = mockFetch((url) =>
     url.endsWith('/auth/logout')
       ? [204, null]
@@ -42,8 +43,8 @@ it('shows the display name and signs out', async () => {
         ],
   );
   render(<App />);
-  expect(await screen.findByText('Olivia')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+  expect(await screen.findByRole('link', { name: 'Account, Olivia' })).toBeTruthy();
+  fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
   expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeTruthy();
   expect(fetchMock).toHaveBeenCalledWith(
     '/api/v1/auth/logout',

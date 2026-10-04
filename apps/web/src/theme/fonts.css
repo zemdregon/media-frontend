@@ -1,0 +1,50 @@
+/*
+ * Self-hosted fonts (TDD §6.6, NFR-PRIV-001): no font CDN, so `font-src 'self'` holds. Latin
+ * subset only, variable where the family offers it, `font-display: swap`, system fallbacks in
+ * the --cw-font-* stacks. All three families are SIL Open Font License 1.1; the license texts
+ * ship in the build at /licenses/ (apps/web/public/licenses).
+ */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 800;
+  src: url('@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-opsz-normal.woff2')
+    format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/instrument-sans/files/instrument-sans-latin-400-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('@fontsource/instrument-sans/files/instrument-sans-latin-600-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/instrument-sans/files/instrument-sans-latin-700-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 500;
+  src: url('@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2')
+    format('woff2-variations');
+}
