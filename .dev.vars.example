@@ -1,0 +1,4 @@
+# Copy to apps/worker/.dev.vars (git-ignored) and fill in. Secret names per docs/design/TDD.md §4.
+# Never commit real values.
+SETUP_TOKEN=
+CREDENTIAL_KEYS=

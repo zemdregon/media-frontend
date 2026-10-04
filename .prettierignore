@@ -1,0 +1,9 @@
+node_modules
+dist
+.wrangler
+pnpm-lock.yaml
+docs
+AGENTS.md
+CLAUDE.md
+worker-configuration.d.ts
+scripts/check-docs.mjs
