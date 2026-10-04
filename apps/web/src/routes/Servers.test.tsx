@@ -186,12 +186,14 @@ it('shows server cards with status and library counts, and disables a server', a
 
 it('hides Servers from a viewer (the server also enforces the role)', async () => {
   window.history.replaceState(null, '', '/servers');
-  const fetchMock = mockApi(() => [
-    200,
-    { id: 'u2', displayName: 'Vera', role: 'viewer', preferences: { theme: 'system' } },
-  ]);
+  const fetchMock = mockApi((_m, url) =>
+    url.endsWith('/me')
+      ? [200, { id: 'u2', displayName: 'Vera', role: 'viewer', preferences: { theme: 'system' } }]
+      : [200, { recentlyAdded: [], continueWatching: [] }],
+  );
   render(<App />);
-  expect(await screen.findByText('Welcome, Vera')).toBeTruthy();
+  expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy();
+  expect(await screen.findByRole('link', { name: 'Account, Vera' })).toBeTruthy();
   expect(screen.queryByRole('link', { name: 'Servers' })).toBeNull();
   expect(fetchMock).not.toHaveBeenCalledWith('/api/v1/admin/servers', expect.anything());
 });

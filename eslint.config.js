@@ -65,6 +65,11 @@ export default tseslint.config(
     },
   },
   {
+    // Runs in the browser before the app loads (apps/web/public/theme-init.js).
+    files: ['apps/web/public/**/*.js'],
+    languageOptions: { globals: globals.browser },
+  },
+  {
     files: ['**/*.{js,mjs}'],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: { globals: globals.node },
