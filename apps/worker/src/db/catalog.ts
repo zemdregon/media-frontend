@@ -70,13 +70,18 @@ export const visibleCollection = (collection: string): string =>
              JOIN sources cs ON cs.id = cm.source_id
             WHERE cl.collection_id = ${collection}.id AND ${visibleItem('ci')} AND ${visibleSource('cs')})`;
 
-/** Sources of an item or, for series and seasons, of its descendants. */
+/**
+ * Sources of an item or, for series and seasons, of its descendants. Written as an `IN` over the
+ * family's item IDs so SQLite probes `src_item (media_item_id, status)` once per ID; the earlier
+ * `OR` of three conditions made it scan `sources` by status for every item (T5.7: 100 s for the
+ * min-height filter and 360 ms for a movie's versions at 200,000 sources).
+ */
 const familySources = (item: string, src: string): string =>
-  `(${src}.media_item_id = ${item}.id
-    OR ${src}.media_item_id IN (SELECT ch.id FROM media_items ch WHERE ch.parent_id = ${item}.id)
-    OR ${src}.media_item_id IN (SELECT ep.id FROM media_items ep
-                                  JOIN media_items se ON se.id = ep.parent_id
-                                 WHERE se.parent_id = ${item}.id))`;
+  `${src}.media_item_id IN (SELECT ${item}.id
+                            UNION SELECT ch.id FROM media_items ch WHERE ch.parent_id = ${item}.id
+                            UNION SELECT ep.id FROM media_items ep
+                                    JOIN media_items se ON se.id = ep.parent_id
+                                   WHERE se.parent_id = ${item}.id)`;
 
 // --- rows ---
 
@@ -155,18 +160,28 @@ export function browseItems(db: D1Database, viewer: Viewer, f: BrowseFilter): Pr
   );
 }
 
-/** Newest visible movies and series by date added (FR-CAT-008). */
+/**
+ * Newest visible movies and series by date added (FR-CAT-008). One ordered, limited branch per
+ * type, merged: `mi_added (type, date_added DESC, id)` serves each branch and stops at the limit,
+ * where a single `type IN ('movie','series')` query sorted every visible title (T5.7: 250 to
+ * 350 ms at 120,000 items).
+ */
 export function recentlyAdded(
   db: D1Database,
   viewer: Viewer,
   limit: number,
 ): Promise<ItemCardRow[]> {
   const p = new Params(viewer);
+  const n = p.add(limit);
+  const branch = (type: 'movie' | 'series') =>
+    `SELECT * FROM (SELECT ${CARD_COLUMNS}, i.date_added AS added FROM media_items i
+                     WHERE i.type = '${type}' AND ${visibleItem('i')}
+                     ORDER BY i.date_added DESC, i.id DESC LIMIT ${n})`;
   return all<ItemCardRow>(
     db,
-    `SELECT ${CARD_COLUMNS} FROM media_items i
-      WHERE i.type IN ('movie','series') AND ${visibleItem('i')}
-      ORDER BY i.date_added DESC, i.id DESC LIMIT ${p.add(limit)}`,
+    `SELECT id, type, title, year, season_number, episode_number, poster_tag
+       FROM (${branch('movie')} UNION ALL ${branch('series')})
+      ORDER BY added DESC, id DESC LIMIT ${n}`,
     p.values,
   );
 }

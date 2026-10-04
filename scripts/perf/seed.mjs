@@ -97,8 +97,19 @@ export function seedCatalog(db, real, now = Date.now()) {
     db.prepare(
       `INSERT INTO servers (id, type, name, base_url, origin_server_id, priority, status, created_at, updated_at)
        VALUES (?, 'jellyfin', ?, ?, ?, ?, 'active', ?, ?)`,
-    ).run(id, `Perf Server ${i}`, `https://${id.toLowerCase()}.example.test`, `origin-${id}`, i % 5, now, now);
-    for (const [kind, suffix] of [['movies', 'M'], ['tv', 'T']]) {
+    ).run(
+      id,
+      `Perf Server ${i}`,
+      `https://${id.toLowerCase()}.example.test`,
+      `origin-${id}`,
+      i % 5,
+      now,
+      now,
+    );
+    for (const [kind, suffix] of [
+      ['movies', 'M'],
+      ['tv', 'T'],
+    ]) {
       db.prepare(
         `INSERT INTO libraries (id, server_id, provider_library_id, name, kind, enabled)
          VALUES (?, ?, ?, ?, ?, 1)`,

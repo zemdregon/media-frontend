@@ -35,7 +35,7 @@ export function analyze(db, captured, inline, reps = 1) {
         /^SCAN /.test(d) &&
         !/USING (COVERING )?INDEX/.test(d) &&
         !/VIRTUAL TABLE/.test(d) &&
-        !/json_each|CONSTANT ROW/.test(d),
+        !/json_each|CONSTANT ROW|\(subquery/.test(d),
     );
     const sorts = plan.filter((d) => /TEMP B-TREE/.test(d));
     let best = Infinity;
@@ -45,13 +45,16 @@ export function analyze(db, captured, inline, reps = 1) {
       rows = db.prepare(sql).all().length;
       best = Math.min(best, performance.now() - t0);
     }
-    console.error(`  ${c.name}: ${best.toFixed(0)} ms`);
     return { name: c.name, ms: +best.toFixed(1), rows, scans, sorts, plan };
   });
 }
 
 export function sampleIds(db, cat, user) {
-  const one = (sql, ...p) => db.prepare(sql).all(...p).map((r) => r.id)[0];
+  const one = (sql, ...p) =>
+    db
+      .prepare(sql)
+      .all(...p)
+      .map((r) => r.id)[0];
   const op = user.role === 'operator' ? 1 : 0;
   const item = (type) =>
     one(

@@ -121,7 +121,7 @@ async function focused(): Promise<Focus | null> {
   return page.evaluate(() => {
     const el = document.activeElement as HTMLElement | null;
     if (!el || el === document.body || el === document.documentElement) return null;
-    const text = (el.textContent ?? '')
+    const text = el.textContent
       .replace(/^[←→]\s*/, '')
       .trim()
       .replace(/\s+/g, ' ')
@@ -522,6 +522,7 @@ const SCREENS: Screen[] = [
   { name: 'servers (operator)', path: () => '/servers', ready: h1('Servers') },
   { name: 'sync status (operator)', path: () => '/servers/sync', ready: h1('Sync status') },
   { name: 'audit log (operator)', path: () => '/servers/audit', ready: h1(/Audit log/) },
+  { name: 'match conflicts (operator curation)', path: () => '/servers/conflicts', ready: h1(/./) },
   { name: 'page not found', path: () => '/no/such/page', ready: h1('Page not found') },
   { name: 'item not found', path: () => '/items/nope', ready: h1(/not found/i) },
   {
@@ -637,6 +638,7 @@ const ZOOM_SCREENS = [
   '/servers',
   '/servers/sync',
   '/servers/audit',
+  '/servers/conflicts',
 ];
 
 async function expectNoPageScroll(label: string) {
@@ -649,7 +651,10 @@ async function expectNoPageScroll(label: string) {
           el.getBoundingClientRect().right > document.documentElement.clientWidth + 1,
       )
       .slice(0, 8)
-      .map((el) => `${el.tagName.toLowerCase()}.${el.className} right=${Math.round(el.getBoundingClientRect().right)}`),
+      .map(
+        (el) =>
+          `${el.tagName.toLowerCase()}.${el.className} right=${Math.round(el.getBoundingClientRect().right)}`,
+      ),
     clientWidth: document.documentElement.clientWidth,
     // Content cut off at the right edge of the viewport, outside any scroll container.
     clipped: [...document.querySelectorAll<HTMLElement>('body *')]
@@ -666,13 +671,14 @@ async function expectNoPageScroll(label: string) {
       })
       .map(
         (el) =>
-          `${el.tagName.toLowerCase()}.${el.className} "${(el.textContent ?? '').trim().slice(0, 30)}" right=${Math.round(el.getBoundingClientRect().right)}`,
+          `${el.tagName.toLowerCase()}.${el.className} "${el.textContent.trim().slice(0, 30)}" right=${Math.round(el.getBoundingClientRect().right)}`,
       ),
   }));
   expect(m.clipped, `${label}: nothing is cut off at the right edge`).toEqual([]);
-  expect(m.scrollWidth, `${label}: no horizontal page scroll; wide: ${m.wide.join(' | ')}`).toBeLessThanOrEqual(
-    m.clientWidth + 1,
-  );
+  expect(
+    m.scrollWidth,
+    `${label}: no horizontal page scroll; wide: ${m.wide.join(' | ')}`,
+  ).toBeLessThanOrEqual(m.clientWidth + 1);
 }
 
 test('200% zoom (640 CSS px wide): screens reflow, controls stay reachable, axe stays clean', async () => {
@@ -695,6 +701,10 @@ test('200% zoom (640 CSS px wide): screens reflow, controls stay reachable, axe 
   await page.waitForLoadState('networkidle');
   await expectNoPageScroll('200% zoom title detail');
   await expectAccessible('title detail at 200% zoom');
+  await page.goto('/servers/audit');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  await expectAccessible('audit log at 200% zoom');
 });
 
 test('400% zoom (320 CSS px wide): single-column reflow without two-dimensional scrolling', async () => {
@@ -719,7 +729,7 @@ test('the player at 200% zoom: every control is on screen and focusable', async 
       els.map((el) => {
         const r = el.getBoundingClientRect();
         return {
-          name: el.getAttribute('aria-label') || (el.textContent ?? '').trim(),
+          name: el.getAttribute('aria-label') || el.textContent.trim(),
           left: r.left,
           right: r.right,
           top: r.top,
@@ -762,7 +772,7 @@ test('target size: every button, link and field in the chrome is at least 24 x 2
           }
           return r.width < 24 || r.height < 24;
         })
-        .map((el) => `${el.tagName.toLowerCase()} "${(el.textContent ?? '').trim().slice(0, 30)}"`),
+        .map((el) => `${el.tagName.toLowerCase()} "${el.textContent.trim().slice(0, 30)}"`),
     );
     expect(small, `targets smaller than 24 px on ${path}`).toEqual([]);
   }

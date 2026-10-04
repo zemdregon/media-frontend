@@ -135,6 +135,7 @@ CREATE TABLE media_items (                  -- canonical, derived (DR-001)
 CREATE INDEX mi_browse ON media_items(type, sort_title, id);
 CREATE INDEX mi_added ON media_items(type, date_added DESC, id);
 CREATE INDEX mi_year ON media_items(type, year, id);
+CREATE INDEX mi_year0 ON media_items(type, COALESCE(year, 0), id);   -- migration 0004: year-sorted browse (T5.7)
 CREATE INDEX mi_children ON media_items(parent_id, season_number, episode_number);
 
 CREATE TABLE external_ids (

@@ -124,7 +124,12 @@ export function CurationPanel({
       {state.status === 'error' && <Alert message={state.message} onRetry={reload} />}
       {state.status === 'ready' && (
         <>
-          <div className="table-wrap">
+          <div
+            className="table-wrap"
+            tabIndex={0}
+            role="region"
+            aria-label={`Provider records of ${state.data.name}`}
+          >
             <table className="copies">
               <caption className="sr-only">Provider records of {state.data.name}</caption>
               <thead>

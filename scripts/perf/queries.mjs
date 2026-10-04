@@ -19,7 +19,8 @@ registerHooks({
   },
 });
 
-const src = (rel) => pathToFileURL(new URL(`../../apps/worker/src/${rel}`, import.meta.url).pathname).href;
+const src = (rel) =>
+  pathToFileURL(new URL(`../../apps/worker/src/${rel}`, import.meta.url).pathname).href;
 
 /** @param {{ item: string, series: string, season: string, person: string, collection: string, viewer: string }} ids */
 export async function captureQueries(ids) {
@@ -100,7 +101,9 @@ export async function captureQueries(ids) {
     await q('person: credits', () => cat.personCredits(db, v, ids.person, undefined, 51));
     await q('collections: browse', () => cat.browseCollections(db, v, undefined, 51));
     await q('collection: header', () => cat.getVisibleCollection(db, v, ids.collection));
-    await q('collection: members', () => cat.collectionMembers(db, v, ids.collection, undefined, 51));
+    await q('collection: members', () =>
+      cat.collectionMembers(db, v, ids.collection, undefined, 51),
+    );
     await q('play: visible item', () => pb.getVisiblePlayItem(db, v, ids.item));
     await q('play: candidates', () => pb.visibleCandidates(db, v, ids.item));
   }

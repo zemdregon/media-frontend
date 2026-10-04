@@ -76,7 +76,7 @@ export function AuditLog() {
           </EmptyState>
         ) : (
           <>
-            <div className="table-wrap">
+            <div className="table-wrap" tabIndex={0} role="region" aria-label="Audit log table">
               <table className="copies audit-table">
                 <caption className="sr-only">Operator actions, newest first</caption>
                 <thead>

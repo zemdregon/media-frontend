@@ -11,7 +11,7 @@
  * on. Raise it in the same change that adds a migration the code needs; a test fails when it
  * differs from the newest migration file.
  */
-export const SCHEMA_VERSION_REQUIRED = 3;
+export const SCHEMA_VERSION_REQUIRED = 4;
 
 /** Highest applied migration number from wrangler's `d1_migrations` table, or 0 if none/absent. */
 export async function appliedSchemaVersion(db: D1Database): Promise<number> {

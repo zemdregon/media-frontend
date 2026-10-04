@@ -8,15 +8,16 @@
 //   2. seeds 50 users with session cookies, starts the Worker and the mock origin, and registers
 //      the mock origin through the real admin API (so play has a server with a real vault entry)
 //   3. seeds 20 servers, 200,000 sources over 120,000 canonical items, people, collections, FTS
-//   4. EXPLAIN QUERY PLAN for every catalog and play query (full scans, temp B-trees) and rows read
+//   4. EXPLAIN QUERY PLAN for every catalog and play query (full scans, temp B-trees) and its engine time
 //   5. restarts the Worker and measures browse, search, detail, home and POST /play latency
 //
 // The numbers are LOCAL measurements: wall-clock time of an HTTP request from this process to a
 // local `wrangler dev` (workerd + Miniflare D1). They are not production D1 latency.
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { analyze } from './explain.mjs';
 import { ENVELOPE, counts, openDb, seedCatalog, seedUsers } from './seed.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -121,7 +122,8 @@ function findSqlite() {
 
 // ---------------------------------------------------------------- statistics
 
-const pct = (sorted, p) => sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)];
+const pct = (sorted, p) =>
+  sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)];
 function summarize(ms) {
   const s = [...ms].sort((a, b) => a - b);
   return {
@@ -165,7 +167,8 @@ async function call(user, method, path, body, extra = {}) {
 
 async function adminJson(user, method, path, body) {
   const r = await call(user, method, path, body);
-  if (r.status >= 300) throw new Error(`${method} ${path} -> ${String(r.status)} ${r.text.slice(0, 200)}`);
+  if (r.status >= 300)
+    throw new Error(`${method} ${path} -> ${String(r.status)} ${r.text.slice(0, 200)}`);
   return JSON.parse(r.text);
 }
 
@@ -187,7 +190,13 @@ async function measure(name, makeRequest, { reps = REPS, concurrency = 1, warmup
     }),
   );
   const wall = performance.now() - t0;
-  const row = { name, concurrency, ...summarize(times), rps: +((reps / wall) * 1000).toFixed(1), statuses };
+  const row = {
+    name,
+    concurrency,
+    ...summarize(times),
+    rps: +((reps / wall) * 1000).toFixed(1),
+    statuses,
+  };
   log(
     `${name.padEnd(46)} c=${String(concurrency).padEnd(2)} p50=${String(row.p50).padStart(6)} ms  p95=${String(row.p95).padStart(6)} ms  max=${String(row.max).padStart(6)}  ${JSON.stringify(statuses)}`,
   );
@@ -205,7 +214,17 @@ async function main() {
   log('applying migrations to a fresh local D1');
   const migrate = spawnSync(
     'pnpm',
-    ['exec', 'wrangler', 'd1', 'migrations', 'apply', 'cinewren-local', '--local', '--persist-to', state],
+    [
+      'exec',
+      'wrangler',
+      'd1',
+      'migrations',
+      'apply',
+      'cinewren-local',
+      '--local',
+      '--persist-to',
+      state,
+    ],
     { cwd: worker, stdio: 'ignore', env },
   );
   if (migrate.status !== 0) throw new Error('migrations failed');
@@ -300,7 +319,9 @@ async function main() {
           .prepare('SELECT 1 FROM library_grants WHERE user_id = ? AND library_id = ?')
           .get(u.userId, moviesLib.id) !== undefined,
   );
-  log(`play targets: ${String(playItems.length)} movies on the mock origin, ${String(playUsers.length)} users who may play them`);
+  log(
+    `play targets: ${String(playItems.length)} movies on the mock origin, ${String(playUsers.length)} users who may play them`,
+  );
 
   // ---- query plans and rows read ----
   const mid = visible.get(viewers[0].userId);
@@ -312,19 +333,7 @@ async function main() {
     collection: mid.collections[0],
     viewer: viewers[0].userId,
   });
-  const plans = captured.map((c) => {
-    const plan = db.prepare(`EXPLAIN QUERY PLAN ${q.inline(c)}`).all().map((r) => r.detail);
-    const scans = plan.filter(
-      (d) =>
-        /^SCAN /.test(d) &&
-        !/USING (COVERING )?INDEX/.test(d) &&
-        !/VIRTUAL TABLE/.test(d) &&
-        !/json_each|CONSTANT ROW/.test(d),
-    );
-    const sorts = plan.filter((d) => /TEMP B-TREE/.test(d));
-    return { name: c.name, scans, sorts, plan };
-  });
-  const rowsRead = readRowsRead(captured, q);
+  const plans = analyze(db, captured, q.inline);
   db.close();
 
   // ---- latency ----
@@ -347,13 +356,22 @@ async function main() {
       get('home', () => '/api/v1/home'),
       get('browse: movies by title', () => '/api/v1/items?type=movie&sort=title&limit=50'),
       get('browse: series by title', () => '/api/v1/items?type=series&sort=title&limit=50'),
-      get('browse: movies newest first', () => '/api/v1/items?type=movie&sort=added&order=desc&limit=50'),
+      get(
+        'browse: movies newest first',
+        () => '/api/v1/items?type=movie&sort=added&order=desc&limit=50',
+      ),
       get('browse: movies by year', () => '/api/v1/items?type=movie&sort=year&limit=50'),
       get('browse: genre filter', () => '/api/v1/items?type=movie&genre=Western&limit=50'),
-      get('browse: year range filter', () => '/api/v1/items?type=movie&yearFrom=1950&yearTo=1959&limit=50'),
+      get(
+        'browse: year range filter',
+        () => '/api/v1/items?type=movie&yearFrom=1950&yearTo=1959&limit=50',
+      ),
       get('browse: min height filter', () => '/api/v1/items?type=movie&minHeight=2160&limit=50'),
       get('search: 2-letter prefix', () => '/api/v1/search?q=ni'),
-      get('search: word', () => `/api/v1/search?q=${pick(['night', 'river', 'storm', 'golden', 'shadow'])}`),
+      get(
+        'search: word',
+        () => `/api/v1/search?q=${pick(['night', 'river', 'storm', 'golden', 'shadow'])}`,
+      ),
       get('search: two words', () => '/api/v1/search?q=silent+harbor'),
       get('search: no hits', () => '/api/v1/search?q=qqzzxx'),
       get('detail: movie', (i, vis) => `/api/v1/items/${pick(vis.movies)}`),
@@ -367,12 +385,19 @@ async function main() {
   };
 
   for (const who of ['viewer', 'operator']) {
-    for (const f of families(who)) results.push({ group: 'sequential', who, ...(await measure(f.name, f.fn)) });
+    for (const f of families(who))
+      results.push({ group: 'sequential', who, ...(await measure(f.name, f.fn)) });
   }
   // Ten clients at once (50 users, so 10 simultaneous is a busy moment).
   for (const who of ['viewer']) {
-    for (const f of families(who).filter((x) => /home|movies by title|word|detail: movie\b|detail: series\b/.test(x.name))) {
-      results.push({ group: 'concurrent', who, ...(await measure(f.name, f.fn, { concurrency: 10, reps: REPS })) });
+    for (const f of families(who).filter((x) =>
+      /home|movies by title|word|detail: movie\b|detail: series\b/.test(x.name),
+    )) {
+      results.push({
+        group: 'concurrent',
+        who,
+        ...(await measure(f.name, f.fn, { concurrency: 10, reps: REPS })),
+      });
     }
   }
   // Keyset pagination depth: walk 80 pages (4,000 titles) of the title-sorted movie list.
@@ -380,14 +405,26 @@ async function main() {
   for (const u of [operator, viewers[0], viewers[1]]) {
     let cursor = null;
     for (let page = 0; page < 80; page++) {
-      const r = await call(u, 'GET', `/api/v1/items?type=movie&sort=title&limit=50${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+      const r = await call(
+        u,
+        'GET',
+        `/api/v1/items?type=movie&sort=title&limit=50${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+      );
       walkTimes.push(r.ms);
       cursor = JSON.parse(r.text).nextCursor;
       if (!cursor) break;
     }
   }
-  const walk = { name: 'browse: 80-page keyset walk', concurrency: 1, ...summarize(walkTimes), rps: 0, statuses: {} };
-  log(`${walk.name.padEnd(46)} c=1  p50=${String(walk.p50).padStart(6)} ms  p95=${String(walk.p95).padStart(6)} ms  max=${String(walk.max).padStart(6)}`);
+  const walk = {
+    name: 'browse: 80-page keyset walk',
+    concurrency: 1,
+    ...summarize(walkTimes),
+    rps: 0,
+    statuses: {},
+  };
+  log(
+    `${walk.name.padEnd(46)} c=1  p50=${String(walk.p50).padStart(6)} ms  p95=${String(walk.p95).padStart(6)} ms  max=${String(walk.max).padStart(6)}`,
+  );
   results.push({ group: 'sequential', who: 'mixed', ...walk });
 
   // ---- play descriptor against the mock origin ----
@@ -408,7 +445,10 @@ async function main() {
       u,
       'POST',
       '/api/v1/play',
-      { itemId: playItems[((i % playItems.length) + playItems.length) % playItems.length], capabilities: caps },
+      {
+        itemId: playItems[((i % playItems.length) + playItems.length) % playItems.length],
+        capabilities: caps,
+      },
       { 'idempotency-key': `perf-${String(++seq)}-${Date.now().toString(36)}` },
     );
     if (r.status === 201 && i >= 0) open.push({ u, id: JSON.parse(r.text).sessionId });
@@ -417,17 +457,25 @@ async function main() {
   };
   const stopAll = async () => {
     await Promise.all(
-      open.splice(0).map(({ u, id }) => call(u, 'POST', `/api/v1/play/${id}/events`, { seq: 1, type: 'stop', positionMs: 0 })),
+      open
+        .splice(0)
+        .map(({ u, id }) =>
+          call(u, 'POST', `/api/v1/play/${id}/events`, { seq: 1, type: 'stop', positionMs: 0 }),
+        ),
     );
   };
   // The play limiter allows 60 a minute per user; stay under it by spreading over users and
   // stopping sessions as we go.
   const playReps = Math.min(REPS, playUsers.length * 25);
-  const playRow = await measure('play: descriptor (mock origin), sequential', async (i) => {
-    const r = await play(i);
-    if (open.length >= 5) await stopAll();
-    return r;
-  }, { reps: playReps, warmup: 5 });
+  const playRow = await measure(
+    'play: descriptor (mock origin), sequential',
+    async (i) => {
+      const r = await play(i);
+      if (open.length >= 5) await stopAll();
+      return r;
+    },
+    { reps: playReps, warmup: 5 },
+  );
   await stopAll();
   const concRow = await measure('play: descriptor, 20 concurrent sessions', play, {
     reps: Math.min(100, playUsers.length * 2),
@@ -435,7 +483,10 @@ async function main() {
     warmup: 0,
   });
   await stopAll();
-  results.push({ group: 'play', who: 'mixed', ...playRow }, { group: 'play', who: 'mixed', ...concRow });
+  results.push(
+    { group: 'play', who: 'mixed', ...playRow },
+    { group: 'play', who: 'mixed', ...concRow },
+  );
 
   // Mock-origin view of what play cost the origin side.
   const originLog = await (await fetch(`${ORIGIN}/__requests`)).json();
@@ -452,8 +503,7 @@ async function main() {
     reps: REPS,
     envelope: ENVELOPE,
     rows,
-    plans: plans.map(({ name, scans, sorts }) => ({ name, scans, sorts })),
-    rowsRead,
+    plans: plans.map(({ name, ms, rows, scans, sorts }) => ({ name, ms, rows, scans, sorts })),
     results,
     originCalls,
     seconds: Math.round((Date.now() - t0) / 1000),
@@ -468,37 +518,19 @@ function pathUrl(rel) {
   return new URL(`file://${join(repo, rel)}`).href;
 }
 
-/** `meta.rows_read` per query, from `wrangler d1 execute --json` on the same database. */
-function readRowsRead(captured, q) {
-  const file = join(here, '.state', 'rows-read.sql');
-  writeFileSync(file, captured.map((c) => `${q.inline(c)};`).join('\n'));
-  const r = spawnSync(
-    'pnpm',
-    ['exec', 'wrangler', 'd1', 'execute', 'cinewren-local', '--local', '--persist-to', state, '--file', file, '--json'],
-    { cwd: worker, encoding: 'utf8', env: { ...process.env, CI: '1' }, maxBuffer: 256 * 1024 * 1024 },
-  );
-  try {
-    const start = r.stdout.indexOf('[');
-    const parsed = JSON.parse(r.stdout.slice(start));
-    return parsed.map((p, i) => ({
-      name: captured[i]?.name ?? String(i),
-      rowsRead: p.meta?.rows_read ?? null,
-      rowsReturned: p.results?.length ?? null,
-      ms: p.meta?.duration ?? null,
-    }));
-  } catch {
-    log('rows-read pass failed:', (r.stderr || r.stdout || '').slice(0, 300));
-    return [];
-  }
-}
-
 function printSummary(out) {
-  console.log('\n== query plans: full scans and temp B-trees ==');
-  for (const p of out.plans) {
-    if (p.scans.length || p.sorts.length) console.log(`${p.name}\n   scans: ${p.scans.join('; ') || '-'}\n   sorts: ${p.sorts.join('; ') || '-'}`);
+  console.log('\n== query engine time (SQLite, one run each, no HTTP) and plan flags ==');
+  for (const p of [...out.plans].sort((x, y) => y.ms - x.ms).slice(0, 12)) {
+    console.log(
+      `${String(p.ms).padStart(8)} ms  scans=${String(p.scans.length)} sorts=${String(p.sorts.length)}  ${p.name}`,
+    );
   }
-  console.log('\n== rows read per query (viewer, then operator) ==');
-  for (const r of out.rowsRead) console.log(`${String(r.rowsRead).padStart(8)}  ${r.name}`);
+  const scans = out.plans.filter((p) => p.scans.length);
+  console.log(
+    scans.length
+      ? `\nFULL SCANS in: ${scans.map((p) => p.name).join(', ')}`
+      : '\nNo full table scans in any catalog or play query.',
+  );
 }
 
 main().then(
