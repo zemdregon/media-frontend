@@ -7,6 +7,7 @@ import { requestId } from './middleware/request-id';
 import { requestLog } from './middleware/request-log';
 import { securityHeaders } from './middleware/security-headers';
 import { adminInvites } from './routes/admin-invites';
+import { adminServers } from './routes/admin-servers';
 import { login, logout } from './routes/auth';
 import { health } from './routes/health';
 import { publicInvites } from './routes/invites';
@@ -29,10 +30,23 @@ export const PUBLIC_API_ROUTES = [
   'POST /api/v1/auth/login/verify',
 ] as const;
 
-export function createApp() {
+export interface AppOptions {
+  /**
+   * The `fetch` used for every origin request (behind the host-pinning wrapper, TDD 6.4).
+   * Defaults to the runtime's `fetch`; tests inject a fixture-backed fake.
+   */
+  originFetch?: typeof fetch;
+}
+
+export function createApp(options: AppOptions = {}) {
   const app = new Hono<AppEnv>();
+  const originFetch: typeof fetch = options.originFetch ?? ((input, init) => fetch(input, init));
 
   app.use(requestId, securityHeaders, requestLog);
+  app.use(async (c, next) => {
+    c.set('originFetch', originFetch);
+    await next();
+  });
 
   // Public, and answers even when the Worker is misconfigured (TDD §4).
   app.route('/api/v1/health', health);
@@ -52,6 +66,7 @@ export function createApp() {
 
   app.use('/api/v1/admin/*', requireOperator);
   app.route('/api/v1/admin/invites', adminInvites);
+  app.route('/api/v1/admin', adminServers);
 
   // Anything else under /api is an unknown API route; everything else is the SPA.
   app.all('/api/*', notFoundHandler);

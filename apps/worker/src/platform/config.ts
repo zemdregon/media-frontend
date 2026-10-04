@@ -11,6 +11,10 @@ export interface Config {
   sessionAbsoluteMs: number;
   inviteTtlMs: number;
   challengeTtlMs: number;
+  /** FR-SRV-007: `http://` origins. Only ever true in local mode. */
+  allowInsecureOrigins: boolean;
+  /** True when `ENVIRONMENT=local`: the blocked-host rules of LLD-PROV are lifted. */
+  local: boolean;
 }
 
 export class ConfigError extends Error {
@@ -54,5 +58,8 @@ export function getConfig(env: Env): Config {
     sessionAbsoluteMs,
     inviteTtlMs: days(env.INVITE_TTL_DAYS, 7),
     challengeTtlMs: 5 * 60_000,
+    // The flag is ignored outside local mode (TDD section 4); callers log when it was set anyway.
+    allowInsecureOrigins: env.ALLOW_INSECURE_ORIGINS === 'true' && env.ENVIRONMENT === 'local',
+    local: env.ENVIRONMENT === 'local',
   };
 }

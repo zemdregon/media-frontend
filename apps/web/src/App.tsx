@@ -32,6 +32,10 @@ export function App() {
     window.history.replaceState(null, '', '/');
     setPath('/');
   };
+  const navigate = (to: string) => {
+    window.history.pushState(null, '', to);
+    setPath(to);
+  };
 
   if (path === '/setup') return <Setup onDone={goHome} />;
   if (path === '/invite') return <InviteSignup onDone={goHome} />;
@@ -40,6 +44,8 @@ export function App() {
   return (
     <Shell
       me={view.me}
+      path={path}
+      navigate={navigate}
       onSignedOut={() => {
         setView({ kind: 'signed-out' });
       }}

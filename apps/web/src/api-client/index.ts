@@ -13,7 +13,7 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(
-  method: 'GET' | 'POST' | 'DELETE',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
 ): Promise<T> {
