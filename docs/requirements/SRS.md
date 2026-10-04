@@ -28,7 +28,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 | ID | Requirement | Pri | Source | Design | MS | Verify |
 |---|---|---|---|---|---|---|
 | FR-SRV-001 | An operator can register an origin server. The registration gives its type (`jellyfin`, `emby` or `plex`), a display name, an HTTPS base URL and service-account credentials. | Must | CAP-1, WF-1 | C-API, C-PROV, LLD-API, ADR-0008 | M1 | T |
-| FR-SRV-002 | Before saving a registration, and whenever the operator re-validates, the system checks four things: TLS reachability, credential validity, the server's identity (its unique server ID) and its product version. If any check fails, the system rejects the registration and returns an error naming the check that failed. | Must | WF-1 | C-PROV, LLD-PROV | M1 | T |
+| FR-SRV-002 | Before saving a registration, and whenever the operator re-validates, the system checks four things: TLS reachability, credential validity, the server's identity (its unique server ID) and its product version. The credential check refuses administrator service accounts (Jellyfin and Emby: `IsAdministrator`; Plex: owner tokens are refused, a restricted managed user is used). If any check fails, the system rejects the registration and returns an error naming the check that failed. | Must | WF-1 | C-PROV, LLD-PROV | M1 | T |
 | FR-SRV-003 | The system discovers the movie and TV libraries visible to the service account. It lets the operator enable or disable each library for the platform. Only enabled libraries are synced. | Must | CAP-1, WF-1 | C-SYNC, LLD-SCHEMA | M1 | T |
 | FR-SRV-004 | An operator can edit, disable, re-enable and remove a server. Disabling stops sync and excludes its sources from browse and playback. Removing deletes its credentials, libraries and sources per DR-005. | Must | WF-10 | C-API, LLD-SCHEMA | M2 | T |
 | FR-SRV-005 | An operator can replace a server's credentials without losing catalog data. | Should | WF-11 | C-API, ADR-0008 | M5 | T |
@@ -76,7 +76,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 | FR-PLAY-004 | If a selected source fails to start, the client can request a replacement. The request excludes the failed sources, and the system returns the next-best source or a clear "no playable source" error. | Should | CAP-10, WF-5 | C-PLAY, LLD-SEL | M3 | T |
 | FR-PLAY-005 | A user can choose a specific version or source manually. The choice overrides automatic selection for that play request. | Should | CAP-7 | C-PLAY, LLD-API | M3 | T |
 | FR-PLAY-006 | A user can choose the audio track and subtitle track, including none. Text subtitles are delivered as WebVTT. The origin burns image-based subtitles into a transcode. | Must | CAP-11 | C-PLAY, C-WEB, LLD-PROV | M3 | T |
-| FR-PLAY-007 | The credential embedded in a stream URL is scoped to one playback session. It cannot authorize administrative actions, and it is revoked or expires when the session ends or expires (BR-6, BR-9). | Must | BR-6, BR-9 | ADR-0013, LLD-TOKEN | M3 | T, I |
+| FR-PLAY-007 | The credential embedded in a stream URL is scoped to one playback session. It cannot authorize administrative actions, and it is revoked or expires when the session ends or expires (BR-6, BR-9). Provider mechanisms (verified T1.1): Jellyfin and Emby use a per-session token minted by re-authenticating the service account with a per-session (Jellyfin) or pooled (Emby) DeviceId, revoked by logout; Plex uses a restricted managed user's tokens (pending verification). Jellyfin uses token-gated HLS only, never `static=true` direct-play URLs, because Jellyfin 12.1 serves those without authentication. The session token keeps the service account's non-admin scope, so it is not stream-only. | Must | BR-6, BR-9 | ADR-0013, LLD-TOKEN | M3 | T, I |
 | FR-PLAY-008 | The platform never proxies, relays or caches video or audio stream bytes. Stream URLs in descriptors always point at the origin's own hostname. | Must | WF-5 | ADR-0002, ADR-0003 | M3 | T, I |
 | FR-PLAY-009 | The system reports playback session telemetry (start, position, stop) to the origin, so the origin can track sessions and end transcodes. This is not a write-back of watched state, which is deferred (DEF-4). | Should | WF-5, WF-6 | C-PROV, LLD-PROV | M3 | T |
 | FR-PLAY-010 | The playback descriptor includes machine-readable reason codes for the selection (for example `direct_play`, `hdr_unsupported`, `server_unreachable`). The UI renders them as a one-sentence explanation of why a copy was chosen, or why another copy would transcode or is unavailable. | Should | CAP-6, BR-5 | LLD-SEL, LLD-API, [UX](../design/UX.md) | M3 | T |
@@ -122,9 +122,9 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 |---|---|---|---|---|---|
 | IR-001 | The platform API is JSON over HTTPS under `/api/v1`. Every response carries a request ID. Errors use one envelope (`LLD-API`). Breaking changes require a new version prefix. | Must | LLD-API | M0 | T |
 | IR-002 | All origin interaction goes through the provider interface `MediaProvider` (`LLD-PROV`). No code outside the adapters depends on provider-specific types. | Must | ADR-0004, LLD-PROV | M1 | I, T |
-| IR-003 | A Jellyfin adapter supports Jellyfin server versions to be fixed by the M1 spike *(proposed minimum: 10.10)*. | Must | LLD-PROV | M1 | T |
-| IR-004 | An Emby adapter supports Emby server versions to be fixed by the M1 spike *(proposed minimum: 4.8)*. | Must | LLD-PROV | M4 | T |
-| IR-005 | A Plex adapter supports Plex Media Server versions to be fixed by the M1 spike. | Must | LLD-PROV | M4 | T |
+| IR-003 | A Jellyfin adapter supports Jellyfin server versions 12.1 and later. Only these versions were tested in the T1.1 spike (docs/spikes/2026-provider-spike.md); older versions need a follow-up spike. | Must | LLD-PROV | M1 | T |
+| IR-004 | An Emby adapter supports Emby server versions 4.10 and later. Only these versions were tested in the T1.1 spike. | Must | LLD-PROV | M4 | T |
+| IR-005 | A Plex adapter supports Plex Media Server versions 1.43 and later. Only these versions were tested in the T1.1 spike. | Must | LLD-PROV | M4 | T |
 | IR-006 | Authentication uses the W3C WebAuthn Level 2+ API in the browser. Server-side verification uses a vetted library (`TDD`), with the RP ID set to the deployment hostname. | Must | ADR-0014 | M0 | T |
 | IR-007 | The web player uses HTML5 `<video>` for direct play. For HLS it uses native playback where available and Media Source Extensions (via `hls.js`) elsewhere. | Must | TDD, C-WEB | M3 | T |
 
@@ -143,7 +143,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 | ID | Requirement | Pri | Design | MS | Verify |
 |---|---|---|---|---|---|
 | NFR-SEC-001 | Origin credentials and service-account tokens never reach the browser, logs, error messages or exports. The only exception is the session-scoped stream credential under FR-PLAY-007. | Must | ADR-0008, ADR-0013 | M1 | T, I |
-| NFR-SEC-002 | All authorization is enforced server-side. Each request that addresses a resource by ID checks the caller's access to that resource. | Must | C-AUTH | M0 | T |
+| NFR-SEC-002 | All authorization is enforced server-side. Each request that addresses a resource by ID checks the caller's access to that resource. Origins do not enforce library grants on stream or PlaybackInfo endpoints (verified T1.1), so Cinewren must enforce BR-1 before issuing any playback descriptor. | Must | C-AUTH | M0 | T |
 | NFR-SEC-003 | The app is served over HTTPS only, with HSTS. A Content-Security-Policy limits `script-src` to self. `media-src` and `connect-src` are limited to self plus the registered origin hostnames, generated from server configuration. | Must | TDD, LLD-API | M3 | T |
 | NFR-SEC-004 | Setup, invite-redemption and login endpoints are rate limited per client IP *(proposed: 10 requests/min)*. | Must | TDD, ADR-0014 | M0 | T |
 | NFR-SEC-008 | Play, progress and operator mutation endpoints are rate limited per user *(proposed: 60 play requests/min, 600 mutations/min)*. | Should | TDD | M5 | T |
@@ -174,7 +174,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 
 - **Out of scope by design:** native, TV and mobile apps; music, photos and live TV; offline downloads; multi-tenant hosting; hiding origin hostnames from viewers; writing watch state back to origins. These are deferred in [PRD §6](PRD.md#6-non-goals-and-deferred-capabilities), so no requirements exist for them.
 - **No compliance regime** (GDPR, COPPA, accessibility law and the like) has been identified as binding on this personal or household deployment ([ROADMAP assumption A-7](../ROADMAP.md#3-constraints-assumptions-decisions-and-open-questions)). NFR-PRIV-001 and DR-005 are conservative defaults, not legal compliance claims.
-- **Requirements whose final form depends on the M1 provider spike:** FR-PLAY-007, FR-PLAY-009 and IR-003 to IR-005. If the spike disproves an assumption, edit the requirement here and record the change in [ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md).
+- **Requirements whose final form depends on the M1 provider spike:** FR-PLAY-007, FR-PLAY-009 and IR-003 to IR-005. The spike is resolved by [docs/spikes/2026-provider-spike.md](../spikes/2026-provider-spike.md) for Jellyfin and Emby; Plex items remain open pending the managed-user spike. Changes are recorded in [ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md).
 
 ## 8. Must-requirement coverage by milestone
 

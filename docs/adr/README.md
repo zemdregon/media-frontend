@@ -27,7 +27,7 @@ Not needed: library choices inside an existing decision, refactors, bug fixes, a
 - A **Proposed** ADR may be edited freely while it is under discussion.
 - Never edit the Decision of an **Accepted** ADR. To change course, write a new ADR, mark the old one `Superseded by ADR-NNNN`, and link both ways. Typo and link fixes are fine, as are dated additions to Status and the Related list.
 - **Deprecated** means the decision no longer applies and nothing replaces it.
-- ADR-0013 is Proposed; it moves to Accepted (or is superseded) by recording the M1 spike result in it.
+- ADR-0013 is Accepted for Jellyfin and Emby and still Proposed for Plex; the T1.1 spike result is recorded in it. It moves fully to Accepted (or is superseded) after the Plex managed-user spike.
 
 ## Provenance
 
@@ -53,6 +53,6 @@ Files are `NNNN-kebab-title.md`, numbered sequentially from 0001, never reused o
 | [0010](0010-external-id-matching-with-manual-overrides.md) | External-ID matching with manual overrides | Accepted | Agent under delegation; owner review pending | 2026-10-04 |
 | [0011](0011-single-operator-deployment-model.md) | Single-operator deployment model | Accepted | Agent decision; **owner decision 2026-10-04**: one operator per deployment, self-hostable by others | 2026-10-04 |
 | [0012](0012-artwork-proxy-with-edge-cache.md) | Artwork proxy with edge cache | Accepted | Agent under delegation; owner review pending | 2026-10-04 |
-| [0013](0013-session-scoped-origin-stream-credentials.md) | Session-scoped origin stream credentials | **Proposed** (pending M1 spike) | Agent under delegation; owner review pending | 2026-10-04 |
+| [0013](0013-session-scoped-origin-stream-credentials.md) | Session-scoped origin stream credentials | **Accepted for Jellyfin (forced HLS) and Emby (DeviceId pool); Proposed for Plex** (pending managed-user verification; [spike](../spikes/2026-provider-spike.md)) | Agent under delegation; owner review pending | 2026-10-04 |
 | [0014](0014-passkey-auth-with-invite-links.md) | Passkey authentication with operator invite links | Accepted (supersedes 0007) | **Owner decision 2026-10-04** (passkeys and invite-only signup); details by agent, owner review pending | 2026-10-04 |
 | [0015](0015-people-and-collection-identity.md) | People and collection identity across servers | Accepted | **Owner decision 2026-10-04** (Q-7: collections and people search in v1); merge rules by agent, owner review pending | 2026-10-04 |

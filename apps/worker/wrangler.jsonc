@@ -60,8 +60,9 @@
       "name": "cinewren-staging",
       "vars": {
         "ENVIRONMENT": "staging",
-        "APP_ORIGIN": "https://staging.cinewren.example.org", // PLACEHOLDER origin
-        "RP_ID": "staging.cinewren.example.org", // PLACEHOLDER; effectively permanent once passkeys exist
+        "APP_ORIGIN": "https://cinewren-staging.lmao.workers.dev",
+        "RP_ID": "cinewren-staging.lmao.workers.dev", // effectively permanent once passkeys exist
+        "CREDENTIAL_KEY_CURRENT": "1",
       },
       "ratelimits": [
         { "name": "RL_AUTH", "namespace_id": "1002", "simple": { "limit": 10, "period": 60 } },
@@ -77,19 +78,19 @@
         {
           "binding": "DB",
           "database_name": "cinewren-staging",
-          "database_id": "00000000-0000-0000-0000-000000000001", // PLACEHOLDER
+          "database_id": "b7c5cb33-705c-4ac4-b18c-7831d5d279c5",
           "migrations_dir": "migrations",
         },
       ],
       "queues": {
-        "producers": [{ "binding": "JOBS_QUEUE", "queue": "cinewren-jobs-staging" }],
+        "producers": [{ "binding": "JOBS_QUEUE", "queue": "cinewren-staging-jobs" }],
         "consumers": [
           {
-            "queue": "cinewren-jobs-staging",
+            "queue": "cinewren-staging-jobs",
             "max_batch_size": 1,
             "max_retries": 3,
             "retry_delay": 60,
-            "dead_letter_queue": "cinewren-jobs-dlq-staging",
+            "dead_letter_queue": "cinewren-staging-jobs-dlq",
           },
         ],
       },

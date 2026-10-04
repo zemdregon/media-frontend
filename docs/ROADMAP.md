@@ -65,6 +65,8 @@
 | Q-7 | Collections and people/collection search (shown in the design canvas) | **Add both to v1** | CAP-15, CAP-16, FR-SYNC-008, FR-CAT-011, FR-CAT-012, M2 tasks T2.9 and T2.10. Agent follow-up: merge rules in ADR-0015. |
 | Q-8 | Light theme | **Dark and light at v1** | NFR-UX-001 (M2). Light tokens are agent-proposed in UX.md, pending light artboards (T2.11). |
 | Design | Visual reference | **The owner's design canvas** (https://claude.ai/artifact/LUvVfjGfMr3J4cEmRL44z8) | It is specified in [design/UX.md](design/UX.md). Divergences from the spec are listed there (UX §8). Agent follow-ups: FR-CAT-013 (copy table) and FR-PLAY-010 (why-this-copy reasons). |
+| ADR-0013 (Plex) | The spike found that Plex delegation tokens carry owner rights and cannot be revoked individually | **Use a restricted managed user created for Cinewren** | ADR-0013 stays Proposed for Plex until a follow-up check (T4.2, B-3). Owner tokens are never sent to browsers. |
+| ADR-0013 (Jellyfin) | Jellyfin 12.1 serves direct-play static streams without auth | **Force token-gated HLS on Jellyfin** (remux, so no re-encode where possible) | Jellyfin sources never use `direct_play`. Every Jellyfin stream is revocable. |
 | Q-1 | Audience | **Others may self-host** (one operator per deployment) | ADR-0011 confirmed. Agent follow-ups: CAP-14, FR-OPS-008, NFR-MAINT-003, T5.5, and the A-10 interpretation. |
 
 ### Open questions (none block M0)
@@ -165,7 +167,7 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 
 | Task | Objective | Refs | Depends | Done when |
 |---|---|---|---|---|
-| T1.1 | **Provider spike** (Jellyfin, Emby, Plex) against real or containerized servers. Determine: auth for a non-admin service account; library listing and incremental "changed since" support; external IDs; playback negotiation (direct play or HLS URLs); whether a **per-session revocable stream credential** can be minted; CORS behaviour on stream, HLS and subtitle URLs; start/progress/stop reporting; minimum versions. | ADR-0013, Q-3, Q-6, IR-003 to IR-005, [LLD-PROV](design/LLD.md) | M0 | Spike report saved at `docs/spikes/2026-provider-spike.md`. ADR-0013 moved to Accepted or superseded. IR-003 to IR-005 version minimums and any FR-PLAY-007 / FR-PLAY-009 changes made in the SRS. LLD-PROV notes marked verified or corrected. |
+| T1.1 | **Provider spike** (Jellyfin, Emby, Plex) against real or containerized servers. Determine: auth for a non-admin service account; library listing and incremental "changed since" support; external IDs; playback negotiation (direct play or HLS URLs); whether a **per-session revocable stream credential** can be minted; CORS behaviour on stream, HLS and subtitle URLs; start/progress/stop reporting; minimum versions. | ADR-0013, Q-3, Q-6, IR-003 to IR-005, [LLD-PROV](design/LLD.md) | M0 | **Done (Plex partial).** Evidence: `docs/spikes/2026-provider-spike.md` and `test-fixtures/providers/` (commit 564d4e0). Jellyfin 12.1.0 and Emby 4.10.1.0 were tested on real containers, Plex 1.43.4 on a claimed server. The Plex managed-user token check is carried into T4.2 (B-3). Spike report saved at `docs/spikes/2026-provider-spike.md`. ADR-0013 moved to Accepted or superseded. IR-003 to IR-005 version minimums and any FR-PLAY-007 / FR-PLAY-009 changes made in the SRS. LLD-PROV notes marked verified or corrected. |
 | T1.2 | `MediaProvider` interface, normalized types, recorded-fixture contract test harness | IR-002, NFR-MAINT-001, ADR-0004 | T1.1 | The harness runs one shared contract suite per adapter against fixtures. |
 | T1.3 | Credential vault (AES-256-GCM, versioned keys) | DR-002, NFR-SEC-001, ADR-0008, [LLD-TOKEN](design/LLD.md) | M0 | Tests: round-trip; wrong key fails; key rotation re-encrypts; ciphertext never appears in API responses or logs. |
 | T1.4 | Jellyfin adapter: validate, list libraries, list items (paged), get item | IR-003, FR-SRV-002, NFR-SEC-005 | T1.2 | Contract suite green on fixtures. Redirects off-host refused (test). |
@@ -250,14 +252,15 @@ DEF-1 to DEF-11 per [PRD §6](requirements/PRD.md#6-non-goals-and-deferred-capab
 
 | ID | Risk | Impact | Mitigation / trigger |
 |---|---|---|---|
-| R-1 | A provider can't mint a session-scoped, revocable, non-admin stream credential | BR-6 weakened, or a gateway (DEF-1) is needed | T1.1 spike first. The fallback is in ADR-0013. |
+| R-1 | A provider can't mint a session-scoped, revocable, non-admin stream credential | **Realised for Plex** (spike); Jellyfin and Emby OK | Owner decision: a Plex managed user (B-3). If that also fails, revisit (gateway DEF-1 or dropping Plex). |
 | R-2 | Origins not reachable by browsers on non-proxied HTTPS (home NAT, CGNAT) | Playback impossible for that origin | A setup-guide prerequisite (A-3). Revisit DEF-1 or Q-5 if common. |
-| R-3 | Missing CORS headers on origin HLS or subtitle responses | HLS via MSE or subtitles fail in some browsers | Verified in T1.1. The operator reverse-proxy recipe goes in the setup guide. |
+| ~~R-3~~ | Missing CORS headers on origin HLS or subtitle responses | — | **Retired 2026-10-04:** the spike found CORS enabled by default on all three providers, and range requests work. |
 | R-4 | Plex API terms or stability for third-party clients | Plex adapter delayed or dropped | Q-3 is checked in T1.1 and T4.2. Plex is the last adapter. |
 | R-5 | Cloudflare terms or limit changes | Architecture assumptions break | Facts re-checked at each milestone exit, with dates noted in ADR-0002. |
 | R-6 | Poor external-ID coverage on origins | Duplicate items | Manual curation (FR-CAT-007). DEF-9 enrichment can be reconsidered. |
 | ~~R-7~~ | D1 FTS5 is unavailable or limited | — | **Retired 2026-10-04:** FTS5 support confirmed in Cloudflare docs (https://developers.cloudflare.com/d1/sql-api/sql-statements/). T0.4 still exercises it. |
 | ~~B-1~~ | Cloudflare account for staging | — | **Resolved 2026-10-04:** owner has Workers Paid. No Access needed (ADR-0014). |
+| B-3 | **Owner action:** create a restricted Plex managed (Home) user for Cinewren with access to the needed libraries, then hand its access to this project | Blocks the Plex token verification in T4.2 only | Requested 2026-10-04. Jellyfin, Emby and the rest of M1–M3 are unaffected. |
 | ~~B-2~~ | Test servers | — | **Resolved 2026-10-04:** containers for Jellyfin and Emby, plus the owner's Plex. Hand-over of Plex access is needed when T1.1 starts. |
 
 ## 8. Next actionable milestone
@@ -270,6 +273,7 @@ DEF-1 to DEF-11 per [PRD §6](requirements/PRD.md#6-non-goals-and-deferred-capab
 
 | Date | Change | By |
 |---|---|---|
+| 2026-10-04 | T1.1 provider spike completed. Owner decided: Plex via a restricted managed user, and Jellyfin forced to HLS. M0 T0.1–T0.6 done; T0.7 staging being provisioned in the owner's account (owner approved). | Agent, recording owner decisions |
 | 2026-10-04 | Owner supplied the design canvas (the visual reference, now specified in UX.md) and answered Q-7 (collections and people search in v1) and Q-8 (dark and light themes). ADR-0015 and new requirements added. | Agent, recording owner decisions |
 | 2026-10-04 | Owner answered the blocker questions (B-1, B-2, Q-1, Q-2): passkeys plus invite links replace Cloudflare Access (ADR-0014), origins on public HTTPS confirmed, self-hosting added to M5. | Agent, recording owner decisions |
 | 2026-10-04 | Initial roadmap and document set derived from the owner-provided concept. Product named Cinewren (owner). T0.3 docs check script added and run. | Agent under delegation |
