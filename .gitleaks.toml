@@ -1,0 +1,14 @@
+# Gitleaks configuration: the default rules plus a narrow allowlist.
+# Recorded provider fixtures (test-fixtures/providers/) contain public media-metadata
+# identifiers whose JSON field names end in "Key" (Plex tagKey/ratingKey/librarySectionKey,
+# Jellyfin/Emby Key/PresentationUniqueKey). They are item hashes, not credentials.
+# Real tokens in fixtures are replaced with placeholders (see test-fixtures/providers/README.md).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public media-metadata identifiers in recorded provider fixtures"
+regexTarget = "line"
+regexes = [
+  '''"(tagKey|ratingKey|parentRatingKey|grandparentRatingKey|librarySectionKey|primaryExtraKey|Key|PresentationUniqueKey|SeriesPresentationUniqueKey)"\s*:''',
+]

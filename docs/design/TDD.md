@@ -299,7 +299,7 @@ The origin makes the final mode decision. Cinewren sends the capabilities, trans
 
 - Progressive `<video>` without the `crossorigin` attribute needs no CORS.
 - hls.js loads playlists and segments with `fetch`/XHR, so the origin must return `Access-Control-Allow-Origin` for the Cinewren hostname on HLS endpoints. Cross-origin WebVTT `<track>` elements need CORS and `crossorigin="anonymous"` on the `<video>` element, which in turn makes progressive media requests CORS requests too.
-- Whether each provider sends these headers by default or can be configured to, is **to verify in M1 spike**. If an origin cannot be configured, WebVTT can be fetched through the Worker. Subtitles are small text and are not video or audio bytes, so FR-PLAY-008 still holds. The origin hostname must be grey-cloud or non-Cloudflare (A-3, NFR-COMP-001); the setup guide covers reverse-proxy CORS headers.
+- Verified T1.1: all three providers send suitable CORS headers by default (Jellyfin `*`; Emby and Plex echo the origin), so no reverse-proxy change is needed unless the operator narrowed Jellyfin's `CorsHosts`. Range requests work on all three. If an origin cannot be configured, WebVTT can be fetched through the Worker. Subtitles are small text and are not video or audio bytes, so FR-PLAY-008 still holds. The origin hostname must be grey-cloud or non-Cloudflare (A-3, NFR-COMP-001); the setup guide covers reverse-proxy CORS headers.
 - Mixed content: the app runs over HTTPS, so origins must use HTTPS (FR-SRV-007).
 
 ### 11.4 Player behaviour
@@ -312,7 +312,7 @@ Resume offers follow BR-7 (FR-PROG-002). Progress is reported every 15 s *(propo
 |---|---|---|---|
 | Catalog API p95 server time | ≤ 300 ms *(proposed)* | NFR-PERF-001 | Load script against staging seeded at the envelope (200k sources) |
 | D1 queries per catalog request | ≤ 3 *(proposed)* | NFR-PERF-001 | Integration test counts statements through a wrapped binding |
-| Play descriptor p95 | ≤ 2 s *(proposed)* | NFR-PERF-002 | Origin calls on the play path ≤ 3 (session credential (pending ADR-0013 / M1 spike), negotiation, optional subtitle info), each with a 5 s timeout and at most one retry |
+| Play descriptor p95 | ≤ 2 s *(proposed)* | NFR-PERF-002 | Origin calls on the play path ≤ 3 (session credential (ADR-0013; Jellyfin mint about 190 ms), negotiation, optional subtitle info), each with a 5 s timeout and at most one retry |
 | Initial route JS | ≤ 250 KB gzip *(proposed)* | NFR-PERF-003 | CI bundle check; hls.js and admin routes lazy-loaded |
 | Sync throughput | Full sync of 200k sources inside the 24 h interval with margin | FR-SYNC-001, NFR-SCALE-001 | Analysis in M5. Each consumer invocation is bounded at 15 min (https://developers.cloudflare.com/workers/platform/limits/ (checked 2026-10-04)), and the run continues across invocations (LLD-SYNC). |
 | D1 writes | Full sync rewrites `last_seen_sync_id` for each source: about 200k rows/day, about 6M/month, within the 50M rows included in Workers Paid | NFR-COST-001 | Cost worksheet. If this ever matters, only touch rows that were not already seen in this run. |
@@ -341,7 +341,7 @@ There is no legacy system to migrate from. The design keeps these future changes
 | — | Credential encryption | Yes: [ADR-0008](../adr/0008-origin-service-accounts-and-credential-encryption.md) |
 | — | Cron + Queues sync | Yes: [ADR-0009](../adr/0009-pull-based-sync-cron-and-queues.md) |
 | — | Artwork proxy + cache | Yes: [ADR-0012](../adr/0012-artwork-proxy-with-edge-cache.md). It stands now that Access is not used. A custom domain is required for edge caching (§6.5). |
-| — | Session-scoped stream credentials | Yes: [ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md) (Proposed; pending ADR-0013 / M1 spike) |
+| — | Session-scoped stream credentials | Yes: [ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md) (Accepted for Jellyfin and Emby, Proposed for Plex; spike T1.1) |
 | TDD-D1 | Raw SQL with typed helpers, no ORM | No: reversible within the `db/` module |
 | TDD-D2 | Wrangler built-in D1 migrations, forward-only, expand/contract | No: implements DR-004 |
 | TDD-D3 | One 5-minute scheduler cron plus a daily retention cron | No |

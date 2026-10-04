@@ -189,7 +189,7 @@ CREATE TABLE person_provider_links (        -- one row per (server, origin perso
   id TEXT PRIMARY KEY, person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
   server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
   provider_person_id TEXT NOT NULL, name TEXT NOT NULL,
-  tmdb_id TEXT, imdb_id TEXT,                -- person IDs, when the origin reports them (to verify in M1 spike); NULL otherwise
+  tmdb_id TEXT, imdb_id TEXT,                -- person IDs, when the origin reports them (Jellyfin and Plex: absent; Emby: only on the person detail item, lowercase keys; verified T1.1); NULL otherwise
   artwork TEXT NOT NULL DEFAULT '{}',        -- {poster:{tag}} portrait reference
   match_method TEXT NOT NULL CHECK (match_method IN ('external_id','name','new','manual')),
   updated_at INTEGER NOT NULL, UNIQUE (server_id, provider_person_id));
@@ -257,7 +257,7 @@ CREATE TABLE playback_sessions (
   source_id TEXT REFERENCES sources(id) ON DELETE SET NULL, server_id TEXT REFERENCES servers(id) ON DELETE SET NULL,
   version_id TEXT, mode TEXT NOT NULL CHECK (mode IN ('direct_play','direct_stream','transcode')),
   status TEXT NOT NULL CHECK (status IN ('authorized','started','ended','expired','failed')),
-  credential_envelope TEXT,                   -- session-scoped origin credential (LLD-TOKEN; pending ADR-0013 / M1 spike); NULL once revoked
+  credential_envelope TEXT,                   -- session-scoped origin credential (LLD-TOKEN; ADR-0013); NULL once revoked
   revoke_pending INTEGER NOT NULL DEFAULT 0, provider_session_ref TEXT,
   replaces_session_id TEXT, decision TEXT,    -- ranking keys snapshot (NFR-OBS-002)
   last_event_seq INTEGER NOT NULL DEFAULT 0,
@@ -489,7 +489,7 @@ Pagination uses cursors. `Page<T> = { items: T[], nextCursor: string | null }`. 
   "alternatives": 2 }
 ```
 
-`streamUrl` and subtitle URLs always point at the selected server's own host (FR-PLAY-008). The query string carries only the session-scoped credential (FR-PLAY-007; pending ADR-0013 / M1 spike). `alternatives` is the number of other candidates the user may see; it is used to decide whether to offer a replacement (FR-PLAY-004).
+`streamUrl` and subtitle URLs always point at the selected server's own host (FR-PLAY-008). The query string carries only the session-scoped credential (FR-PLAY-007; ADR-0013). `alternatives` is the number of other candidates the user may see; it is used to decide whether to offer a replacement (FR-PLAY-004).
 
 `reasons: string[]` (FR-PLAY-010) explains the selection. The first entry is the primary reason; the order is stable. It is never empty on a successful play. Clients map each code to a one-sentence explanation and ignore codes they do not know, so codes can be added without a breaking change. The same vocabulary is used for the per-copy `reasons` in `ItemDetail.copies`.
 
@@ -558,7 +558,7 @@ export type NormalizedItem = {
 };
 export type NormalizedPerson = {           // FR-SYNC-008
   providerPersonId: string; name: string;
-  externalIds: { tmdb?: string; imdb?: string };   // only if the origin reports them (to verify in M1 spike); never guessed
+  externalIds: { tmdb?: string; imdb?: string };   // only if the origin reports them (Jellyfin and Plex do not; Emby only on person detail; verified T1.1); never guessed
   artwork?: ArtworkRef;
 };
 export type NormalizedCredit = {
@@ -606,28 +606,32 @@ The checks run in order, and the first failure is reported with its check name:
 3. `identity`: the origin's unique server ID is returned. On re-validation it must equal the stored `origin_server_id`.
 4. `version`: the version is at least the IR-003 to IR-005 minimum.
 
-### Per-provider notes (all to verify in M1 spike)
+### Per-provider notes (verified in the T1.1 spike unless marked; Plex managed-user items are open)
+
+Source: [docs/spikes/2026-provider-spike.md](../spikes/2026-provider-spike.md). All IDs are opaque strings (Jellyfin 32-hex GUIDs, Emby short numerics with `MediaSourceId=mediasource_<n>`, Plex numeric `ratingKey`).
 
 | Concern | Jellyfin (IR-003) | Emby (IR-004) | Plex (IR-005, Q-3) |
 |---|---|---|---|
-| Identity & version | `GET /System/Info/Public` → `Id`, `Version` | Same lineage; path may need `/emby` prefix | `GET /identity` → `machineIdentifier`, `version` |
-| Service auth | `POST /Users/AuthenticateByName` with `Authorization: MediaBrowser Client="Cinewren", Device=…, DeviceId=…, Version=…` → `AccessToken`, `User.Id`, `User.Policy.IsAdministrator` | Similar; header `X-Emby-Authorization` / `X-Emby-Token` | Account token from plex.tv sign-in vs. server-local token: unclear for a non-admin "managed/shared" user; Q-3 |
-| Libraries | `GET /UserViews?userId=` (CollectionType `movies`/`tvshows`) | `GET /Users/{id}/Views` | `GET /library/sections` (type `movie`/`show`) |
-| Paged items | `GET /Items?ParentId=&Recursive=true&IncludeItemTypes=Movie,Series,Season,Episode&Fields=ProviderIds,MediaSources,MediaStreams,Overview,Genres,DateCreated&StartIndex=&Limit=`; incremental filter by last-modified date (parameter name to verify) | Similar | `GET /library/sections/{id}/all?type=…&includeGuids=1` with `X-Plex-Container-Start/Size`; incremental via `updatedAt>=` filter (to verify) |
-| External IDs | `ProviderIds.{Tmdb,Imdb,Tvdb}` | Same | `Guid[]` entries `tmdb://…`, `imdb://…`, `tvdb://…` |
+| Identity & version | `GET /System/Info/Public` → `Id`, `Version` (`12.1.0`) (verified T1.1) | Same path, `Version` is four-part (`4.10.1.0`); the `/emby` prefix is optional (verified T1.1) | `GET /identity` → `machineIdentifier`, `version` (`1.43.4.10903-…`) (verified T1.1) |
+| Service auth | `POST /Users/AuthenticateByName` with `Authorization: MediaBrowser Client="Cinewren", Device=…, DeviceId=…, Version=…[, Token=…]` and body `{Username, Pw}` → `AccessToken`, `User.Id`, `User.Policy.IsAdministrator`. `X-Emby-Authorization` returns 400, and `X-Emby-Token` returns 401 (verified T1.1). The credential is a username and password for a non-admin user | Same `Authorization: MediaBrowser …` header (`X-Emby-Authorization` and `X-Emby-Token` also work but are not needed) (verified T1.1) | A restricted Plex Home or managed user created by the owner for Cinewren, with that user's tokens, never owner tokens (owner decision 2026-10-04). Header or query `X-Plex-Token`. Server-access token retrieval and non-admin status **(to verify in Plex managed-user spike)** |
+| Libraries | `GET /UserViews?userId=` (CollectionType `movies`/`tvshows`) (verified T1.1) | `GET /Users/{id}/Views`; `/UserViews` returns 404 (verified T1.1) | `GET /library/sections` (type `movie`/`show`) (verified T1.1) |
+| Paged items | `GET /Items?ParentId=&Recursive=true&IncludeItemTypes=Movie,Series,Season,Episode&Fields=ProviderIds,MediaSources,MediaStreams,Overview,Genres,DateCreated&StartIndex=&Limit=` with `TotalRecordCount`. Incremental: `MinDateLastSaved=<ISO-8601 Z>` works, but Jellyfin re-saves items on each scan, so incremental sync can be heavy (verified T1.1) | Same; `MinDateLastSaved` is precise (a no-change rescan returns 0) (verified T1.1) | `GET /library/sections/{id}/all?type=…&includeGuids=1` with `X-Plex-Container-Start/Size` (`offset`, `totalSize` in the response). Incremental: `updatedAt>=<unix>` (and `addedAt>=`) (verified T1.1) |
+| External IDs | `ProviderIds.{Tmdb,Imdb,Tvdb}`; movies in a set also carry `ProviderIds.TmdbCollection` (verified T1.1) | `ProviderIds.{Tmdb,Imdb,Tvdb}` on items; person keys are lowercase, so parse case-insensitively (verified T1.1) | `Guid[]` entries `tmdb://…`, `imdb://…`, `tvdb://…` (verified T1.1) |
 | Versions/tracks | `MediaSources[]` → `Container`, `Size` (bytes), `MediaStreams[]` (Type Video/Audio/Subtitle, `Codec`, `VideoRangeType`, `IsTextSubtitleStream`) | Same | `Media[]` → `Part[]` (`size` bytes) → `Stream[]` (`streamType` 1/2/3) |
-| People and credits (FR-SYNC-008) | Add `People` to `Fields`: `People[]` → `Id`, `Name`, `Role` (character), `Type` (Actor, Director, Writer, Producer, others), `PrimaryImageTag`. List order is billing order. Whether entries carry person `ProviderIds` (TMDB or IMDb) is unknown, and a separate `GET /Persons/{id}` per person would be too many calls: if absent, people merge by name only (ADR-0015) | Same lineage; person `ProviderIds` availability unknown | Item metadata carries `Role[]` (cast: `tag`, `role` character, `id`, `thumb`), `Director[]` and `Writer[]` (`tag`, `id`). Tag IDs are server-local and their stability across rescans is unknown; person TMDB or IMDb IDs are probably absent, so name-only merging is the expected path |
-| Collections (FR-SYNC-008) | Box sets: `GET /Items?IncludeItemTypes=BoxSet&Recursive=true&Fields=ProviderIds,Overview`, members via `GET /Items?ParentId=<boxSetId>`. `ProviderIds.Tmdb` on a box set is the TMDB collection ID if the metadata plugin sets it | Same (`BoxSet`) | `GET /library/sections/{id}/collections` and `GET /library/collections/{ratingKey}/children`. Collection `Guid` or TMDB IDs are probably not exposed; unmerged collections then show separately per server (ADR-0015). Smart collections may need a different members call |
-| Negotiation | `POST /Items/{id}/PlaybackInfo` with a DeviceProfile built from capabilities → `SupportsDirectPlay`/`SupportsDirectStream`/`TranscodingUrl` | Same | `GET /video/:/transcode/universal/decision` then `start.m3u8`; direct play via part URL |
-| Stream URL | Direct: `/Videos/{id}/stream?static=true&MediaSourceId=…&api_key=<session token>`; HLS: `/Videos/{id}/master.m3u8?…` | Similar | Part URL or `start.m3u8` with `X-Plex-Token` query |
-| Text subtitles | `/Videos/{id}/{msId}/Subtitles/{idx}/Stream.vtt` | Similar | Transcoder subtitle option or stream URL with `format=vtt` (to verify) |
-| Session credential (ADR-0013, pending ADR-0013 / M1 spike) | Re-authenticate service account with `DeviceId=cinewren-ps-<sessionId>` → per-session token; revoke with `POST /Sessions/Logout` using that token | Same approach | Transient/delegation token (e.g. `/security/token?type=delegation`) — unknown; fallback per ADR-0013 |
-| Telemetry (FR-PLAY-009) | `POST /Sessions/Playing`, `/Sessions/Playing/Progress`, `/Sessions/Playing/Stopped` | Same | `GET /:/timeline?state=playing\|stopped&time=…` |
-| Artwork | `/Items/{id}/Images/Primary?tag=…` (may not need auth) | Similar | `/library/metadata/{key}/thumb/{ts}` with token |
+| People and credits (FR-SYNC-008) | `Fields=People` works inline in `/Items` list queries, so no per-item call is needed: `People[]` → `Id`, `Name`, `Role` (character), `Type`, `PrimaryImageTag`, in billing order. Person `ProviderIds` are absent (even when the NFO has `<tmdbid>`), so people merge by name only (ADR-0015). Online-metadata behaviour is untested (verified T1.1, offline) | Inline `People[]` in list queries without `ProviderIds`. Person detail (`GET /Users/{id}/Items/{personId}`) has `ProviderIds` with lowercase keys (`tmdb`, `imdb`), but fetching it per person is too many calls (verified T1.1) | `Role[]` (`id`, `tag`, `role`, `tagKey`, `thumb`), `Director[]`, `Writer[]`, `Producer[]`. `id` is server-local. `tagKey` is a plex.tv global person key and a candidate cross-server merge key (ADR-0015). No TMDB or IMDb person IDs (verified T1.1) |
+| Collections (FR-SYNC-008) | BoxSets: `GET /Items?IncludeItemTypes=BoxSet&Recursive=true&Fields=ProviderIds,Overview`, members via `ParentId=<boxSetId>`. With default library options an NFO `<set>` does **not** create a BoxSet, and an API-created BoxSet has empty `ProviderIds`. Movies carry `ProviderIds.TmdbCollection`, a fallback merge key (verified T1.1) | A BoxSet is auto-created from the NFO `<set>` with `ProviderIds.Tmdb` (verified T1.1). Members via `ParentId=` | `GET /library/sections/{id}/collections` and `GET /library/collections/{ratingKey}/children`. A collection has `guid: collection://<uuid>` and no external ID, so collections stay separate per server (ADR-0015) (verified T1.1) |
+| Negotiation | `POST /Items/{id}/PlaybackInfo?UserId=` with a DeviceProfile built from capabilities. The MP4 gets `SupportsDirectPlay=true` but no `DirectStreamUrl`; Jellyfin sources are always served through HLS (see Stream URL), so the adapter requests `EnableDirectPlay=false` with `AllowVideoStreamCopy` and `AllowAudioStreamCopy`, and the result is `TranscodingUrl` with `TranscodingSubProtocol=hls` (verified T1.1) | Same call. Returns `DirectStreamUrl` (`/videos/{id}/original.{ext}?…&api_key=<token>`) for direct play and `TranscodingUrl` (`master.m3u8`) otherwise (verified T1.1) | `GET /video/:/transcode/universal/decision?path=/library/metadata/{key}&protocol=hls&…` (decision codes such as 1001), then `start.m3u8`; the direct part URL is `/library/parts/{id}/{ts}/file.ext` (verified T1.1) |
+| Stream URL | HLS only: `/Videos/{id}/master.m3u8?…&ApiKey=<session token>`. The token carrier is `ApiKey=` (`api_key=` returns 401 on Jellyfin 12.1) or the `Authorization: MediaBrowser Token=` header. The child playlist and segment URLs carry `ApiKey=`, so revocation stops them. **Never** `/Videos/{id}/stream?static=true`: Jellyfin 12.1 serves it without authentication, so it cannot be revoked (owner decision 2026-10-04; verified T1.1) | Direct: `DirectStreamUrl` with `api_key=<session token>` (`ApiKey=` returns 401 on Emby). HLS: `master.m3u8` with `api_key`; segment URLs carry only `PlaySessionId` and stay fetchable after revocation until the stop is reported (verified T1.1) | Part URL or `start.m3u8` with `X-Plex-Token` query. HLS child playlists and segments (`session/<id>/base/…`) carry no token and are anonymous until the transcode is stopped (verified T1.1) |
+| Text subtitles | Use the `DeliveryUrl` from PlaybackInfo with `SubtitleProfiles: [{Format:"vtt",Method:"External"}]`: `/Videos/{id}/{msId}/Subtitles/{idx}/0/Stream.vtt` (the path includes the `/0/` segment). Returns `text/vtt`, served without auth, for embedded and sidecar tracks (verified T1.1) | Same path with `/0/` and `api_key`; `text/vtt`, served without auth (verified T1.1) | A sidecar via `/library/streams/{id}` arrives as raw SRT (`Content-Type: text/html`); embedded tracks return 501. Use Worker-side SRT to VTT conversion (TDD §11.3), or **(to verify in Plex managed-user spike)** WebVTT over HLS |
+| Session credential (ADR-0013) | Re-authenticate the service account with `DeviceId=cinewren-ps-<sessionId>` → per-session token (about 190 ms per mint). Re-auth on the same DeviceId invalidates the previous token, so the DeviceId is unique per session. Revoke with `POST /Sessions/Logout` using that token (204; also removes the device entry and stops issued HLS URLs) (verified T1.1) | Re-authenticate with a DeviceId leased from a bounded pool `cinewren-ps-00…NN` (at least peak concurrent sessions); the same DeviceId returns the same token. Logout revokes the token but leaves the device entry. Report stop before revoking (verified T1.1) | The managed user's token (owner decision 2026-10-04). `/security/token?type=delegation&scope=all` exists but inherits the minting account's rights (admin writes succeeded with an owner-derived token), and no other scope is accepted. **(to verify in Plex managed-user spike)**; `shared_restricted` fallback per ADR-0013 if it fails |
+| Telemetry (FR-PLAY-009) | `POST /Sessions/Playing`, `/Sessions/Playing/Progress`, `/Sessions/Playing/Stopped` (204 with the session token; `Stopped` ends the transcode) (verified T1.1) | Same; `Stopped` ends the transcode (verified T1.1) | `GET /:/timeline?ratingKey=&key=&state=playing\|stopped&time=&duration=`; `/video/:/transcode/universal/stop?session=` ends the transcode (verified T1.1) |
+| Artwork | `/Items/{id}/Images/Primary?tag=…` is served without auth (verified T1.1) | Similar (inconclusive in T1.1: the test item had no image) | `/library/metadata/{key}/thumb/{ts}` with token |
 | Probe | `GET /System/Info/Public` (unauthenticated) | Same | `GET /identity` |
-| CORS for HLS/VTT | Default headers unknown | Unknown | Unknown — see TDD §11.3 |
+| CORS for HLS/VTT | `Access-Control-Allow-Origin: *` on API, stream, HLS, segment, VTT and images; preflight 204 (verified T1.1) | Reflects the origin with `Allow-Credentials: true`; preflight 200 (verified T1.1) | Reflects the origin; preflight 200 with `Allow-Headers: x-plex-token` (verified T1.1) |
 
-Mapping capabilities to a device profile is a pure function per adapter, unit-tested against fixtures. The spike must also confirm whether direct-play progressive URLs honour HTTP range requests with the session token passed in the query string.
+Mapping capabilities to a device profile is a pure function per adapter, unit-tested against fixtures. Direct-play progressive URLs honour HTTP range requests (206 with `Content-Range`) with the session token in the query string on all three providers (verified T1.1).
+
+**Telemetry side effect (FR-PLAY-009, verified T1.1).** Reporting playback marks the item played on the origin for the service user (`Played` and `PlayCount` on Jellyfin and Emby). This is an accepted side effect. It is not a write-back of the user's watched state (DEF-4), and Cinewren does not read it back.
 
 ## LLD-SYNC — Sync, health probing & retention jobs
 
@@ -717,7 +721,7 @@ UPDATE libraries SET last_full_sync_id=:run WHERE id=:lib;
 
 The mass-missing guard protects against an origin that returns an empty listing because of a permission or mount problem. Without it, such a listing would hide the library. An operator can override the guard by running a manual full sync with `{force:true}`.
 
-Incremental runs never mark sources missing. Their `since` is the previous successful run's `started_at` minus 10 min of skew *(proposed)*. If a provider cannot filter by modification time (to verify in M1 spike), incremental falls back to a full listing without missing marking.
+Incremental runs never mark sources missing. Their `since` is the previous successful run's `started_at` minus 10 min of skew *(proposed)*. Jellyfin and Emby filter with `MinDateLastSaved` and Plex with `updatedAt>=` (verified T1.1); unknown query parameters are silently ignored, so contract tests must prove the filter applies (a future date returns 0). Jellyfin re-saves every item on each library scan, so an incremental run after a scan can be as heavy as a full run. If a provider cannot filter by modification time, incremental falls back to a full listing without missing marking.
 
 ### Health probing and status derivation (FR-OPS-001, FR-OPS-002)
 
@@ -867,9 +871,11 @@ select(user, item, caps, prefs, exclude):
 
 predictMode(v, caps, prefs):                                # returns (mode, reason codes)
   a = chosen audio track (prefs.audioLanguage, else default); sub = chosen subtitle
+  # Jellyfin never yields direct_play (static streams are unauthenticated, ADR-0013): provider == 'jellyfin' skips the direct_play rule below
   videoOk = v.video_codec ∈ caps.video (respecting maxLevel/maxHeight per codec)
   if sub.kind == 'image' → (transcode, ['subtitle_burn_in'])                          # burn-in, FR-PLAY-006
-  if videoOk and v.container ∈ caps.containers and a.codec ∈ caps.audio → (direct_play, ['direct_play'])
+  if videoOk and v.container ∈ caps.containers and a.codec ∈ caps.audio:
+      → provider == 'jellyfin' ? (direct_stream, []) : (direct_play, ['direct_play'])   # Jellyfin: token-gated HLS remux, copy codecs
   if videoOk and (caps.nativeHls or caps.mse):                                        # remux; audio may be transcoded
       → (direct_stream, [container ∉ caps.containers ? 'direct_stream_container' : null,
                          a.codec ∉ caps.audio ? 'audio_transcoded' : null].compact())
@@ -969,7 +975,9 @@ These are *not* envelope-encrypted. They are random secrets that are **hashed** 
 
 ### Playback session lifecycle (FR-PLAY-001, FR-PLAY-007, FR-PLAY-009, BR-9)
 
-This lifecycle assumes per-session origin stream credentials (pending ADR-0013 / M1 spike). ADR-0013 is Proposed, and the spike decides per provider whether this model or the shared-restricted fallback applies.
+This lifecycle assumes per-session origin stream credentials (ADR-0013). ADR-0013 is Accepted for Jellyfin and Emby (verified T1.1) and Proposed for Plex, where the managed-user spike decides whether this model or the shared-restricted fallback applies.
+
+Provider specifics (verified T1.1): Jellyfin mints with a unique DeviceId per session, at about 190 ms per play (counted in NFR-PERF-002), and logout removes the device entry. Emby leases a DeviceId from a bounded pool (`cinewren-ps-00…NN`, at least the peak concurrent sessions) for the life of the session and releases it after revoke; re-auth on a logged-out DeviceId mints a new token, and logout leaves the device entry. **Revocation does not stop Emby or Plex HLS segments of a live transcode until the stop is reported, so `reportPlayback(stop)` runs before the revoke, never after it or concurrently.** The session token keeps the service account's non-admin scope (not stream-only), and origins do not enforce library grants on stream endpoints, so BR-1 is enforced before any descriptor is issued.
 
 ```mermaid
 sequenceDiagram
@@ -980,7 +988,7 @@ sequenceDiagram
   B->>W: POST /api/v1/play (Idempotency-Key, caps)
   W->>D: visible candidates (BR-1) + ranking inputs
   W->>W: select (LLD-SEL), decrypt service secret
-  W->>O: createSessionCredential(sessionId)  [pending ADR-0013 / M1 spike; e.g. auth with DeviceId=cinewren-ps-<id>]
+  W->>O: createSessionCredential(sessionId)  [ADR-0013; Jellyfin: auth with DeviceId=cinewren-ps-<id>; Emby: pooled DeviceId]
   O-->>W: session token
   W->>O: negotiatePlayback(caps, tracks, session token)
   O-->>W: mode + stream URL (origin host)
@@ -995,7 +1003,7 @@ sequenceDiagram
   end
   B->>W: events {type:stop}
   W->>D: started→ended, revoke_pending=1
-  W->>O: reportPlayback(stop) + revokeSessionCredential (waitUntil)
+  W->>O: reportPlayback(stop), then revokeSessionCredential (sequential, waitUntil)
   W->>D: credential_envelope=NULL, revoke_pending=0
 ```
 
@@ -1014,7 +1022,7 @@ Events for a session that has reached a terminal status return `410 SESSION_EXPI
 
 **Progress → watched (BR-7, FR-PROG-003).** The rule is applied server-side on every progress upsert: `watched = position ≥ 0.9 × runtime OR (runtime > 45 min AND runtime − position < 5 min)` *(proposed)*. Setting `watched` resets the position to 0. Manual `PUT /progress` overrides the rule.
 
-**Fallback (ADR-0013).** If a provider cannot issue per-session credentials (M1 spike), its adapter returns `kind:'shared_restricted'` with a per-server restricted playback account token. `revokeSessionCredential` becomes a no-op, the token is rotated on a schedule, and the risk is documented. This choice is per provider, and the descriptor format does not change.
+**Fallback (ADR-0013).** If a provider cannot issue per-session credentials (expected for Plex only if the managed-user spike fails), its adapter returns `kind:'shared_restricted'` with a per-server restricted playback account token. `revokeSessionCredential` becomes a no-op, the token is rotated on a schedule, and the risk is documented. This choice is per provider, and the descriptor format does not change.
 
 ## LLD-ERR — Error handling, retries, idempotency & concurrency
 
