@@ -633,6 +633,14 @@ Mapping capabilities to a device profile is a pure function per adapter, unit-te
 
 **Telemetry side effect (FR-PLAY-009, verified T1.1).** Reporting playback marks the item played on the origin for the service user (`Played` and `PlayCount` on Jellyfin and Emby). This is an accepted side effect. It is not a write-back of the user's watched state (DEF-4), and Cinewren does not read it back.
 
+### M1 implementation notes (agent decisions, 2026-10-04)
+
+- Outbound origin errors use `ProviderError` code `REDIRECT_REFUSED`, which maps to API error `ORIGIN_REDIRECT_REFUSED` (LLD-ERR). Same-origin redirects are followed at most 3 times.
+- The URL policy also blocks single-label hostnames (e.g. `https://nas`) outside local mode. This is a conservative extension of the IP-literal and internal-hostname block.
+- Registration checks server identity (`/System/Info/Public`) **before** sending credentials, so a password is never sent to a host that does not identify as the declared provider type.
+- Jellyfin `listItems` does not request `Fields=People`; credits come from `getItem`. Inline people in paged sync needs a new fixture recording (M2, T2.9).
+
+
 ## LLD-SYNC — Sync, health probing & retention jobs
 
 ### Triggers and queues (resolves SDD OD-2)
@@ -1023,6 +1031,11 @@ Events for a session that has reached a terminal status return `410 SESSION_EXPI
 **Progress → watched (BR-7, FR-PROG-003).** The rule is applied server-side on every progress upsert: `watched = position ≥ 0.9 × runtime OR (runtime > 45 min AND runtime − position < 5 min)` *(proposed)*. Setting `watched` resets the position to 0. Manual `PUT /progress` overrides the rule.
 
 **Fallback (ADR-0013).** If a provider cannot issue per-session credentials (expected for Plex only if the managed-user spike fails), its adapter returns `kind:'shared_restricted'` with a per-server restricted playback account token. `revokeSessionCredential` becomes a no-op, the token is rotated on a schedule, and the risk is documented. This choice is per provider, and the descriptor format does not change.
+
+### Service-token caching (agent decision, 2026-10-04; resolves an M1 spec conflict)
+
+The service account's **API token** (used for sync, health and negotiation) is cached encrypted in `servers.service_token_envelope`, under a **fixed DeviceId per server**. It is renewed only when the origin returns 401. Per-playback **stream** credentials always use their own DeviceIds (unique per session on Jellyfin, pooled on Emby). This avoids a ~190 ms sign-in on every request, and avoids isolates invalidating each other's tokens (Jellyfin kills the previous token when the same DeviceId signs in again). Implemented in T2.1. Until then, M1 code signs in per request context.
+
 
 ## LLD-ERR — Error handling, retries, idempotency & concurrency
 
