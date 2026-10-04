@@ -40,6 +40,8 @@ export interface CallOptions {
   origin?: string | null;
   headers?: Record<string, string>;
   env?: Partial<Env>;
+  /** An app built with `createApp({ originFetch })`, for routes that call origin servers. */
+  app?: ReturnType<typeof createApp>;
 }
 
 export async function call(
@@ -52,7 +54,7 @@ export async function call(
   const origin = opts.origin === undefined ? ORIGIN : opts.origin;
   if (origin !== null) headers.origin = origin;
   if (opts.cookie) headers.cookie = opts.cookie;
-  return app.request(
+  return (opts.app ?? app).request(
     path,
     { method, headers, ...(opts.body !== undefined ? { body: JSON.stringify(opts.body) } : {}) },
     testEnv(opts.env),

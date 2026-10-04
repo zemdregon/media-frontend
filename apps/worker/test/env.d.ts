@@ -6,6 +6,11 @@ declare global {
   /** Node's `import.meta.dirname`, used by vitest.config.ts (no Node types in this package). */
   interface ImportMeta {
     readonly dirname: string;
+    /** Vite's `import.meta.glob`, used to load recorded provider fixtures (T1.2). */
+    glob(
+      pattern: string,
+      options: { eager: true; query: string; import: string },
+    ): Record<string, unknown>;
   }
 
   namespace Cloudflare {

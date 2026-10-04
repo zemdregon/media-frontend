@@ -16,5 +16,12 @@ export interface AuthContext {
 /** Hono environment shared by every route and middleware. */
 export interface AppEnv {
   Bindings: Env;
-  Variables: { requestId: string; logger: Logger; config: Config; auth: AuthContext | undefined };
+  Variables: {
+    requestId: string;
+    logger: Logger;
+    config: Config;
+    auth: AuthContext | undefined;
+    /** The `fetch` behind every origin request; injected so tests never touch the network. */
+    originFetch: typeof fetch;
+  };
 }
