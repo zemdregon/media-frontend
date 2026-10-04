@@ -3,6 +3,7 @@ import type { ItemDetailWithCopies } from '@cinewren/shared';
 import { getChildren, getItem } from '../api-client/catalog';
 import { getNextEpisode, setWatched } from '../api-client/playback';
 import { CopiesPicker, copyKey } from '../components/CopiesPicker';
+import { CurationPanel } from '../components/CurationPanel';
 import { capsHeaders } from '../lib/capabilities';
 import { playabilityLabel, secondsLabel } from '../lib/reasons';
 import {
@@ -19,7 +20,7 @@ import { Link } from '../lib/router';
 import { useLoad } from '../lib/useLoad';
 
 /** Title detail for movies and episodes, and series detail with seasons (FR-CAT-005, FR-CAT-013). */
-export function ItemDetail({ id }: { id: string }) {
+export function ItemDetail({ id, operator = false }: { id: string; operator?: boolean }) {
   // The device capabilities ride along as X-Device-Caps so the copy table is per device (FR-PLAY-002).
   const { state, reload } = useLoad(async () => getItem(id, await capsHeaders()), `item:${id}`);
   usePageTitle(state.status === 'ready' ? state.data.title : 'Title');
@@ -88,6 +89,9 @@ export function ItemDetail({ id }: { id: string }) {
             ))}
           </ul>
         </section>
+      )}
+      {operator && (item.type === 'movie' || item.type === 'series') && (
+        <CurationPanel kind="item" id={item.id} onChanged={reload} />
       )}
     </article>
   );

@@ -156,8 +156,10 @@ function normalizeVersion(media: Rec): NormalizedVersion | null {
 /**
  * Billing order: actors first (capped), then directors, writers and producers. A person's ID is
  * the plex.tv global `tagKey` when the response has one (detail responses), which can merge people
- * across Plex servers (ADR-0015). List responses lack it, so the ID falls back to the server-local
- * `id`, then to the name, prefixed so a fallback can never collide with a global key.
+ * across Plex servers (ADR-0015). List responses carry only the name, so the ID falls back to
+ * `name:<tag>`, a prefix that can never collide with a global key. Matching treats that prefix as
+ * "this ID is the name itself" (`NAME_ID_PREFIX` in match/people.ts, BR-10), so the two IDs of one
+ * person on one server still merge into one canonical person.
  */
 function normalizeCredits(raw: Rec): NormalizedCredit[] {
   const credits: NormalizedCredit[] = [];
@@ -169,8 +171,7 @@ function normalizeCredits(raw: Rec): NormalizedCredit[] {
       const tag = asRec(entry);
       const name = asStr(tag?.tag);
       if (!tag || !name) continue;
-      const localId = asId(tag.id);
-      const providerPersonId = asStr(tag.tagKey) ?? (localId ? `local:${localId}` : `name:${name}`);
+      const providerPersonId = asStr(tag.tagKey) ?? `name:${name}`;
       const character = role === 'actor' ? asStr(tag.role) : undefined;
       const dedupe = `${role}\u0000${providerPersonId}`;
       if (seen.has(dedupe)) continue;

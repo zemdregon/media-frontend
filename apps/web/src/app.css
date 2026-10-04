@@ -1447,3 +1447,43 @@ a.button-outline {
 .audit-table {
   min-width: 720px;
 }
+
+/* ---- Operator curation: match conflicts and the detail-page panel (UX §5) ---- */
+
+.conflict-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.conflict-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--cw-border-strong);
+  border-radius: 12px;
+  background: var(--cw-surface-nav);
+}
+
+.conflict-side .button {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
+.conflict-side p {
+  margin: 0;
+}
+
+.conflict-name {
+  color: var(--cw-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.curation-panel {
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--cw-border);
+}

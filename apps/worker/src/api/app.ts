@@ -7,6 +7,7 @@ import { userRateLimit } from './middleware/rate-limit';
 import { requestId } from './middleware/request-id';
 import { requestLog } from './middleware/request-log';
 import { securityHeaders } from './middleware/security-headers';
+import { adminCuration } from './routes/admin-curation';
 import { adminInvites } from './routes/admin-invites';
 import { adminOps } from './routes/admin-ops';
 import { adminServers } from './routes/admin-servers';
@@ -77,6 +78,7 @@ export function createApp(options: AppOptions = {}) {
   app.use('/api/v1/admin/*', requireOperator);
   app.route('/api/v1/admin/invites', adminInvites);
   app.route('/api/v1/admin/users', adminUsers);
+  app.route('/api/v1/admin/curation', adminCuration);
   app.route('/api/v1/admin', adminServers);
   app.route('/api/v1/admin', adminOps);
 
