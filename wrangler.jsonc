@@ -1,0 +1,60 @@
+// Cinewren self-host config: what the Deploy to Cloudflare button and the manual path deploy
+// (docs/operations/self-host.md, TDD §9.2). It deliberately contains NO account resource IDs:
+// Cloudflare (button) or Wrangler (`wrangler deploy`) creates the D1 database and queues by name
+// on YOUR account. `apps/worker/wrangler.jsonc` is the maintainer's dev/staging config; do not
+// deploy that one.
+//
+// Edit before the first real use (in your repository, then let Workers Builds redeploy):
+//   1. vars.APP_ORIGIN / vars.RP_ID: your exact public https origin and its hostname. The default
+//      workers.dev name is `https://cinewren.<your-subdomain>.workers.dev`. RP_ID is effectively
+//      permanent once passkeys exist (changing it invalidates every passkey).
+//   2. Secrets (never put them here): CREDENTIAL_KEYS and SETUP_TOKEN, see .dev.vars.example.
+// Paths are relative to this file. Build the SPA first: `pnpm install && pnpm build:web`.
+{
+  "$schema": "apps/worker/node_modules/wrangler/config-schema.json",
+  "name": "cinewren",
+  "main": "apps/worker/src/index.ts",
+  "compatibility_date": "2026-08-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "apps/web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/*", "!/assets/*"],
+  },
+  "vars": {
+    "ENVIRONMENT": "production",
+    "APP_ORIGIN": "https://cinewren.CHANGE-ME.workers.dev", // CHANGE: exact public origin
+    "RP_ID": "cinewren.CHANGE-ME.workers.dev", // CHANGE: hostname of APP_ORIGIN
+    "CREDENTIAL_KEY_CURRENT": "1",
+  },
+  // namespace_id must be unique within your Cloudflare account; change it if it collides.
+  "ratelimits": [
+    { "name": "RL_AUTH", "namespace_id": "5501", "simple": { "limit": 10, "period": 60 } },
+    { "name": "RL_PLAY", "namespace_id": "5511", "simple": { "limit": 60, "period": 60 } },
+    { "name": "RL_MUTATION", "namespace_id": "5521", "simple": { "limit": 600, "period": 60 } },
+  ],
+  // SETUP_TOKEN is deliberately not required, so it can be deleted after /setup (ADR-0014).
+  "secrets": { "required": ["CREDENTIAL_KEYS"] },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cinewren",
+      "migrations_dir": "apps/worker/migrations",
+    },
+  ],
+  "queues": {
+    "producers": [{ "binding": "JOBS_QUEUE", "queue": "cinewren-jobs" }],
+    "consumers": [
+      {
+        "queue": "cinewren-jobs",
+        "max_batch_size": 1,
+        "max_retries": 3,
+        "retry_delay": 60,
+        "dead_letter_queue": "cinewren-jobs-dlq",
+      },
+    ],
+  },
+  "triggers": { "crons": ["*/5 * * * *", "17 3 * * *"] },
+}

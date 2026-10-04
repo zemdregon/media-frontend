@@ -1,12 +1,15 @@
 import { createApp } from '../src/api/app';
+import { SCHEMA_VERSION_REQUIRED } from '../src/platform/schema-version';
 import type { Env } from '../src/platform/env';
 
-/** Minimal fake D1: only `prepare(sql).first()` is used by health. */
+/** Minimal fake D1: only `prepare(sql).first()` is used by health and the schema guard. */
 export function fakeDb(fail = false): D1Database {
   return {
     prepare: () => ({
       first: () =>
-        fail ? Promise.reject(new Error('D1_ERROR: unavailable')) : Promise.resolve({ '1': 1 }),
+        fail
+          ? Promise.reject(new Error('D1_ERROR: unavailable'))
+          : Promise.resolve({ '1': 1, v: SCHEMA_VERSION_REQUIRED }),
     }),
   } as unknown as D1Database;
 }

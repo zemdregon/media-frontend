@@ -1085,6 +1085,35 @@ The service account's **API token** (used for sync, health and negotiation) is c
 
 **LLD-API, NFR-SEC-003.** The CSP is built from the `servers` table for HTML document responses (the SPA); JSON and image responses carry the `'self'`-only policy, so API responses never list origin hostnames. For documents: `media-src 'self' blob:` and `connect-src 'self'`, each followed by the `scheme://host[:port]` of every server whose status is `active`, `degraded` or `unreachable` (not `pending_validation`, `disabled` or `removing`). The list is cached per isolate for 15 s and dropped when that isolate handles a write to `/admin/servers`; other isolates catch up within the TTL. `script-src` stays `'self'`. The list cannot depend on the session because the SPA stays loaded across sign-in, so anyone who can load the app can read the hostnames (not secrets; the credentials are, NFR-SEC-001). If the lookup fails the policy falls back to `'self'` only. The `servers_version` counter in TDD §6.1 is not used: the short TTL covers it with no extra write path.
 
+### M4/M5 implementation notes (agent decisions, 2026-10-04)
+
+- **Emby (LLD-PROV):** the catalog code is shared in `providers/mediabrowser.ts` with per-server dialects. Emby uses `/Users/{id}/Views` and `/Users/{id}/Items/{id}`, with minimum version 4.10. Emby artwork auth is unverified (spike §5), so the cached service token is sent only as an `Authorization` header, never in a URL.
+- **Plex (LLD-PROV, LLD-SEL, LLD-TOKEN):**
+  - The registration credential is a token (the managed user's).
+  - Validation checks `/identity` before sending any token, then refuses any token that `GET /:/prefs` does not answer with 401 or 403 (codes `admin_account` and `admin_status_unknown`), then requires version ≥ 1.43.
+  - Providers expose `playbackVerified`. Plex is `false` until B-3 verifies the managed-user token, so selection excludes Plex copies with the new reason `provider_unverified`.
+  - Plex list responses carry only person names and no tracks. Provider person IDs are `tagKey` when known, else `name:<tag>`. BR-10's exact-name rule merges both into one canonical person. Plex WebVTT (SRT→VTT) is not provided.
+- **Health (LLD-SYNC):** each probe round uses a 5 s timeout, 3 attempts and concurrency 6. `HEALTH_PROBE_INTERVAL_MIN` defaults to 5. A play-time origin failure increments `consecutive_failures` immediately. Health-aware selection was already in place from M3, so the "(M5)" note is historical.
+- **Operations (LLD-API):** credential replacement audits as `server.credentials.replace`. The export is built from explicit column lists (no secrets). The metrics endpoint is `GET /admin/metrics?window=24h|7d`, computed from D1. Master-key rotation (`reencrypt` jobs) is not yet implemented.
+
+- **Curation (LLD-MATCH, LLD-API):**
+  - `GET /admin/curation/entities/{kind}/{id}` was added.
+  - Operator merges apply to movies and series only; a series merge or split carries its seasons and episodes.
+  - Resolving a conflict by merge folds the whole current item into the candidate.
+  - A stale or already-resolved conflict returns 404 `NOT_FOUND`.
+  - Each mutation writes one audit row (`curation.merge`, `curation.split`, `curation.conflict.resolve`, `curation.override.delete`).
+  - Name-derived person IDs (`name:<tag>`) do not block BR-10's same-server exclusion.
+- **BR-1 (LLD-SCHEMA):** credits and collection members are filtered by source visibility, so a merged item never exposes a hidden copy's cast or membership.
+
+### T5.8 security review notes (agent decisions, 2026-10-04)
+
+These come from the [security review](../reports/2026-security-review.md) and bring the code in line with the rules above.
+- **Revocation before removal (LLD-SCHEMA cascades, FR-PLAY-007).** Deleting a user, disabling a user and removing a server first end every live playback session of that user or server, then revoke every origin credential that is still held (stop, then logout). Only after that does the delete or removal batch run. A disabled user's sessions end with `end_reason = 'user_disabled'`. Revocations that fail are logged as `playback.revoke_abandoned` when the rows or credentials are about to go, and stay `revoke_pending` otherwise. Deleting the last operator is refused before any playback is touched.
+- **BR-1 for the whole session.** Every `POST /play/{id}/events` re-checks that the session's source is still visible to the caller. If the grant, the library or the server is gone, the session ends with `end_reason = 'access_revoked'`, its credential is revoked and the event gets `410 SESSION_EXPIRED`. Without this, progress events would keep a session, and its token, alive indefinitely.
+- **`sweepAuth` is implemented** (`db/auth.ts`) as its own task on the five-minute tick, in chunks of 500, at most 20 chunks per step per tick.
+- **Artwork cache key (ADR-0012).** The key is `entity/id/slot/server/tag`, and an image is stored only under the key of the source that supplied it, so equal tags on two servers never share an entry.
+- **Per-user limits (TDD-D5).** Writes under `/api/v1/me/` count against `RL_MUTATION`.
+
 ## LLD-ERR — Error handling, retries, idempotency & concurrency
 
 ### Error taxonomy

@@ -6,7 +6,7 @@
 | **Owns** | The manual steps to provision, configure, deploy, first-run and roll back one Cinewren deployment on Cloudflare. |
 | **Does not own** | Configuration key semantics and release design ([TDD](../design/TDD.md) §4, §9), authentication model ([ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)), requirements ([SRS](../requirements/SRS.md)). |
 
-This is the **M0 guide** (ROADMAP T0.7). Task T5.5 will extend it into the full self-hoster guide (Deploy button path, upgrades, `cinewren:doctor`, restore). See [ROADMAP](../ROADMAP.md). Commands below are the manual Wrangler path from [TDD §9.2](../design/TDD.md); replace `<env>` with `staging` or `production`.
+This is the **M0 guide** (ROADMAP T0.7) for the maintainer's staging. **Other operators follow the [self-host guide](self-host.md)** (T5.5: Deploy button path, upgrades, rollback), which uses the repository-root `wrangler.jsonc`. See [ROADMAP](../ROADMAP.md). Commands below are the manual Wrangler path from [TDD §9.2](../design/TDD.md); replace `<env>` with `staging` or `production`.
 
 ## 1. Prerequisites
 

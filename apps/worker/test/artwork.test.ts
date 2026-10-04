@@ -128,6 +128,35 @@ describe('edge cache (ADR-0012)', () => {
     expect(originCalls.length).toBe(before + 1);
   });
 
+  it('T5.8 SR-05: equal tags on two servers never share a cache entry', async () => {
+    // Plex tags are timestamps, so two copies can carry the same tag. Bob is granted only the
+    // Bravo copy and must never be served the Alpha bytes cached for the operator.
+    const same = t('same-tag');
+    await env.DB.prepare(
+      "UPDATE sources SET artwork = json_set(artwork, '$.poster.tag', ?) WHERE media_item_id = 'm-amelie'",
+    )
+      .bind(same)
+      .run();
+    await env.DB.prepare(
+      "INSERT INTO library_grants (user_id, library_id, granted_at) VALUES ('bob', 'L3', 0)",
+    ).run();
+    const ALPHA = new Uint8Array([...PNG, 0xaa]);
+    const BRAVO = new Uint8Array([...PNG, 0xbb]);
+    respond = (url) =>
+      new Response(url.hostname === 'alpha.example.test' ? ALPHA : BRAVO, {
+        headers: { 'content-type': 'image/png' },
+      });
+    const forOp = await get(w.op, `/m-amelie/poster?v=${same}`);
+    expect(new Uint8Array(await forOp.arrayBuffer())).toEqual(ALPHA);
+    const forBob = await get(w.bob, `/m-amelie/poster?v=${same}`);
+    expect(forBob.status).toBe(200);
+    expect(new Uint8Array(await forBob.arrayBuffer())).toEqual(BRAVO);
+    expect(originCalls.map((c) => c.url.hostname)).toEqual([
+      'alpha.example.test',
+      'bravo.example.test',
+    ]);
+  });
+
   it('keeps serving cached art when the origin is down, and answers 502 for uncached art', async () => {
     respond = () => png();
     expect((await get(w.carol, `/m-inter/poster?v=${t('tagI')}`)).status).toBe(200);

@@ -647,7 +647,10 @@ describe('server removal with chunked deletion (FR-SRV-004, DR-005, WF-10)', () 
     expect(await count('servers WHERE id = ?', 'bravo')).toBe(0);
   });
 
-  it('marks open playback credentials of the server for revocation', async () => {
+  it('ends open playback sessions of the server before its credentials go (T5.8 SR-02)', async () => {
+    // The origin-side revocation itself is covered against a mock origin in playback/play.test.ts;
+    // this unreadable envelope cannot be revoked, so the session is ended and its credential
+    // forgotten with an operator-visible error rather than left looking live.
     await db
       .prepare(
         `INSERT INTO playback_sessions (id, user_id, server_id, mode, status, credential_envelope, authorized_at, auth_expires_at)
@@ -658,11 +661,12 @@ describe('server removal with chunked deletion (FR-SRV-004, DR-005, WF-10)', () 
     await api(w.op.cookie, 'DELETE', '/admin/servers/bravo');
     expect(
       await db
-        .prepare("SELECT revoke_pending, server_id FROM playback_sessions WHERE id = 'ps-b'")
+        .prepare("SELECT status, end_reason, server_id FROM playback_sessions WHERE id = 'ps-b'")
         .first(),
     ).toEqual({
-      revoke_pending: 1,
-      server_id: null, // the server row is gone; the session record stays for the sweep
+      status: 'ended',
+      end_reason: 'server_removed',
+      server_id: null, // the server row is gone; the session record stays (DR-003 retention)
     });
   });
 });

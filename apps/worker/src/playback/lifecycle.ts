@@ -16,6 +16,7 @@ import {
   endSession,
   getPlaybackServer,
   getProgress,
+  listCredentialHoldingSessions,
   listExpirable,
   listOrphanLeases,
   listRevokePending,
@@ -263,6 +264,30 @@ export async function sweepPlaybackSessions(deps: PlaybackDeps): Promise<SweepRe
   }
   for (const lease of await listOrphanLeases(db, now - config.orphanLeaseMs, SWEEP_BATCH)) {
     if (await recoverOrphanLease(deps, lease)) out.orphansRecovered++;
+  }
+  return out;
+}
+
+/**
+ * Ends every live session of a user or a server and revokes every credential they still hold,
+ * now, before the caller deletes the rows or the server credentials that revocation needs
+ * (T5.8 SR-01, SR-02; FR-PLAY-007, FR-USR-008, DR-005). Revocations that fail stay
+ * `revoke_pending` for the sweep while their rows exist; the caller decides what to do with the
+ * count of those still pending.
+ */
+export async function revokeAllSessions(
+  deps: PlaybackDeps,
+  by: { userId: string } | { serverId: string },
+  reason: string,
+): Promise<{ revoked: number; unrevoked: number }> {
+  const out = { revoked: 0, unrevoked: 0 };
+  for (const s of await listCredentialHoldingSessions(deps.db, by)) {
+    const live = s.status === 'authorized' || s.status === 'started';
+    const outcome = live
+      ? await endAndRevoke(deps, s, 'ended', reason)
+      : await revokeSession(deps, s);
+    if (outcome === 'revoked' || outcome === 'nothing') out.revoked++;
+    else out.unrevoked++;
   }
   return out;
 }

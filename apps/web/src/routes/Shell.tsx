@@ -37,6 +37,7 @@ const CollectionsPage = lazy(() =>
 const CollectionPage = lazy(() => import('./People').then((m) => ({ default: m.CollectionPage })));
 const Settings = lazy(() => import('./Settings').then((m) => ({ default: m.Settings })));
 const Servers = lazy(() => import('./Servers').then((m) => ({ default: m.Servers })));
+const Conflicts = lazy(() => import('./Conflicts').then((m) => ({ default: m.Conflicts })));
 const AuditLog = lazy(() => import('./AuditLog').then((m) => ({ default: m.AuditLog })));
 const SyncStatus = lazy(() => import('./SyncStatus').then((m) => ({ default: m.SyncStatus })));
 
@@ -236,13 +237,15 @@ function Routes({
   if (operator && path === '/servers') return <Servers />;
   if (operator && path === '/servers/sync') return <SyncStatus />;
   if (operator && path === '/servers/audit') return <AuditLog />;
+  if (operator && path === '/servers/conflicts') return <Conflicts />;
   const item = matchPath('/items/:id', path);
-  if (item?.id) return <ItemDetail key={item.id} id={item.id} />;
+  if (item?.id) return <ItemDetail key={item.id} id={item.id} operator={operator} />;
   const watch = matchPath('/watch/:id', path);
   if (watch?.id) return <Player key={watch.id} id={watch.id} />;
   const person = matchPath('/people/:id', path);
-  if (person?.id) return <PersonPage key={person.id} id={person.id} />;
+  if (person?.id) return <PersonPage key={person.id} id={person.id} operator={operator} />;
   const collection = matchPath('/collections/:id', path);
-  if (collection?.id) return <CollectionPage key={collection.id} id={collection.id} />;
+  if (collection?.id)
+    return <CollectionPage key={collection.id} id={collection.id} operator={operator} />;
   return <NotFoundPage />;
 }

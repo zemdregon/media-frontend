@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CollectionDetail, ItemCard, Page, PersonDetail } from '@cinewren/shared';
 import { getCollection, getPerson, listCollections } from '../api-client/catalog';
+import { CurationPanel } from '../components/CurationPanel';
 import {
   Alert,
   CollectionTile,
@@ -68,19 +69,27 @@ function LoadMore({ busy, onClick }: { busy: boolean; onClick: () => void }) {
 }
 
 /** Person page: header and the visible titles with the role (FR-CAT-011, ADR-0015). */
-export function PersonPage({ id }: { id: string }) {
+export function PersonPage({ id, operator = false }: { id: string; operator?: boolean }) {
   const { state, reload } = useLoad(() => getPerson(id), `person:${id}`);
   return (
     <Resolved
       state={state}
       reload={reload}
       what="Person"
-      render={(p) => <PersonBody person={p} />}
+      render={(p) => <PersonBody person={p} operator={operator} onChanged={reload} />}
     />
   );
 }
 
-function PersonBody({ person }: { person: PersonDetail }) {
+function PersonBody({
+  person,
+  operator,
+  onChanged,
+}: {
+  person: PersonDetail;
+  operator: boolean;
+  onChanged: () => void;
+}) {
   usePageTitle(person.name);
   const paged = usePaged<PersonDetail['credits']['items'][number]>(
     person.credits,
@@ -120,6 +129,7 @@ function PersonBody({ person }: { person: PersonDetail }) {
           {paged.cursor && <LoadMore busy={paged.busy} onClick={() => void paged.more()} />}
         </section>
       )}
+      {operator && <CurationPanel kind="person" id={person.id} onChanged={onChanged} />}
     </>
   );
 }
@@ -164,19 +174,27 @@ function CollectionList({
 }
 
 /** One collection and its visible members (FR-CAT-012). */
-export function CollectionPage({ id }: { id: string }) {
+export function CollectionPage({ id, operator = false }: { id: string; operator?: boolean }) {
   const { state, reload } = useLoad(() => getCollection(id), `collection:${id}`);
   return (
     <Resolved
       state={state}
       reload={reload}
       what="Collection"
-      render={(c) => <CollectionBody collection={c} />}
+      render={(c) => <CollectionBody collection={c} operator={operator} onChanged={reload} />}
     />
   );
 }
 
-function CollectionBody({ collection }: { collection: CollectionDetail }) {
+function CollectionBody({
+  collection,
+  operator,
+  onChanged,
+}: {
+  collection: CollectionDetail;
+  operator: boolean;
+  onChanged: () => void;
+}) {
   usePageTitle(collection.name);
   const paged = usePaged<ItemCard>(
     collection.members,
@@ -207,6 +225,7 @@ function CollectionBody({ collection }: { collection: CollectionDetail }) {
           {paged.cursor && <LoadMore busy={paged.busy} onClick={() => void paged.more()} />}
         </>
       )}
+      {operator && <CurationPanel kind="collection" id={collection.id} onChanged={onChanged} />}
     </>
   );
 }

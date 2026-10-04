@@ -1,4 +1,5 @@
 import { createApp } from './api/app';
+import { sweepAuth } from './db/auth';
 import { isProbeTick, probeAll } from './health/probe';
 import { createPlaybackDeps } from './playback/deps';
 import { sweepPlaybackSessions } from './playback/lifecycle';
@@ -13,7 +14,7 @@ export default {
   fetch: app.fetch,
 
   // Scheduler tick and retention job (LLD-SYNC), plus the BR-9 playback sweep on the tick
-  // (LLD-TOKEN). The two run independently: one failing never skips the other. `sweepAuth` joins
+  // (LLD-TOKEN). The tasks run independently: one failing never skips another. `sweepAuth` joins
   // the tick in its own task; health probing is one of the tick's tasks (LLD-SYNC).
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {
     const logger = createLogger();
@@ -42,6 +43,12 @@ export default {
       tasks.push(
         sweepPlaybackSessions(createPlaybackDeps(env, { logger })).then((r) => {
           logger.info('playback.sweep', { ...r });
+        }),
+      );
+      // LLD-TOKEN: expired challenges, sessions and unredeemed signup invites (T5.8 SR-03).
+      tasks.push(
+        sweepAuth(env.DB, Date.now()).then((r) => {
+          logger.info('auth.sweep', { ...r });
         }),
       );
     }

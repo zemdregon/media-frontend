@@ -978,3 +978,79 @@ describe('T3.6 compliance (FR-PLAY-008, NFR-COMP-001, ADR-0002)', () => {
     }
   });
 });
+
+describe('T5.8 security review regressions: stream credentials end with access', () => {
+  const tokenOf = (d: PlaybackDescriptor) => new URL(d.streamUrl).searchParams.get('ApiKey') ?? '';
+  const admin = (method: string, path: string, body?: unknown) =>
+    call(method, `/api/v1/admin${path}`, {
+      app,
+      cookie: op.cookie,
+      ...(body === undefined ? {} : { body }),
+    });
+
+  it('SR-01: deleting a user revokes their live stream credential before the rows go', async () => {
+    const d = await playOk(alice, { itemId: 'm-heat' });
+    await event(alice, d.sessionId, { seq: 1, type: 'start', positionMs: 0 });
+    expect(jf.liveTokens()).toEqual([tokenOf(d)]);
+    const res = await admin('DELETE', '/users/alice');
+    expect(res.status).toBe(204);
+    expect(jf.liveTokens()).toEqual([]);
+    expect((await browserGet(d.streamUrl)).status).toBe(401);
+    expect(await session(d.sessionId)).toBeNull(); // the DR-005 cascade still happens
+  });
+
+  it('SR-01: the last operator is refused before any of their playback is touched', async () => {
+    const d = await playOk(op, { itemId: 'm-heat' });
+    const res = await admin('DELETE', '/users/op');
+    expect(res.status).toBe(409);
+    expect(await errorCode(res)).toBe('LAST_OPERATOR');
+    expect(jf.liveTokens()).toEqual([tokenOf(d)]);
+  });
+
+  it('SR-01: disabling a user ends their sessions and revokes the credential at once', async () => {
+    const d = await playOk(alice, { itemId: 'm-heat' });
+    const res = await admin('PATCH', '/users/alice', { status: 'disabled' });
+    expect(res.status).toBe(200);
+    expect(jf.liveTokens()).toEqual([]);
+    expect(await session(d.sessionId)).toMatchObject({
+      status: 'ended',
+      end_reason: 'user_disabled',
+      credential_envelope: null,
+      revoke_pending: 0,
+    });
+  });
+
+  it('SR-02: removing a server revokes its live credentials before deleting its credentials', async () => {
+    const d = await playOk(alice, { itemId: 'm-heat' });
+    expect(new URL(d.streamUrl).host).toBe(JF_HOST);
+    const res = await admin('DELETE', '/servers/jf');
+    expect(res.status).toBe(202);
+    expect(jf.liveTokens()).toEqual([]);
+    expect((await browserGet(d.streamUrl)).status).toBe(401);
+  });
+
+  it('SR-06: a revoked grant ends the session on the next event, keep-alives included', async () => {
+    const d = await playOk(alice, { itemId: 'm-heat' });
+    expect(new URL(d.streamUrl).host).toBe(JF_HOST);
+    await event(alice, d.sessionId, { seq: 1, type: 'start', positionMs: 0 });
+    await db
+      .prepare("DELETE FROM library_grants WHERE user_id = 'alice' AND library_id = 'Ljf'")
+      .run();
+    const res = await event(alice, d.sessionId, { seq: 2, type: 'progress', positionMs: 15_000 });
+    expect(res.status).toBe(410);
+    expect(await errorCode(res)).toBe('SESSION_EXPIRED');
+    expect(jf.liveTokens()).toEqual([]);
+    expect(await session(d.sessionId)).toMatchObject({
+      status: 'ended',
+      end_reason: 'access_revoked',
+    });
+  });
+
+  it('SR-06: a disabled server ends the session on the next event', async () => {
+    const d = await playOk(alice, { itemId: 'm-heat' });
+    await db.prepare("UPDATE servers SET status = 'disabled' WHERE id = 'jf'").run();
+    const res = await event(alice, d.sessionId, { seq: 1, type: 'progress', positionMs: 1 });
+    expect(res.status).toBe(410);
+    expect(jf.liveTokens()).toEqual([]);
+  });
+});

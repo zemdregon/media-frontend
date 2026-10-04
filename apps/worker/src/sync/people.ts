@@ -28,14 +28,17 @@ import { decidePerson, type PersonCandidate, type PersonLinkInfo } from '../matc
 import type { NormalizedCredit } from '../providers/types';
 import type { SyncDeps } from './deps';
 
-interface LinkChoice {
+export interface LinkChoice {
   linkId: string;
   name: string;
   priority: number;
 }
 
 /** The link a person shows: highest server priority, ties keep the current one, then lowest ID. */
-function pickShown(links: LinkChoice[], currentId: string | null | undefined): LinkChoice | null {
+export function pickShown(
+  links: LinkChoice[],
+  currentId: string | null | undefined,
+): LinkChoice | null {
   let best: LinkChoice | null = null;
   for (const l of links) {
     if (
@@ -57,7 +60,7 @@ const choiceOf = (l: PersonLinkInfo): LinkChoice => ({
   priority: l.serverPriority,
 });
 
-const altNames = (links: LinkChoice[], shown: LinkChoice): string =>
+export const altNames = (links: LinkChoice[], shown: LinkChoice): string =>
   [...new Set(links.filter((l) => l.name !== shown.name).map((l) => l.name))].join(' ');
 
 export interface CreditPlan {

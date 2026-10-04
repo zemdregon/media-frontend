@@ -1,5 +1,6 @@
 {
   "name": "cinewren",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.28.0",
@@ -15,6 +16,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:docs": "node scripts/check-docs.mjs",
+    "build:web": "pnpm --filter @cinewren/web build",
+    "check:upgrade": "node scripts/check-upgrade.mjs",
+    "migrate": "pnpm --filter @cinewren/worker exec wrangler d1 migrations apply DB --remote --config ../../wrangler.jsonc",
+    "deploy": "pnpm run migrate && pnpm --filter @cinewren/worker exec wrangler deploy --config ../../wrangler.jsonc",
     "perf": "node scripts/perf/run.mjs"
   },
   "devDependencies": {
@@ -35,6 +40,16 @@
     "overrides": {
       "sharp": ">=0.35.4",
       "undici": ">=7.29.1"
+    }
+  },
+  "cloudflare": {
+    "bindings": {
+      "CREDENTIAL_KEYS": {
+        "description": "Encrypts origin credentials: a JSON map of key version to a base64 32-byte key. Generate with: printf '{\"1\":\"%s\"}' \"$(openssl rand -base64 32)\". Back it up offline; it cannot be recovered (docs/operations/self-host.md)."
+      },
+      "SETUP_TOKEN": {
+        "description": "One-time token for first-run /setup. Generate with: openssl rand -base64 32 | tr \"+/\" \"-_\" | tr -d \"=\". Delete it after creating the operator."
+      }
     }
   }
 }

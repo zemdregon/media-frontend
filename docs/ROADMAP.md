@@ -75,7 +75,7 @@
 |---|---|---|---|
 | ~~Q-1~~ | Will Cinewren ever be hosted for multiple operators? | — | **Resolved 2026-10-04 by the owner:** no hosted multi-tenancy, but others may self-host |
 | ~~Q-2~~ | Must origin hostnames be hidden from viewers? | — | **Resolved 2026-10-04 by the owner:** no, public HTTPS is fine |
-| Q-3 | Plex API terms and the token model for third-party clients | M4 Plex task | Resolved by the T1.1 spike |
+| Q-3 | Plex API terms and the token model for third-party clients | M4 Plex playback only | **Terms researched 2026-10-04** ([note](spikes/2026-plex-terms-q3.md), not legal advice): permitted in principle for private household use; risk low-to-medium. Constraints adopted: identify via `X-Plex-Product`/`X-Plex-Client-Identifier`, no "Plex" branding in name or domain, no circumvention of Plex Pass features. The token model remains B-3. |
 | Q-5 | Should private-network-only origins be supported? | Nothing in v1 | Unsupported (DEF-10) |
 | Q-6 | Minimum provider versions | M1 / M4 adapters | Fixed by the T1.1 spike |
 | ~~Q-4~~ | Product name | — | **Resolved 2026-10-04 by the owner: Cinewren** |
@@ -124,8 +124,8 @@
 | M1 | Provider spike, Jellyfin adapter, server registration | M0 | **Partial**: T1.1–T1.4 done; T1.5 real-server demo pending |
 | M2 | Catalog: sync, matching, browse/search/detail, users and grants | M1 | **Partial**: T2.1–T2.11 done; exit (e) staging demo pending (B-4) |
 | M3 | Playback on Jellyfin: selection, session credentials, player, progress | M2 | **Partial**: T3.1–T3.7 done; exit (c) real-browser demo on staging pending (B-4) |
-| M4 | Emby and Plex adapters at parity | M3 (M4 can start after M1 for adapter-only work) | Planned |
-| M5 | Hardening and v1.0 release gate | M3, M4 | Planned |
+| M4 | Emby and Plex adapters at parity | M3 (M4 can start after M1 for adapter-only work) | **Partial**: T4.1 done; T4.2 Plex playback gated on B-3; T4.3 done |
+| M5 | Hardening and v1.0 release gate | M3, M4 | **In progress**: T5.1–T5.4 done; T5.5 built (demo pending) |
 | Later | DEF-1 to DEF-11 | v1.0 and the triggers in PRD §6 | Deferred |
 
 ```mermaid
@@ -227,9 +227,9 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 
 | Task | Objective | Refs | Depends | Done when |
 |---|---|---|---|---|
-| T4.1 | Emby adapter (likely close to Jellyfin; confirm in T1.1) | IR-004 | T1.2, T3.3 | The shared contract suite is green on Emby fixtures, and a playback E2E passes against an Emby fixture origin. |
-| T4.2 | Plex adapter, including the Q-3 terms check | IR-005, Q-3 | T1.2, T3.3 | The Q-3 outcome is recorded in §3. The shared contract suite is green on Plex fixtures, and a playback E2E passes against a Plex fixture origin. |
-| T4.3 | Cross-provider matching test: one title on all three server types merges into one item | FR-CAT-001 | T4.1, T4.2 | Integration test green. |
+| T4.1 | Emby adapter (likely close to Jellyfin; confirm in T1.1) | IR-004 | T1.2, T3.3 | **Done.** Evidence: shared `providers/mediabrowser.ts` with an Emby dialect; contract suite green on Emby fixtures (`test/providers/emby.test.ts`); `test/playback/emby-play.test.ts` (play, stop, revoke, `DirectStreamUrl` on the origin host). The shared contract suite is green on Emby fixtures, and a playback E2E passes against an Emby fixture origin. |
+| T4.2 | Plex adapter, including the Q-3 terms check | IR-005, Q-3 | T1.2, T3.3 | **Partial.** The Plex catalog adapter is done: contract suite green on Plex fixtures; admin tokens refused. Playback is gated (`provider_unverified`) until B-3 verifies the managed-user token. Remaining: B-3 verification, Q-3 terms check, Plex playback e2e. The Q-3 outcome is recorded in §3. The shared contract suite is green on Plex fixtures, and a playback E2E passes against a Plex fixture origin. |
+| T4.3 | Cross-provider matching test: one title on all three server types merges into one item | FR-CAT-001 | T4.1, T4.2 | **Done.** Evidence: `apps/worker/test/sync/cross-provider-sync.test.ts`: real Jellyfin, Emby and Plex adapters over recorded fixtures yield one item with three sources and one merged person. Integration test green. |
 
 **M4 exit:** T4.1 to T4.3 done. **Demonstration:** one title present on Jellyfin, Emby and Plex shows as one item and plays from each source via manual override.
 
@@ -237,14 +237,14 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 
 | Task | Objective | Refs | Depends | Done when |
 |---|---|---|---|---|
-| T5.1 | Health probing, status derivation, health-aware selection, health view | FR-OPS-001, FR-OPS-002, FR-OPS-004 | M3 | Tests: probe failures move a server through `degraded` to `unreachable`, and selection excludes or deprioritizes it. The health page is demonstrated. |
-| T5.2 | Curation: merge, split, conflict list | FR-CAT-007, FR-CAT-010, BR-3 | M2 | Tests: overrides persist across a full re-sync; a resolved conflict leaves the list. |
-| T5.3 | Credential rotation, audit log, export | FR-SRV-005, FR-OPS-005, FR-OPS-006 | M2 | Tests: rotation keeps catalog rows; every operator mutation writes one audit row; the export contains no secrets (asserted by a test). |
-| T5.4 | Per-user rate limits, operational retention, metrics | NFR-SEC-008, DR-003, NFR-OBS-002 | M3 | Tests: limits return 429 above threshold; retention jobs purge per DR-003. A metrics query is demonstrated. |
-| T5.5 | **Self-host packaging** (owner decision 2026-10-04: others may self-host; packaging details are agent decisions): self-host guide, Deploy to Cloudflare button or `wrangler` path, SemVer releases with notes, upgrade path | FR-OPS-008, NFR-MAINT-003, CAP-14 | M4 | **Demonstration:** a fresh Cloudflare account deploys a tagged release by following only the guide, completes `/setup`, then upgrades to the next tag with migrations applied. |
+| T5.1 | Health probing, status derivation, health-aware selection, health view | FR-OPS-001, FR-OPS-002, FR-OPS-004 | M3 | **Done.** Evidence: `apps/worker/src/health/`; `test/ops-health.test.ts` (status derivation, isolation); health strip on server cards. Tests: probe failures move a server through `degraded` to `unreachable`, and selection excludes or deprioritizes it. The health page is demonstrated. |
+| T5.2 | Curation: merge, split, conflict list | FR-CAT-007, FR-CAT-010, BR-3 | M2 | **Done.** Evidence: `apps/worker/src/curation/`; `test/sync/curation.test.ts` (overrides survive re-sync, conflict resolution, BR-1 after merge, audit rows); Match conflicts page. A BR-1 leak in credits/collection members found and fixed. Tests: overrides persist across a full re-sync; a resolved conflict leaves the list. |
+| T5.3 | Credential rotation, audit log, export | FR-SRV-005, FR-OPS-005, FR-OPS-006 | M2 | **Done.** Evidence: credential rotation, audit log page and secret-free export; `test/ops.test.ts` asserts one audit row per mutation and no secrets in the export. Tests: rotation keeps catalog rows; every operator mutation writes one audit row; the export contains no secrets (asserted by a test). |
+| T5.4 | Per-user rate limits, operational retention, metrics | NFR-SEC-008, DR-003, NFR-OBS-002 | M3 | **Done.** Evidence: `RL_PLAY` and `RL_MUTATION` per-user limits (429 tests); retention boundary test; metrics endpoint. Tests: limits return 429 above threshold; retention jobs purge per DR-003. A metrics query is demonstrated. |
+| T5.5 | **Self-host packaging** (owner decision 2026-10-04: others may self-host; packaging details are agent decisions): self-host guide, Deploy to Cloudflare button or `wrangler` path, SemVer releases with notes, upgrade path | FR-OPS-008, NFR-MAINT-003, CAP-14 | M4 | **Partial.** Built: `docs/operations/self-host.md`, README Deploy button (repo-root self-host `wrangler.jsonc`, no owner IDs), CHANGELOG 0.1.0, `release.yml`, `MIGRATIONS_PENDING` schema guard (`test/migrations-guard.test.ts`), upgrade rehearsal `pnpm check:upgrade`. Remaining: the demonstration on a fresh Cloudflare account (button flow, Workers Builds deploy, tag v0.1.0 and the next release). **Demonstration:** a fresh Cloudflare account deploys a tagged release by following only the guide, completes `/setup`, then upgrades to the next tag with migrations applied. |
 | T5.6 | Last-operator CLI recovery rehearsal and D1 restore rehearsal | FR-USR-007, NFR-REL-003 | M4 | Both procedures are executed on staging and their notes are linked here. |
 | T5.7 | Accessibility audit; performance and cost analysis at the envelope | NFR-A11Y-001, NFR-PERF-001, NFR-PERF-002, NFR-SCALE-001, NFR-COST-001 | M4 | The audit report has no open WCAG 2.2 AA failures on core journeys. A load test at the NFR-SCALE-001 envelope reports p95 figures and the monthly cost estimate. |
-| T5.8 | Security review against the [HLD](design/HLD.md) threat model | NFR-SEC-* | T5.1–T5.5 | The review report is linked here, with every finding rated. Findings rated high or critical are fixed or carry an owner-accepted exception. |
+| T5.8 | Security review against the [HLD](design/HLD.md) threat model | NFR-SEC-* | T5.1–T5.5 | **Done.** Evidence: [security review](reports/2026-security-review.md) (2026-10-04; agent under delegation, not a third-party audit). 20 findings rated: 0 critical, 2 high, 3 medium, 4 low, 11 info. Both highs are fixed with regression tests (SR-01 and SR-02, stream credentials revoked before user or server removal; `test/playback/play.test.ts`); SR-03, SR-05, SR-06 and SR-08 are also fixed. Open items awaiting owner acceptance (none high or critical) are listed in the report's §8. Done when: the review report is linked here, with every finding rated. Findings rated high or critical are fixed or carry an owner-accepted exception. |
 
 **v1.0 exit:** every `Must` in the SRS is verified with linked evidence. Every `Should` that isn't done has a dated decision row in §3. T5.8 has no open high or critical findings. A production deploy and a rollback have been rehearsed, and the notes are linked.
 
@@ -277,6 +277,7 @@ DEF-1 to DEF-11 per [PRD §6](requirements/PRD.md#6-non-goals-and-deferred-capab
 
 | Date | Change | By |
 |---|---|---|
+| 2026-10-04 | T5.8 security review done: two high findings fixed (stream credentials now revoked before user delete or disable and before server removal), plus four lower ones. Open medium and low items wait for owner acceptance in the report's §8. | Agent under delegation |
 | 2026-10-04 | T1.1 provider spike completed. Owner decided: Plex via a restricted managed user, and Jellyfin forced to HLS. M0 T0.1–T0.6 done; T0.7 staging being provisioned in the owner's account (owner approved). | Agent, recording owner decisions |
 | 2026-10-04 | Owner supplied the design canvas (the visual reference, now specified in UX.md) and answered Q-7 (collections and people search in v1) and Q-8 (dark and light themes). ADR-0015 and new requirements added. | Agent, recording owner decisions |
 | 2026-10-04 | Owner answered the blocker questions (B-1, B-2, Q-1, Q-2): passkeys plus invite links replace Cloudflare Access (ADR-0014), origins on public HTTPS confirmed, self-hosting added to M5. | Agent, recording owner decisions |

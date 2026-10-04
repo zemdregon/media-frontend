@@ -496,3 +496,53 @@ export function deleteInvitedUserOfRevokedInviteStmt(
     )
     .bind(inviteId);
 }
+
+// --- sweep (LLD-TOKEN `sweepAuth`) ---
+
+export interface AuthSweepResult {
+  challenges: number;
+  sessions: number;
+  expiredInvitees: number;
+}
+
+const SWEEP_CHUNK = 500;
+/** Chunks per step per tick; whatever is left is picked up on the next tick. */
+const SWEEP_MAX_CHUNKS = 20;
+
+/**
+ * `sweepAuth()` on the five-minute tick (LLD-TOKEN): deletes expired WebAuthn challenges and
+ * expired sessions, and deletes the still-`invited` user of every signup invite that expired
+ * unredeemed (FRD rule), which cascades their grants and the invite. Chunked so one tick stays
+ * inside D1's per-query limits. Counts include rows removed by cascades.
+ */
+export async function sweepAuth(db: D1Database, now: number): Promise<AuthSweepResult> {
+  const steps: [keyof AuthSweepResult, string][] = [
+    [
+      'challenges',
+      `DELETE FROM webauthn_challenges WHERE rowid IN
+         (SELECT rowid FROM webauthn_challenges WHERE expires_at <= ?1 LIMIT ?2)`,
+    ],
+    [
+      'sessions',
+      `DELETE FROM sessions WHERE rowid IN
+         (SELECT rowid FROM sessions
+           WHERE idle_expires_at <= ?1 OR absolute_expires_at <= ?1 LIMIT ?2)`,
+    ],
+    [
+      'expiredInvitees',
+      `DELETE FROM users WHERE status = 'invited' AND id IN
+         (SELECT i.user_id FROM invites i JOIN users u ON u.id = i.user_id
+           WHERE i.kind = 'signup' AND i.redeemed_at IS NULL AND i.expires_at <= ?1
+             AND u.status = 'invited' LIMIT ?2)`,
+    ],
+  ];
+  const out: AuthSweepResult = { challenges: 0, sessions: 0, expiredInvitees: 0 };
+  for (const [key, sql] of steps) {
+    for (let i = 0; i < SWEEP_MAX_CHUNKS; i++) {
+      const changed = (await db.prepare(sql).bind(now, SWEEP_CHUNK).run()).meta.changes;
+      if (changed === 0) break;
+      out[key] += changed;
+    }
+  }
+  return out;
+}

@@ -37,6 +37,7 @@ import {
   releaseLease,
   seriesEpisodes,
   setNegotiated,
+  sourceStillVisible,
   visibleCandidates,
   type PlayableItemRow,
   type SessionRow,
@@ -415,6 +416,12 @@ export async function handleEvent(
       'expired',
       session.status === 'authorized' ? 'not_started' : 'idle',
     );
+    throw sessionExpired();
+  }
+  // BR-1 holds for the whole session, not only at play time (T5.8 SR-06): once the grant, the
+  // library or the server is gone, keep-alive events must not keep the stream credential alive.
+  if (!session.source_id || !(await sourceStillVisible(db, viewer, session.source_id))) {
+    await endAndRevoke(deps, session, 'ended', 'access_revoked');
     throw sessionExpired();
   }
 

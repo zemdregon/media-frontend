@@ -654,6 +654,20 @@ describe('per-user rate limits (NFR-SEC-008, TDD-D5)', () => {
     expect(userLimiter.keys).toEqual([]);
   });
 
+  it('own-account writes use the mutation budget (T5.8 SR-08)', async () => {
+    const v = await viewer();
+    userLimiter.keys = [];
+    userLimiter.denyAll = true;
+    const options = await api('POST', '/api/v1/me/passkeys/options', { cookie: v.cookie });
+    const prefs = await api('PATCH', '/api/v1/me/preferences', {
+      cookie: v.cookie,
+      body: { theme: 'dark' },
+    });
+    expect([options.status, prefs.status]).toEqual([429, 429]);
+    expect(userLimiter.keys).toEqual([`mutation:${v.id}`, `mutation:${v.id}`]);
+    expect(await count('webauthn_challenges', "purpose = 'add_passkey'")).toBe(0);
+  });
+
   it("one user's exhausted budget does not limit another user", async () => {
     const v = await viewer();
     userLimiter.allow = [`mutation:${operatorId}`]; // only the operator's key passes

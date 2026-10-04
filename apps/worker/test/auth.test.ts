@@ -5,7 +5,7 @@ import type { PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/ser
 import { env } from 'cloudflare:workers';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { PUBLIC_API_ROUTES } from '../src/api/app';
-import { guardChangedStmt, redeemInviteStmt } from '../src/db/auth';
+import { guardChangedStmt, redeemInviteStmt, sweepAuth } from '../src/db/auth';
 import {
   addPasskey,
   call,
@@ -910,5 +910,48 @@ describe('TDD §4: config fails closed', () => {
     };
     expect((await call('GET', '/api/v1/me', { env: prodEnv })).status).toBe(500);
     expect((await call('GET', '/api/v1/health', { env: prodEnv })).status).toBe(200);
+  });
+});
+
+describe('T5.8 SR-03: sweepAuth removes expired auth artefacts (LLD-TOKEN)', () => {
+  const count = async (sql: string): Promise<number> =>
+    (await db.prepare(`SELECT COUNT(*) AS n FROM ${sql}`).first<{ n: number }>())?.n ?? -1;
+
+  it('deletes expired challenges, sessions and expired unredeemed signup invitees only', async () => {
+    const { cookie } = await setupOperator();
+    const live = await viewerSession(cookie, 'Vera');
+    const open = await createInvite(cookie, { displayName: 'Open', role: 'viewer' });
+    const stale = await createInvite(cookie, { displayName: 'Stale', role: 'viewer' });
+    await loginOptions(); // one live challenge
+    const now = Date.now();
+    await db.batch([
+      db
+        .prepare(
+          "INSERT INTO webauthn_challenges (id, challenge, purpose, expires_at) VALUES ('old', 'c', 'login', ?)",
+        )
+        .bind(now - 1),
+      db
+        .prepare(
+          `INSERT INTO sessions (id_hash, user_id, created_at, last_seen_at, idle_expires_at, absolute_expires_at)
+           VALUES ('dead-idle', ?1, 0, 0, ?2, ?3), ('dead-abs', ?1, 0, 0, ?3, ?2)`,
+        )
+        .bind(live.invite.userId, now - 1, now + 86_400_000),
+      db.prepare('UPDATE invites SET expires_at = ? WHERE id = ?').bind(now - 1, stale.id),
+    ]);
+
+    const result = await sweepAuth(db, now);
+    expect(result.challenges).toBe(1);
+    expect(result.sessions).toBe(2);
+    expect(result.expiredInvitees).toBeGreaterThanOrEqual(1);
+    expect(await count("webauthn_challenges WHERE id = 'old'")).toBe(0);
+    expect(await count('webauthn_challenges')).toBe(1);
+    expect(await count("sessions WHERE id_hash IN ('dead-idle','dead-abs')")).toBe(0);
+    expect((await call('GET', '/api/v1/me', { cookie: live.cookie })).status).toBe(200);
+    // The stale invitee and their invite are gone; the open invite and its user are kept.
+    expect(await count(`users WHERE id = '${stale.userId}'`)).toBe(0);
+    expect(await count(`invites WHERE id = '${stale.id}'`)).toBe(0);
+    expect(await count(`users WHERE id = '${open.userId}' AND status = 'invited'`)).toBe(1);
+    // A second run finds nothing.
+    expect(await sweepAuth(db, now)).toEqual({ challenges: 0, sessions: 0, expiredInvitees: 0 });
   });
 });
