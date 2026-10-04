@@ -254,7 +254,7 @@ Both paths share these steps:
 2. The operator brings the new tag into their repository: merge the upstream tag into their fork (the button path) or check out the tag (the manual path).
 3. The deploy runs `migrations apply`, then `wrangler deploy`. Migrations apply in order, so skipping minor versions within one major is safe: every pending expand migration is compatible with the still-running old Worker (§3).
 4. **Crossing a major** (contract migrations): the release notes require upgrading first to the latest minor of the previous major. A contract migration starts with a guard statement that fails the migration if the database has not reached the required earlier migration number. Nothing is half-applied, because D1 applies each migration file as a unit (to verify in M0).
-5. **Schema-skew guard:** if the deployed Worker sees an applied migration number below `SCHEMA_VERSION_REQUIRED` (migrations were skipped), the API returns 503 `MIGRATIONS_PENDING` on every route except health, setup and status. The SPA explains how to run `pnpm run migrate`. This avoids running new code against an old schema.
+5. **Schema-skew guard:** if the deployed Worker sees an applied migration number below `SCHEMA_VERSION_REQUIRED` (migrations were skipped), the API returns 503 `MIGRATIONS_PENDING` on every `/api` route except health (setup is blocked too, because it would fail on a missing schema), and health reports `degraded`. Implemented in `apps/worker/src/platform/schema-version.ts`; the fix is `pnpm run migrate`. `pnpm check:upgrade` rehearses the in-order upgrade. This avoids running new code against an old schema.
 6. If the upgrade misbehaves: `wrangler rollback` for code (§9.4). Restore from the bookmark is the last resort.
 
 ### 9.4 Rollback
