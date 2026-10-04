@@ -143,7 +143,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 | NFR-SEC-005 | Outbound origin requests go only to the registered base URL's host. Redirects to other hosts are refused. | Must | LLD-PROV | M1 | T |
 | NFR-SEC-006 | CI runs dependency vulnerability scanning and secret scanning on every PR. | Should | TDD | M0 | I |
 | NFR-SEC-007 | Session IDs are random (≥ 128 bits), stored only as hashes, and sent in `HttpOnly; Secure; SameSite=Lax` cookies. Idle expiry is 14 days and absolute expiry 90 days *(proposed)*. State-changing requests are rejected unless the `Origin` header matches the app origin. Invite, re-enrollment and setup tokens are stored only as hashes. WebAuthn challenges are single-use with a short TTL. | Must | ADR-0014, LLD-TOKEN | M0 | T |
-| NFR-PRIV-001 | Personal data is limited to email, display name, role, grants and viewing progress and history. The app embeds no third-party analytics or trackers. | Must | TDD | M0 | I |
+| NFR-PRIV-001 | Personal data is limited to display name, role, grants, passkey public-key metadata, and viewing progress and history. Cinewren collects no email address (ADR-0014). The app embeds no third-party analytics or trackers. | Must | TDD | M0 | I |
 | NFR-PERF-001 | At the NFR-SCALE-001 envelope, catalog browse, search and detail API responses have p95 server time ≤ 300 ms *(proposed)*. | Should | LLD-SCHEMA | M5 | A |
 | NFR-PERF-002 | A play request returns its descriptor within p95 ≤ 2 s *(proposed)*, including origin calls. | Should | LLD-SEL | M5 | A |
 | NFR-PERF-003 | The initial route's JavaScript is ≤ 250 KB gzipped *(proposed)*. | Should | TDD | M2 | T |
@@ -155,7 +155,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 | NFR-COMP-001 | The deployment complies with Cloudflare's service-specific terms on video delivery. No video is served through proxied (orange-cloud) hostnames or Tunnel public hostnames on Free, Pro or Business plans. | Must | ADR-0002 | M3 | I |
 | NFR-A11Y-001 | The web UI meets WCAG 2.2 AA *(proposed target)*. The player is fully keyboard operable and supports captions. | Should | TDD | M5 | A, T |
 | NFR-COMPAT-001 | Supported clients are the latest two major versions of Chrome, Edge, Firefox and Safari, on desktop and mobile. | Must | TDD | M3 | T |
-| NFR-OBS-001 | Logs are structured JSON with request ID, user ID (never email) and route. They contain no secrets. Sync runs, play decisions and errors are logged. | Must | TDD | M0 | I, T |
+| NFR-OBS-001 | Logs are structured JSON with request ID, user ID (never display name) and route. They contain no secrets. Sync runs, play decisions and errors are logged. | Must | TDD | M0 | I, T |
 | NFR-OBS-002 | Operational metrics are queryable: sync duration and error counts per server, play-request outcomes and the selection-mode distribution. | Should | TDD | M5 | D |
 | NFR-MAINT-001 | Code is TypeScript in strict mode. Provider adapters are isolated behind IR-002, and each has a contract-test suite run against recorded fixtures. | Must | TDD | M1 | I, T |
 | NFR-MAINT-002 | Documentation and roadmap status are updated in the same change as the behaviour they describe (see [AGENTS.md](../../AGENTS.md)). | Must | — | M0 | I |
