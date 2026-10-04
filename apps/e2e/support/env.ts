@@ -8,9 +8,7 @@ export const ORIGIN_URL = `http://127.0.0.1:${String(ORIGIN_PORT)}`;
 export const SETUP_TOKEN =
   process.env.E2E_SETUP_TOKEN ?? 'e2e-setup-token-0123456789abcdef0123456789abcdef';
 
-/**
- * The catalog read API (T2.4) and sync-runs API (T2.2) are built by other workstreams. Until they
- * are merged, the specs answer those calls with Playwright route mocks (support/catalog-mocks.ts).
- * Set E2E_REAL_CATALOG=1 to skip the mocks and hit the real Worker routes.
- */
-export const MOCK_CATALOG = process.env.E2E_REAL_CATALOG !== '1';
+/** The worker's wrangler project and the persisted local state, for seeding D1 (seed-catalog.sql). */
+export const STATE_DIR = new URL('../.state', import.meta.url).pathname;
+export const WORKER_DIR = new URL('../../worker', import.meta.url).pathname;
+export const SEED_SQL = new URL('../seed-catalog.sql', import.meta.url).pathname;

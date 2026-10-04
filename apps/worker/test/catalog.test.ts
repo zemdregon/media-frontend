@@ -338,8 +338,10 @@ describe('item detail (FR-CAT-005)', () => {
 
     const seasons = await json<Page<ItemCard>>(await get(w.alice, '/items/s-sev/children'));
     expect(seasons.items.map((i) => i.title)).toEqual(['Season 1']);
+    expect(seasons.items[0]).toMatchObject({ seasonNumber: 1, episodeNumber: null });
     const episodes = await json<Page<ItemCard>>(await get(w.alice, '/items/se-1/children'));
     expect(episodes.items.map((i) => i.id)).toEqual(['ep-1', 'ep-2']);
+    expect(episodes.items.map((i) => i.episodeNumber)).toEqual([1, 2]);
     const page = await json<Page<ItemCard>>(await get(w.alice, '/items/se-1/children?limit=1'));
     expect(ids(page)).toEqual(['ep-1']);
     const next = await json<Page<ItemCard>>(

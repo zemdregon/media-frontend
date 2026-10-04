@@ -207,10 +207,11 @@ it('title detail shows the versions badge, server count, copies table and cast',
 });
 
 it('title detail uses the singular for one server', async () => {
-  renderApp('/items/m1', viewer, () => [
-    200,
-    detail({ id: 'm1', title: 'Detour', serverCount: 1 }),
-  ]);
+  renderApp('/items/m1', viewer, (_m, p) =>
+    p === '/items/m1/versions'
+      ? [200, []]
+      : [200, detail({ id: 'm1', title: 'Detour', serverCount: 1 })],
+  );
   expect(await screen.findByText('Available from 1 server')).toBeInTheDocument();
 });
 
@@ -221,8 +222,7 @@ it('an unknown title shows a not-found state, not a crash', async () => {
 
 it('series detail lists seasons as a radio group and loads the chosen season', async () => {
   renderApp('/items/sr1', viewer, (_m, p) => {
-    if (p === '/items/sr1')
-      return [200, detail({ id: 'sr1', title: 'Dragnet', type: 'series', copies: [] })];
+    if (p === '/items/sr1') return [200, detail({ id: 'sr1', title: 'Dragnet', type: 'series' })];
     if (p.startsWith('/items/sr1/children'))
       return [
         200,

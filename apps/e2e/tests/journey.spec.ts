@@ -3,20 +3,21 @@
  * mock origin as a server through the UI, browse, open a title, and check accessibility (axe) in
  * both themes. One serial flow on one page, because the journey owns the database.
  *
- * Real: Worker, D1, sessions, passkey ceremonies, server registration against the mock origin.
- * Mocked (support/catalog-mocks.ts, until the endpoints merge): catalog reads, sync-runs and
- * PATCH /me/preferences. Set E2E_REAL_CATALOG=1 to use the real routes instead.
+ * Real: Worker, D1, sessions, passkey ceremonies, server registration against the mock origin,
+ * the catalog read API and PATCH /me/preferences.
+ * Mocked (support/catalog-mocks.ts, until workstream A merges): the sync-runs API only.
+ * Temporary: with no sync yet, catalog rows are seeded straight into local D1 (seed-catalog.sql).
  */
+import { execFileSync } from 'node:child_process';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { addVirtualAuthenticator } from '../support/authenticator';
-import { mockCatalog, type MockState } from '../support/catalog-mocks';
-import { BASE_URL, MOCK_CATALOG, ORIGIN_URL, SETUP_TOKEN } from '../support/env';
+import { mockSyncApi } from '../support/catalog-mocks';
+import { BASE_URL, ORIGIN_URL, SEED_SQL, SETUP_TOKEN, STATE_DIR, WORKER_DIR } from '../support/env';
 
 test.describe.configure({ mode: 'serial' });
 
 let page: Page;
-let mocks: MockState | null = null;
 const thirdParty: string[] = [];
 const cspMessages: string[] = [];
 const pageErrors: string[] = [];
@@ -27,7 +28,7 @@ test.beforeAll(async ({ browser }) => {
   const context = await browser.newContext();
   page = await context.newPage();
   await addVirtualAuthenticator(page);
-  if (MOCK_CATALOG) mocks = await mockCatalog(page);
+  await mockSyncApi(page);
   page.on('request', (req) => {
     const url = req.url();
     if (!url.startsWith(BASE_URL) && !url.startsWith('data:') && !url.startsWith('blob:')) {
@@ -107,6 +108,25 @@ test('sync status page shows the last run and outcome', async () => {
   await expectAccessible('sync status');
 });
 
+test('TEMPORARY: seed catalog rows into local D1 until sync lands', () => {
+  execFileSync(
+    'pnpm',
+    [
+      'exec',
+      'wrangler',
+      'd1',
+      'execute',
+      'cinewren-local',
+      '--local',
+      '--persist-to',
+      STATE_DIR,
+      '--file',
+      SEED_SQL,
+    ],
+    { cwd: WORKER_DIR, stdio: 'inherit', env: { ...process.env, CI: '1' } },
+  );
+});
+
 test('sign out, then sign in again with the passkey', async () => {
   await page.getByRole('link', { name: `Account, ${OPERATOR}` }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
@@ -120,9 +140,7 @@ test('sign out, then sign in again with the passkey', async () => {
 
 test('home lists recently added titles', async () => {
   await expect(page.getByRole('heading', { level: 2, name: /Recently added/ })).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: /Night of the Living Dead, 1968, 2 copies/ }),
-  ).toBeVisible();
+  await expect(page.getByRole('link', { name: /Night of the Living Dead, 1968/ })).toBeVisible();
   await expectAccessible('home');
 });
 
@@ -146,7 +164,7 @@ test('browse Movies with a filter, then open a title', async () => {
   ).toBeVisible();
   await expect(page.getByLabel('Versions: 4K HDR, 1080p')).toBeVisible();
   await expect(page.getByText('Available from 2 servers')).toBeVisible();
-  await expect(page.getByRole('table')).toContainText('BEST');
+  await expect(page.getByRole('table')).toContainText('Seedbox');
   await expectAccessible('title detail');
 });
 
@@ -203,14 +221,17 @@ test('the theme follows prefers-color-scheme, and the per-user override wins and
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   expect(await bg()).toBe('rgb(250, 246, 238)');
   await expect(page.getByText('Appearance saved.')).toBeVisible();
-  if (mocks) {
-    expect(mocks.preferenceCalls).toContainEqual({ theme: 'light' });
-  } else {
-    // Real backend: the preference is stored per user and comes back from GET /me.
-    await page.reload();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  }
+  // The preference is stored per user by PATCH /me/preferences and survives a reload.
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await bg()).toBe('rgb(250, 246, 238)');
+  await expect(page.getByRole('radio', { name: 'Light' })).toBeChecked();
+  const me = await page.request.get('/api/v1/me');
+  expect(((await me.json()) as { preferences: { theme: string } }).preferences.theme).toBe('light');
+
   await page.getByRole('radio', { name: 'System' }).check({ force: true });
+  await expect(page.getByText('Appearance saved.')).toBeVisible();
+  await page.reload();
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/);
   await page.emulateMedia({ colorScheme: null });
 });
