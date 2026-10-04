@@ -220,7 +220,7 @@ test('browse Movies with a filter, then open a title', async () => {
   ).toBeVisible();
   await expect(page.getByLabel(/^Versions: /)).toBeVisible();
   await expect(page.getByText('Available from 1 server', { exact: true })).toBeVisible();
-  await expect(page.getByRole('table')).toContainText('Mock Jellyfin');
+  await expect(page.getByRole('radiogroup')).toContainText('Mock Jellyfin');
   await expectAccessible('title detail');
 });
 
