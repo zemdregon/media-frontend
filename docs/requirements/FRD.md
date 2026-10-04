@@ -356,6 +356,15 @@ The only routes reachable without a session are static assets, setup (with the t
 
 **Postconditions**: operator-visible entry in the audit log, with no secret values.
 
+### Settings behaviour: theme preference
+
+Related SRS: NFR-UX-001. **Owner decision (2026-10-04, Q-8):** v1 ships dark and light themes ([UX](../design/UX.md)).
+
+1. By default the UI follows the browser's `prefers-color-scheme`.
+2. A user can override it in their settings with dark, light or system. The choice is stored per user and applies on their other devices after sign-in.
+3. Both themes use one token set and each meets NFR-A11Y-001 contrast independently.
+4. If the stored preference cannot be read, the UI falls back to the system setting.
+
 ## Business rules
 
 This is the canonical home of BR-1 to BR-10. Other documents reference them by ID. Values marked *(proposed)* are agent proposals.
