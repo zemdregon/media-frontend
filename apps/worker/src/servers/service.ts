@@ -526,3 +526,27 @@ export async function setLibraryEnabled(
   if (!fresh) throw notFound();
   return toLibrary(fresh);
 }
+
+/**
+ * A provider context for a registered server, with its credential opened from the vault. For the
+ * read paths that call an origin on a user's behalf (artwork, FR-CAT-009); the secret stays inside
+ * the returned context and never reaches a response. Null when the server is gone, disabled or
+ * being removed.
+ */
+export async function providerContextForServer(
+  c: Context<AppEnv>,
+  serverId: string,
+): Promise<{ ctx: ProviderContext; type: ServerRow['type'] } | null> {
+  const row = await getServer(c.env.DB, serverId);
+  if (!row || row.status === 'removing' || row.status === 'disabled') return null;
+  const secret = await openSecret(c, await keyringOrFail(c), row);
+  const baseUrl = new URL(row.base_url);
+  return {
+    ctx: contextFor(
+      c,
+      { id: row.id, type: row.type, baseUrl, originServerId: row.origin_server_id },
+      secret,
+    ),
+    type: row.type,
+  };
+}

@@ -1,0 +1,3 @@
+# Exact-fingerprint ignores for reviewed false positives (gitleaks scans full history).
+# Synthetic test password, not a real credential; replaced with an obviously fake value in a later commit.
+06f9b730aa5f729ad1da46290ef1a433c3ab2689:apps/worker/test/servers.test.ts:generic-api-key:43
