@@ -41,8 +41,9 @@ How the risk is reduced:
 - Every statement uses `prepare().bind()`. String-concatenated SQL is banned by a lint rule (template literals passed to `prepare` must be constants).
 
 Verified D1 facts this relies on:
-- D1 supports the FTS5 module, including `fts5vocab` (https://developers.cloudflare.com/d1/sql-api/sql-statements/).
+- D1 supports the FTS5 module, including `fts5vocab` (https://developers.cloudflare.com/d1/sql-api/sql-statements/ (checked 2026-10-04)).
 - `batch()` runs its statements as one SQL transaction. If any statement fails, the whole sequence is rolled back (https://developers.cloudflare.com/d1/worker-api/d1-database/).
+- Cloudflare Queues are available on the Free and Paid plans (https://developers.cloudflare.com/changelog/post/2026-02-04-queues-free-plan/ (checked 2026-10-04)).
 - Foreign keys are enforced by default, `ON DELETE CASCADE` is supported, and `PRAGMA defer_foreign_keys` can be used inside migrations (https://developers.cloudflare.com/d1/sql-api/foreign-keys/).
 - D1 automatically retries read-only queries up to two times. Writes are not retried, so writes must be idempotent if the application retries them (https://developers.cloudflare.com/d1/observability/debug-d1/).
 - Per-query limits (for example, bound parameters per statement and query duration) are on https://developers.cloudflare.com/d1/platform/limits/. LLD batch chunk sizes must respect those limits; check the numbers in M0.
@@ -63,7 +64,7 @@ Rules:
 
 ## 4. Configuration and secrets
 
-Non-secret settings are Wrangler `vars`, defined per environment. Secrets are set with `wrangler secret put`. Mandatory secrets are listed under `secrets.required`, so a deploy fails when one is missing (SPINE verified fact; https://developers.cloudflare.com/workers/configuration/secrets/). A secret is never placed in `vars`. Locally, secrets live in `.dev.vars`, which is git-ignored.
+Non-secret settings are Wrangler `vars`, defined per environment. Secrets are set with `wrangler secret put`. Mandatory secrets are listed under `secrets.required`, so a deploy fails when one is missing (https://developers.cloudflare.com/workers/configuration/secrets/ (checked 2026-10-04)). A secret is never placed in `vars`. Locally, secrets live in `.dev.vars`, which is git-ignored.
 
 | Key | Kind | Default | Purpose / requirement |
 |---|---|---|---|
@@ -82,11 +83,12 @@ Non-secret settings are Wrangler `vars`, defined per environment. Secrets are se
 | `RETENTION_*_DAYS` | var | per DR-003 *(proposed)* | Retention job (LLD-SYNC). |
 | `SESSION_IDLE_DAYS` / `SESSION_ABSOLUTE_DAYS` | var | `14` / `90` *(proposed)* | NFR-SEC-007. |
 | `INVITE_TTL_DAYS` / `REENROLL_TTL_HOURS` | var | `7` / `24` *(proposed)* | FR-USR-002, FR-USR-007. |
-| `RATE_PLAY_PER_MIN` / `RATE_MUTATION_PER_MIN` / `RATE_AUTH_PER_MIN` | binding config | `60` / `600` / `10` *(proposed)* | NFR-SEC-004 (§6.3). |
+| `RATE_PLAY_PER_MIN` / `RATE_MUTATION_PER_MIN` | binding config | `60` / `600` *(proposed)* | NFR-SEC-008 (§6.3), M5. |
+| `RATE_AUTH_PER_MIN` | binding config | `10` *(proposed)* | NFR-SEC-004 (§6.3), M0. |
 
 Bindings: `DB` (D1), `JOBS_QUEUE` (Queue producer and consumer, with dead-letter queue `cinewren-jobs-dlq-<env>`; see [LLD-SYNC](LLD.md#lld-sync--sync-health-probing--retention-jobs)), `ASSETS` (Static Assets), `RL_PLAY`, `RL_MUTATION` and `RL_AUTH` (rate limit).
 
-**Decision TDD-D3: one scheduler tick.** Cron Trigger expressions are fixed in the Wrangler config, but FR-SYNC-001 requires configurable intervals. So there is one cron, `*/5 * * * *`, that runs the scheduler. On each tick the scheduler compares every server's last runs with the configured intervals and decides what is due: syncs, probes, and the playback-session sweep. A second cron runs daily (`17 3 * * *`, proposed) for retention. That uses 2 of the Free-plan limit of 5 cron triggers per account (SPINE verified fact). Intervals therefore have a granularity of 5 minutes.
+**Decision TDD-D3: one scheduler tick.** Cron Trigger expressions are fixed in the Wrangler config, but FR-SYNC-001 requires configurable intervals. So there is one cron, `*/5 * * * *`, that runs the scheduler. On each tick the scheduler compares every server's last runs with the configured intervals and decides what is due: syncs, probes, and the playback-session sweep. A second cron runs daily (`17 3 * * *`, proposed) for retention. That uses 2 of the Free-plan limit of 5 cron triggers per account (https://developers.cloudflare.com/workers/platform/limits/ (checked 2026-10-04)). Intervals therefore have a granularity of 5 minutes.
 
 ## 5. Environments and authentication
 
@@ -105,13 +107,13 @@ Schemas and endpoint contracts are in [LLD-SCHEMA](LLD.md#lld-schema--d1-schema-
 | Concern | Implementation |
 |---|---|
 | Registration and login | WebAuthn ceremonies via `@simplewebauthn`. `userVerification: "required"`, `residentKey: "required"` (discoverable credentials, so login needs no username), attestation `none`. Expected origin = `APP_ORIGIN`, RP ID = `RP_ID`. |
-| Challenges | 32 random bytes, stored in `webauthn_challenges` with a 5 min TTL *(proposed)* and bound to a purpose (`setup`, `register`, `login`, `add_passkey`). Deleted on first use, whether or not verification succeeds (NFR-SEC-007). |
+| Challenges | 32 random bytes, stored in `webauthn_challenges` with a 5 min TTL *(proposed)* and bound to a purpose (`setup`, `signup`, `reenroll`, `login`, `add_passkey`). Deleted on first use, whether or not verification succeeds (NFR-SEC-007). |
 | Sessions | The session ID is 32 random bytes (≥ 128 bits), sent as cookie `__Host-cw_session` with `HttpOnly; Secure; SameSite=Lax; Path=/`, and stored only as a SHA-256 hash. Idle expiry is 14 days and absolute expiry 90 days *(proposed)*. `last_seen_at` is refreshed at most once per hour so reads do not cost a write each time. |
 | CSRF | Every non-GET/HEAD request must carry an `Origin` header equal to `APP_ORIGIN`, or it gets 403 `CSRF_REJECTED`. Combined with `SameSite=Lax`, this is the CSRF control. The API accepts only `application/json` bodies (415 otherwise), which rules out cross-site form posts. |
 | Invite, re-enrollment and setup tokens | 32 random bytes, base64url-encoded in the link fragment (`/invite#t=…`) so they do not appear in server logs or `Referer` headers. The SPA posts the token in the request body. The database stores only SHA-256 hashes. Tokens are single-use; consumption is a compare-and-set in the same `batch` that creates the user or passkey. |
-| First-operator bootstrap | `/setup` is enabled only while `SELECT COUNT(*) FROM users WHERE role='operator'` is 0 **and** the posted token matches `SETUP_TOKEN` in constant time. A guarded insert closes the race between two concurrent setups. Afterwards every `/setup` endpoint returns 404. |
+| First-operator bootstrap | `/setup` is enabled only while `SELECT COUNT(*) FROM users WHERE role='operator'` is 0 **and** the posted token matches `SETUP_TOKEN` in constant time. A guarded insert closes the race between two concurrent setups. Afterwards every `/setup` endpoint returns 404 `NOT_FOUND`, and so does a request with an invalid token while setup is enabled, so a disabled setup and a wrong token are indistinguishable. |
 | Recovery of the last operator | `pnpm cinewren:recovery-link --user <id> --env production` runs locally with the operator's Cloudflare credentials. It generates a token, inserts its hash as a `reenroll` invite through `wrangler d1 execute --remote`, and prints the link. Access to the Cloudflare account is the proof of authority (FR-USR-007). The command writes an `audit_log` row. |
-| Disable or delete user | One `batch` updates or deletes the user and deletes all their `sessions` rows, so access ends on the next request (FR-USR-004). |
+| Disable or delete user | One `batch` updates or deletes the user and deletes all their `sessions` rows, so access ends on the next request (FR-USR-008). |
 | Health | `GET /api/v1/health` needs no authentication and returns only `{status:"ok"\|"degraded"}` (FR-OPS-007). Details are on the operator-only `/api/v1/admin/status`. |
 
 **No authentication bypass (resolves SDD OD-3).** The Worker contains no code path that skips authentication in any mode. Local development uses real passkeys on `localhost`. Tests get sessions in two ways:
@@ -152,9 +154,9 @@ frame-ancestors 'none'; base-uri 'none'; form-action 'self'
 - **Decision TDD-D4: metrics come from D1, not from an extra product.** NFR-OBS-002 metrics are SQL views over `sync_runs` (duration and errors per server), `playback_sessions` (outcome and mode distribution) and `health_probes`. An operator page shows them. Workers Analytics Engine is an option if query cost becomes a problem; it is not adopted.
 - There are no third-party analytics or error trackers (NFR-PRIV-001).
 
-### 6.3 Rate limiting (NFR-SEC-004)
+### 6.3 Rate limiting (NFR-SEC-004, NFR-SEC-008)
 
-**Decision TDD-D5 (resolves SDD OD-1):** use the Workers rate limiting binding, keyed by `user_id`. `RL_PLAY` allows 60 requests per 60 s for `POST /api/v1/play`. `RL_MUTATION` allows 600 per 60 s for progress events and operator mutations (both proposed). Verified behaviour: the period must be 10 or 60 seconds; limits apply per Cloudflare location; counting is permissive and eventually consistent (https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/). That is good enough for abuse protection by a small invited group. It is not a quota system. `RL_AUTH` allows 10 requests per 60 s per client IP (`CF-Connecting-IP`) on the setup, invite-redemption, re-enrollment and login endpoints *(proposed)*, as a brake on token guessing. Tokens carry 256 bits, so the limiter is defence in depth, not the main control. A request over the limit gets 429 `RATE_LIMITED` with `Retry-After: 60` ([LLD-ERR](LLD.md#lld-err--error-handling-retries-idempotency--concurrency)).
+**Decision TDD-D5 (resolves SDD OD-1):** use the Workers rate limiting binding. The per-user limits (NFR-SEC-008, M5) are keyed by `user_id`; the per-IP auth limit (NFR-SEC-004, M0) is described below. `RL_PLAY` allows 60 requests per 60 s for `POST /api/v1/play`. `RL_MUTATION` allows 600 per 60 s for progress events and operator mutations (both proposed). Verified behaviour: the period must be 10 or 60 seconds; limits apply per Cloudflare location; counting is permissive and eventually consistent (https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/). That is good enough for abuse protection by a small invited group. It is not a quota system. `RL_AUTH` allows 10 requests per 60 s per client IP (`CF-Connecting-IP`) on the setup, invite-redemption (which includes re-enrollment) and login endpoints only *(proposed; NFR-SEC-004)*, as a brake on token guessing. Tokens carry 256 bits, so the limiter is defence in depth, not the main control. A request over the limit gets 429 `RATE_LIMITED` with `Retry-After: 60` ([LLD-ERR](LLD.md#lld-err--error-handling-retries-idempotency--concurrency)).
 
 ### 6.4 Outbound origin requests (NFR-SEC-005, FR-SRV-007)
 
@@ -162,7 +164,7 @@ There is a single `originFetch` wrapper and no other code calls `fetch` against 
 - It sends requests only to the server's registered scheme, host and port.
 - It sets `redirect: "manual"`. A 3xx response whose target is another host is refused with `ORIGIN_REDIRECT_REFUSED`; a same-host redirect is followed at most 3 times.
 - It applies per-call timeouts (default 10 s for sync and 5 s for probes and the play path, proposed) and the retry policy in LLD-ERR.
-- It counts calls against the subrequest budget. Paid plans default to 10,000 subrequests and 6 simultaneous outgoing connections per invocation (SPINE verified fact), so concurrency is capped at 6.
+- It counts calls against the subrequest budget. Paid plans default to 10,000 subrequests and 6 simultaneous outgoing connections per invocation (https://developers.cloudflare.com/workers/platform/limits/ (checked 2026-10-04)), so concurrency is capped at 6.
 
 ### 6.5 Artwork caching (ADR-0012)
 
@@ -247,7 +249,7 @@ Both paths share these steps:
 
 | Mechanism | What | Notes |
 |---|---|---|
-| D1 Time Travel | Whole database, restorable to any minute within 30 days (Workers Paid) or 7 days (Free). `wrangler d1 time-travel restore <db> --timestamp=…` or `--bookmark=…`. The restore **overwrites the database in place**. | https://developers.cloudflare.com/d1/reference/time-travel/. Meets RPO ≤ 24 h (proposed). Before restoring, run `wrangler d1 time-travel info` and record the current bookmark, so the restore itself can be undone. |
+| D1 Time Travel | Whole database, restorable to any minute within 30 days (Workers Paid) or 7 days (Free). `wrangler d1 time-travel restore <db> --timestamp=…` or `--bookmark=…`. The restore **overwrites the database in place**. | https://developers.cloudflare.com/d1/reference/time-travel/ (checked 2026-10-04). Meets RPO ≤ 24 h (proposed). Before restoring, run `wrangler d1 time-travel info` and record the current bookmark, so the restore itself can be undone. |
 | Application export (FR-OPS-006) | Primary data as JSON, no secrets ([LLD-API](LLD.md#lld-api--platform-http-api-contracts)) | A portable copy the operator controls. It works with any schema version that has an importer. |
 | `wrangler d1 export` | SQL dump | **Not supported while virtual tables exist.** The workaround is to drop them, export and recreate them (https://developers.cloudflare.com/d1/best-practices/import-export-data/). Because the FTS table is derived (§3, rule 5), the runbook is: drop `media_items_fts`, export, then run `rebuildSearchIndex`. Search is degraded until the rebuild finishes. |
 
@@ -284,7 +286,7 @@ The origin makes the final mode decision. Cinewren sends the capabilities, trans
 
 ### 11.4 Player behaviour
 
-Resume offers follow BR-7 (FR-PROG-002). Progress is reported every 15 s *(proposed)* and on `pause`, `seeked`, `ended` and `visibilitychange→hidden`; the last of these uses `navigator.sendBeacon`, falling back to `fetch(…, {keepalive:true})` (FR-PROG-001). If no `playing` event arrives within 15 s *(proposed)*, or on a fatal `MediaError` or hls.js error, the client sends a replacement request that excludes the failed sources (FR-PLAY-004). Keyboard controls and caption toggling are covered by NFR-A11Y-001 tests.
+Resume offers follow BR-7 (FR-PROG-002). Progress is reported every 15 s *(proposed)* and on `pause`, `seeked`, `ended` and `visibilitychange→hidden`; the last of these uses `navigator.sendBeacon`, falling back to `fetch(…, {keepalive:true})` (FR-PROG-001). If no `playing` event arrives within 15 s *(proposed)*, or on a fatal `MediaError` or hls.js error, the client sends a replacement request that excludes the failed sources (in-request and client failover are FR-PLAY-004, delivered in M3). Keyboard controls and caption toggling are covered by NFR-A11Y-001 tests.
 
 ## 12. Performance budgets
 
@@ -292,9 +294,9 @@ Resume offers follow BR-7 (FR-PROG-002). Progress is reported every 15 s *(propo
 |---|---|---|---|
 | Catalog API p95 server time | ≤ 300 ms *(proposed)* | NFR-PERF-001 | Load script against staging seeded at the envelope (200k sources) |
 | D1 queries per catalog request | ≤ 3 *(proposed)* | NFR-PERF-001 | Integration test counts statements through a wrapped binding |
-| Play descriptor p95 | ≤ 2 s *(proposed)* | NFR-PERF-002 | Origin calls on the play path ≤ 3 (session credential, negotiation, optional subtitle info), each with a 5 s timeout and at most one retry |
+| Play descriptor p95 | ≤ 2 s *(proposed)* | NFR-PERF-002 | Origin calls on the play path ≤ 3 (session credential (pending ADR-0013 / M1 spike), negotiation, optional subtitle info), each with a 5 s timeout and at most one retry |
 | Initial route JS | ≤ 250 KB gzip *(proposed)* | NFR-PERF-003 | CI bundle check; hls.js and admin routes lazy-loaded |
-| Sync throughput | Full sync of 200k sources inside the 24 h interval with margin | FR-SYNC-001, NFR-SCALE-001 | Analysis in M5. Each consumer invocation is bounded at 15 min (SPINE verified fact), and the run continues across invocations (LLD-SYNC). |
+| Sync throughput | Full sync of 200k sources inside the 24 h interval with margin | FR-SYNC-001, NFR-SCALE-001 | Analysis in M5. Each consumer invocation is bounded at 15 min (https://developers.cloudflare.com/workers/platform/limits/ (checked 2026-10-04)), and the run continues across invocations (LLD-SYNC). |
 | D1 writes | Full sync rewrites `last_seen_sync_id` for each source: about 200k rows/day, about 6M/month, within the 50M rows included in Workers Paid | NFR-COST-001 | Cost worksheet. If this ever matters, only touch rows that were not already seen in this run. |
 
 ## 13. Migration considerations
@@ -321,7 +323,7 @@ There is no legacy system to migrate from. The design keeps these future changes
 | — | Credential encryption | Yes: [ADR-0008](../adr/0008-origin-service-accounts-and-credential-encryption.md) |
 | — | Cron + Queues sync | Yes: [ADR-0009](../adr/0009-pull-based-sync-cron-and-queues.md) |
 | — | Artwork proxy + cache | Yes: [ADR-0012](../adr/0012-artwork-proxy-with-edge-cache.md). It stands now that Access is not used. A custom domain is required for edge caching (§6.5). |
-| — | Session-scoped stream credentials | Yes: [ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md) (Proposed) |
+| — | Session-scoped stream credentials | Yes: [ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md) (Proposed; pending ADR-0013 / M1 spike) |
 | TDD-D1 | Raw SQL with typed helpers, no ORM | No: reversible within the `db/` module |
 | TDD-D2 | Wrangler built-in D1 migrations, forward-only, expand/contract | No: implements DR-004 |
 | TDD-D3 | One 5-minute scheduler cron plus a daily retention cron | No |

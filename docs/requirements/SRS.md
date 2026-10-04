@@ -69,7 +69,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 | FR-PLAY-001 | A play request for an item, or for a specific episode, returns a playback descriptor. The descriptor contains the selected source, an origin stream URL, the mode (`direct_play`, `direct_stream` or `transcode`), available audio and subtitle tracks, a session ID and an expiry. | Must | CAP-6, WF-5 | C-PLAY, LLD-API | M3 | T |
 | FR-PLAY-002 | Every play request includes the client's device capabilities. These are supported containers, video and audio codecs, maximum resolution and HDR support. | Must | WF-5 | C-WEB, LLD-SEL | M3 | T |
 | FR-PLAY-003 | Without a user override, the system picks the source with the deterministic algorithm in BR-5 / LLD-SEL. | Must | CAP-6, BR-5 | C-PLAY, LLD-SEL | M3 | T |
-| FR-PLAY-004 | If a selected source fails to start, the client can request a replacement. The request excludes the failed sources, and the system returns the next-best source or a clear "no playable source" error. | Should | CAP-10, WF-5 | C-PLAY, LLD-SEL | M5 | T |
+| FR-PLAY-004 | If a selected source fails to start, the client can request a replacement. The request excludes the failed sources, and the system returns the next-best source or a clear "no playable source" error. | Should | CAP-10, WF-5 | C-PLAY, LLD-SEL | M3 | T |
 | FR-PLAY-005 | A user can choose a specific version or source manually. The choice overrides automatic selection for that play request. | Should | CAP-7 | C-PLAY, LLD-API | M3 | T |
 | FR-PLAY-006 | A user can choose the audio track and subtitle track, including none. Text subtitles are delivered as WebVTT. The origin burns image-based subtitles into a transcode. | Must | CAP-11 | C-PLAY, C-WEB, LLD-PROV | M3 | T |
 | FR-PLAY-007 | The credential embedded in a stream URL is scoped to one playback session. It cannot authorize administrative actions, and it is revoked or expires when the session ends or expires (BR-6, BR-9). | Must | BR-6, BR-9 | ADR-0013, LLD-TOKEN | M3 | T, I |
@@ -89,13 +89,14 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 
 | ID | Requirement | Pri | Source | Design | MS | Verify |
 |---|---|---|---|---|---|---|
-| FR-USR-001 | Users authenticate with WebAuthn passkeys only. Every application and API route requires a valid session, except the public setup, invite-redemption, login and health endpoints. Requests without a valid session get 401. | Must | CAP-9, WF-7 | C-AUTH, ADR-0014 | M0 | T |
+| FR-USR-001 | Users authenticate with WebAuthn passkeys only. Every application and API route requires a valid session, except static assets and the public setup, invite-redemption, login and health endpoints. Requests without a valid session get 401. | Must | CAP-9, WF-7 | C-AUTH, ADR-0014 | M0 | T |
 | FR-USR-002 | Accounts can be created only by redeeming a valid operator-issued invite link: single-use, unexpired (7 days *(proposed)*), not revoked. Redeeming it registers a passkey. The first operator is created through the `/setup` flow, which needs the `SETUP_TOKEN` secret and is disabled once any operator exists. No other account-creation path exists. | Must | WF-7 | C-AUTH, ADR-0014, LLD-SCHEMA | M0 | T |
 | FR-USR-003 | There are two roles, `operator` and `viewer`. The server enforces operator-only endpoints on every request. | Must | BR-8 | C-AUTH, LLD-API | M0 | T |
-| FR-USR-004 | An operator can create, list and revoke invites, each carrying a role and default grants. An operator can disable, re-enable and delete users. Disabling or deleting a user revokes their sessions immediately. Deleting a user removes their personal data per DR-005. | Must | CAP-9, WF-7 | C-API, ADR-0014, LLD-SCHEMA | M2 | T |
+| FR-USR-004 | An operator can create, list and revoke invites. Each invite carries a display name, a role and default grants. | Must | CAP-9, WF-7 | C-API, ADR-0014, LLD-SCHEMA | M0 | T |
 | FR-USR-005 | An operator can grant or revoke a viewer's access to each enabled library. A new viewer's grants default to the set chosen at invitation, which defaults to all enabled libraries. Operators implicitly have access to every enabled library, which they need for curation. | Must | CAP-9, BR-1 | C-AUTH, LLD-SCHEMA | M2 | T |
 | FR-USR-006 | A user can sign out, which revokes the current session. A user can list, add and remove their own passkeys, but cannot remove their last one. | Must | CAP-9 | C-AUTH, LLD-API | M0 | T |
 | FR-USR-007 | An operator can issue a single-use re-enrollment link (24 h expiry, *proposed*) that adds a passkey to an existing user's account. A documented command-line procedure, run with Cloudflare account access, issues a recovery link for an operator who has lost every passkey. | Should | CAP-9, WF-7 | ADR-0014, LLD-API | M2 | T, D |
+| FR-USR-008 | An operator can disable, re-enable and delete users. Disabling or deleting a user revokes their sessions immediately. Deleting removes their personal data per DR-005. BR-8 protects the last operator. | Must | CAP-9, WF-7, BR-8 | C-API, LLD-SCHEMA | M2 | T |
 
 ### 3.7 Operations (FR-OPS)
 
@@ -128,7 +129,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 |---|---|---|---|---|---|
 | DR-001 | Cloudflare D1 is the system of record. **Primary data** is users, grants, progress, curation overrides, server configuration and the audit log. **Derived data** is the catalog, rebuildable from origins by a full sync. | Must | ADR-0006, LLD-SCHEMA | M0 | I |
 | DR-002 | Origin credentials are encrypted at rest with AES-256-GCM, using a key held in a Worker secret. Each ciphertext records its key version, so keys can be rotated. The operator keeps an offline copy of the key, as the setup guide requires. If the key is lost, credentials must be re-entered, but the catalog and primary data are unaffected. | Must | ADR-0008, LLD-TOKEN | M1 | T |
-| DR-003 | Retention *(all proposed)*: missing sources are purged 30 days after being marked missing. Sync-run history is kept 90 days, playback-session records 30 days, health-probe history 7 days and the audit log 365 days. Progress is kept until the user is deleted. | Must | LLD-SYNC | M2, M5 | T |
+| DR-003 | Retention *(all proposed)*: missing sources are purged 30 days after being marked missing. Sync-run history is kept 90 days, playback-session records 30 days, health-probe history 7 days and the audit log 365 days. Progress is kept until the user is deleted, or until its item is purged under DR-005, whichever comes first. | Must | LLD-SYNC | M2, M5 | T |
 | DR-004 | Schema changes use versioned, forward-only D1 migrations. Each migration stays compatible with the previously deployed Worker version (expand → migrate → contract). | Must | TDD, LLD-SCHEMA | M0 | I |
 | DR-005 | Deletion cascades. Deleting a user removes their progress, playback sessions and grants, and anonymizes their audit-log references. Removing a server removes its credentials, libraries and sources. A canonical item is removed only when its last source is purged (DR-003 retention) or removed with its server. Its progress records and curation overrides are removed with it. Items whose sources are all `missing` are hidden, not deleted, so progress survives temporary absences. | Must | LLD-SCHEMA | M2 | T |
 
@@ -139,7 +140,8 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 | NFR-SEC-001 | Origin credentials and service-account tokens never reach the browser, logs, error messages or exports. The only exception is the session-scoped stream credential under FR-PLAY-007. | Must | ADR-0008, ADR-0013 | M1 | T, I |
 | NFR-SEC-002 | All authorization is enforced server-side. Each request that addresses a resource by ID checks the caller's access to that resource. | Must | C-AUTH | M0 | T |
 | NFR-SEC-003 | The app is served over HTTPS only, with HSTS. A Content-Security-Policy limits `script-src` to self. `media-src` and `connect-src` are limited to self plus the registered origin hostnames, generated from server configuration. | Must | TDD, LLD-API | M3 | T |
-| NFR-SEC-004 | Play, progress and operator mutation endpoints are rate limited per user *(proposed: 60 play requests/min, 600 mutations/min)*. Setup, invite-redemption and login endpoints are rate limited per client IP *(proposed: 10/min)*. | Must | TDD, ADR-0014 | M0 | T |
+| NFR-SEC-004 | Setup, invite-redemption and login endpoints are rate limited per client IP *(proposed: 10 requests/min)*. | Must | TDD, ADR-0014 | M0 | T |
+| NFR-SEC-008 | Play, progress and operator mutation endpoints are rate limited per user *(proposed: 60 play requests/min, 600 mutations/min)*. | Should | TDD | M5 | T |
 | NFR-SEC-005 | Outbound origin requests go only to the registered base URL's host. Redirects to other hosts are refused. | Must | LLD-PROV | M1 | T |
 | NFR-SEC-006 | CI runs dependency vulnerability scanning and secret scanning on every PR. | Should | TDD | M0 | I |
 | NFR-SEC-007 | Session IDs are random (≥ 128 bits), stored only as hashes, and sent in `HttpOnly; Secure; SameSite=Lax` cookies. Idle expiry is 14 days and absolute expiry 90 days *(proposed)*. State-changing requests are rejected unless the `Origin` header matches the app origin. Invite, re-enrollment and setup tokens are stored only as hashes. WebAuthn challenges are single-use with a short TTL. | Must | ADR-0014, LLD-TOKEN | M0 | T |
@@ -154,7 +156,7 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 | NFR-COST-001 | No media stream bytes pass through Cloudflare. At the design envelope, Cloudflare spend stays within the Workers Paid base fee plus small usage *(proposed target: ≤ US$10/month)*. | Should | ADR-0002 | M5 | A |
 | NFR-COMP-001 | The deployment complies with Cloudflare's service-specific terms on video delivery. No video is served through proxied (orange-cloud) hostnames or Tunnel public hostnames on Free, Pro or Business plans. | Must | ADR-0002 | M3 | I |
 | NFR-A11Y-001 | The web UI meets WCAG 2.2 AA *(proposed target)*. The player is fully keyboard operable and supports captions. | Should | TDD | M5 | A, T |
-| NFR-COMPAT-001 | Supported clients are the latest two major versions of Chrome, Edge, Firefox and Safari, on desktop and mobile. | Must | TDD | M3 | T |
+| NFR-COMPAT-001 | Supported clients *(proposed)* are the latest two major versions of Chrome, Edge, Firefox and Safari, on desktop and mobile. | Must | TDD | M3 | T |
 | NFR-OBS-001 | Logs are structured JSON with request ID, user ID (never display name) and route. They contain no secrets. Sync runs, play decisions and errors are logged. | Must | TDD | M0 | I, T |
 | NFR-OBS-002 | Operational metrics are queryable: sync duration and error counts per server, play-request outcomes and the selection-mode distribution. | Should | TDD | M5 | D |
 | NFR-MAINT-001 | Code is TypeScript in strict mode. Provider adapters are isolated behind IR-002, and each has a contract-test suite run against recorded fixtures. | Must | TDD | M1 | I, T |
@@ -172,9 +174,9 @@ Cinewren (the product name was chosen by the project owner on 2026-10-04) is a s
 
 | Milestone | Must requirements delivered |
 |---|---|
-| M0 | FR-USR-001, FR-USR-002, FR-USR-003, FR-USR-006, IR-001, IR-006, NFR-SEC-004, NFR-SEC-007, DR-001, DR-004, NFR-SEC-002, NFR-PRIV-001, NFR-OBS-001, NFR-MAINT-002, NFR-TEST-001 |
+| M0 | FR-USR-001, FR-USR-002, FR-USR-003, FR-USR-004, FR-USR-006, IR-001, IR-006, NFR-SEC-004, NFR-SEC-007, DR-001, DR-004, NFR-SEC-002, NFR-PRIV-001, NFR-OBS-001, NFR-MAINT-002, NFR-TEST-001 |
 | M1 | FR-SRV-001, FR-SRV-002, FR-SRV-003, FR-SRV-007, IR-002, IR-003, DR-002, NFR-SEC-001, NFR-SEC-005, NFR-MAINT-001 |
-| M2 | FR-SRV-004, FR-SYNC-001 to FR-SYNC-007, FR-CAT-001, FR-CAT-002, FR-CAT-004, FR-CAT-005, FR-CAT-006, FR-CAT-009, FR-USR-004, FR-USR-005, FR-OPS-003, DR-003 (catalog retention), DR-005, NFR-REL-001, NFR-REL-002 |
+| M2 | FR-SRV-004, FR-SYNC-001 to FR-SYNC-007, FR-CAT-001, FR-CAT-002, FR-CAT-004, FR-CAT-005, FR-CAT-006, FR-CAT-009, FR-USR-005, FR-USR-008, FR-OPS-003, DR-003 (catalog retention), DR-005, NFR-REL-001, NFR-REL-002 |
 | M3 | FR-PLAY-001, FR-PLAY-002, FR-PLAY-003, FR-PLAY-006, FR-PLAY-007, FR-PLAY-008, FR-PROG-001, FR-PROG-002, FR-PROG-003, IR-007, NFR-SEC-003, NFR-COMP-001, NFR-COMPAT-001 |
 | M4 | IR-004, IR-005 (Emby and Plex parity for every Must above that touches providers) |
 | M5 | DR-003 (operational retention), NFR-SCALE-001 (verified by analysis); v1.0 release gate re-verifies all Musts |

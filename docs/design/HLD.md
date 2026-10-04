@@ -64,13 +64,13 @@ All components live in one Worker deployable ([ADR-0005](../adr/0005-single-work
 | ID | Component | Responsibilities | Key requirements |
 |---|---|---|---|
 | C-WEB | Web client | React + TypeScript SPA (Vite), served as Workers Static Assets. Browse, search, detail, admin screens, player (`<video>` + hls.js), reports capabilities and progress. Talks only to the Cinewren API (C-5). | FR-PLAY-002, FR-PROG-002, IR-007, NFR-A11Y-001 |
-| C-API | API layer | Hono router under `/api/v1`; request ID, error envelope, CSP/HSTS headers, rate limiting, input validation. Thin: delegates to services. | IR-001, NFR-SEC-003, NFR-SEC-004 |
-| C-AUTH | Auth and authorization | WebAuthn ceremonies, invites, sessions, roles and library grants; exposes the per-request permission context used by every service ([ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)). | FR-USR-001..007, IR-006, NFR-SEC-002, NFR-SEC-007 |
-| C-CAT | Catalog service | Browse, search (D1 FTS5, to verify in M0), detail, home rows, next-episode. Single place that applies BR-1 visibility filtering. | FR-CAT-001..009, FR-PROG-004 |
+| C-API | API layer | Hono router under `/api/v1`; request ID, error envelope, CSP/HSTS headers, rate limiting, input validation. Thin: delegates to services. | IR-001, NFR-SEC-003, NFR-SEC-004, NFR-SEC-008 |
+| C-AUTH | Auth and authorization | WebAuthn ceremonies, invites, sessions, roles and library grants; exposes the per-request permission context used by every service ([ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)). | FR-USR-001..008, IR-006, NFR-SEC-002, NFR-SEC-007 |
+| C-CAT | Catalog service | Browse, search (D1 FTS5, verified 2026-10-04), detail, home rows, next-episode. Single place that applies BR-1 visibility filtering. | FR-CAT-001..009, FR-PROG-004 |
 | C-MATCH | Matching and dedup | External-ID matching (BR-2), manual merge/split (BR-3). Used by sync and curation. | FR-CAT-001, FR-CAT-007 |
-| C-SYNC | Sync orchestrator | Cron enqueues per-server jobs; queue consumer pages through providers and writes D1 idempotently; marks missing sources; retention purge. | FR-SYNC-001..007, NFR-REL-002 |
+| C-SYNC | Sync orchestrator | Cron enqueues one sync-run message per server; the queue consumer pages through providers and writes D1 idempotently; marks missing sources; retention purge. | FR-SYNC-001..007, NFR-REL-002 |
 | C-HEALTH | Health prober | Cron probes each server; derives status; stores probe history. | FR-OPS-001, FR-OPS-002, FR-OPS-004 |
-| C-PLAY | Playback service | Source selection (BR-5), session creation, provider negotiation, stream credential issuance and revocation, progress and watched state. | FR-PLAY-001..009, FR-PROG-001, FR-PROG-003 |
+| C-PLAY | Playback service | Source selection (BR-5), session creation, provider negotiation, stream credential issuance and revocation, progress and watched state. | FR-PLAY-001..009 (FR-PLAY-004 in M3), FR-PROG-001, FR-PROG-003 |
 | C-PROV | Provider adapters | `MediaProvider` interface; `JellyfinProvider`, `EmbyProvider`, `PlexProvider`. The only code that knows provider types or calls origins. | IR-002..005, NFR-SEC-005, NFR-MAINT-001 |
 | C-ART | Artwork proxy | Fetches origin images with service credentials; small-image passthrough, cached via Cache API; permission-checked. | FR-CAT-009, [ADR-0012](../adr/0012-artwork-proxy-with-edge-cache.md) |
 | C-CRYPTO | Credential vault | AES-256-GCM envelope encryption with a key from a Worker secret and key versioning. | DR-002, NFR-SEC-001, [ADR-0008](../adr/0008-origin-service-accounts-and-credential-encryption.md) |
@@ -82,8 +82,8 @@ Collaboration between these components is in the [SDD](SDD.md). Field-level cont
 | Dependency | Used for | Notes |
 |---|---|---|
 | Cloudflare Workers, Static Assets | Compute, SPA hosting | Workers Paid plan required (A-5, [ADR-0005](../adr/0005-single-worker-typescript-stack.md)) |
-| Cloudflare D1 | System of record ([ADR-0006](../adr/0006-d1-system-of-record.md)) | FTS5 support and Time Travel retention: to verify in M0 / M1 spike |
-| Cloudflare Queues | Sync job fan-out ([ADR-0009](../adr/0009-pull-based-sync-cron-and-queues.md)) | Availability on the operator's plan: to verify in M0 |
+| Cloudflare D1 | System of record ([ADR-0006](../adr/0006-d1-system-of-record.md)) | D1 FTS5 support is verified ([SQL statements](https://developers.cloudflare.com/d1/sql-api/sql-statements/), checked 2026-10-04). Time Travel retention is 30 days on Workers Paid ([Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/), verified 2026-10-04) |
+| Cloudflare Queues | Sync job fan-out ([ADR-0009](../adr/0009-pull-based-sync-cron-and-queues.md)) | Queues are available on the Free and Paid plans ([changelog](https://developers.cloudflare.com/changelog/post/2026-02-04-queues-free-plan/), verified 2026-10-04) |
 | Cloudflare Cache API | Artwork cache | Per-colo cache; best-effort, never required for correctness |
 | Jellyfin, Emby, Plex servers | Media origins | Auth, token and CORS behaviour unverified; see Section 9 and Q-3, Q-6 |
 | Operator DNS and TLS for origins | Browser-reachable HTTPS origins | A-3; not provided by Cinewren |
@@ -145,7 +145,7 @@ flowchart LR
 
 | ID | Flow | Data | Frequency / size | Detail |
 |---|---|---|---|---|
-| DF-1 | Catalog sync | Provider item metadata into D1 | Incremental 60 min, full 24 h (FR-SYNC-001, proposed); many small pages | [SDD](SDD.md) WF-2, LLD-SYNC in [LLD](LLD.md) |
+| DF-1 | Catalog sync | Provider item metadata into D1 | Incremental 60 min, full 24 h (FR-SYNC-001, proposed); many small pages inside one run per server | [SDD](SDD.md) WF-2, LLD-SYNC in [LLD](LLD.md) |
 | DF-2 | Browse and search | Filtered catalog JSON | Per user interaction; no origin call | NFR-REL-001 follows from this: no origin dependency |
 | DF-3 | Play negotiation | Capabilities in; descriptor out; origin session create | Per play; one or two origin calls | [SDD](SDD.md) WF-5, LLD-SEL, LLD-TOKEN |
 | DF-4 | Media stream | Video, audio, segments, subtitles | Continuous, tens of Mbps | Browser and origin only. FR-PLAY-008 |
@@ -165,9 +165,10 @@ One Worker project (one `wrangler` configuration) exports three handlers: `fetch
 | Binding / resource | Type | Used by | Notes |
 |---|---|---|---|
 | `DB` | D1 | all services via repository layer | Forward-only migrations (DR-004) |
-| Sync queue | Queue (producer and consumer on same Worker) | C-SYNC | One message = one bounded unit of work (a server's library page) |
-| Credential key (e.g. `CRED_KEY_V1`) | Worker secret | C-CRYPTO | Set via `wrangler secret put`; declared in `secrets.required`; never in `vars` |
-| `SETUP_TOKEN` | Worker secret | C-AUTH | One-time first-operator setup (FR-USR-002); declared in `secrets.required`; rotate it if leaked; setup is disabled once an operator exists |
+| Sync queue | Queue (producer and consumer on same Worker) | C-SYNC | One message = one sync run of one server; a continuation message is sent when the run reaches its time deadline (LLD-SYNC) |
+| `CREDENTIAL_KEYS` | Worker secret | C-CRYPTO | JSON map of key version to key; set via `wrangler secret put`; the only entry in `secrets.required`; never in `vars` (names owned by the [TDD](TDD.md)) |
+| `CREDENTIAL_KEY_CURRENT` | Configuration `var` | C-CRYPTO | Key version used for new encryptions |
+| `SETUP_TOKEN` | Worker secret | C-AUTH | One-time first-operator setup (FR-USR-002); not in `secrets.required` (it is ignored once an operator exists); rotate it if leaked; setup is disabled once an operator exists |
 | `ALLOW_INSECURE_ORIGINS`, sync intervals | Configuration `vars` | C-PROV, C-SYNC | FR-SRV-007, FR-SYNC-001 |
 | Static Assets | Assets binding | C-WEB | Free to serve; SPA fallback routing |
 | Cache API | Runtime API | C-ART | Cache keys must include the artwork identity, never user identity; permission check happens before cache lookup (Section 10) |
@@ -193,7 +194,7 @@ One Worker project (one `wrangler` configuration) exports three handlers: `fetch
 | Range requests | Origins must honour HTTP range requests for direct play seek (standard for all three; confirm in M1 spike). | Provider behaviour: to verify in M1 spike |
 | Origin visibility | Viewers can see origin hostnames in network traffic. Acceptable (**Owner decision (2026-10-04)**). | [ADR-0003](../adr/0003-direct-to-origin-playback.md) |
 
-Residential NAT, dynamic DNS and certificate management are the operator's responsibility (A-2, A-3). The setup guide, delivered with M1, should list tested reverse-proxy and DNS patterns.
+Residential NAT, dynamic DNS and certificate management are the operator's responsibility (A-2, A-3). The setup guide, delivered in M0 (ROADMAP T0.7), should list tested reverse-proxy and DNS patterns.
 
 ## 10. Threat model (concise)
 
@@ -204,13 +205,13 @@ Residential NAT, dynamic DNS and certificate management are the operator's respo
 | IDOR across libraries | TB-2, TB-5 | Server-side checks on every ID-addressed request (NFR-SEC-002); BR-1 filter in one place in C-CAT (FR-CAT-006); sources the user cannot see are not disclosed, even as counts | Query-layer bugs; covered by authorization tests in [TDD](TDD.md). |
 | SSRF via server URL | TB-3 | HTTPS-only (FR-SRV-007); outbound requests only to the registered host, redirects to other hosts refused (NFR-SEC-005); operator-only registration (BR-8); registration validates server identity (FR-SRV-002) | An operator can still point at an internal-looking public host; Workers cannot reach private networks, which limits impact. Whether to block IP literals and reserved ranges is a design item for LLD-PROV. |
 | Malicious origin returns hostile metadata or XSS payloads | TB-3 | Metadata treated as untrusted data; UI renders text only (no raw HTML); CSP `script-src 'self'` (NFR-SEC-003); bounded field sizes on normalization (FR-SYNC-003); artwork served from Cinewren with content-type checks | A compromised origin can still show misleading titles; operator removes the server (FR-SRV-004). |
-| Invite link leaked or forwarded | TB-1 | Single use, 7-day expiry, revocation, and the operator sees redemption (FR-USR-002, FR-USR-004); token stored hashed (NFR-SEC-007) | Whoever redeems first gets the account; the operator can disable it. |
-| Session cookie theft | TB-2 | `HttpOnly; Secure; SameSite=Lax`, hashed storage, idle and absolute expiry, revocation on sign-out, disable or delete, `Origin` check (NFR-SEC-007, FR-USR-006) | A stolen live cookie works until expiry or revocation. |
+| Invite link leaked or forwarded | TB-1 | Single use, 7-day expiry *(proposed)*, revocation, and the operator sees redemption (FR-USR-002, FR-USR-004); token stored hashed (NFR-SEC-007) | Whoever redeems first gets the account; the operator can disable it. |
+| Session cookie theft | TB-2 | `HttpOnly; Secure; SameSite=Lax`, hashed storage, idle and absolute expiry, revocation on sign-out, disable or delete, `Origin` check (NFR-SEC-007, FR-USR-006, FR-USR-008) | A stolen live cookie works until expiry or revocation. |
 | Brute force or enumeration on public auth endpoints | TB-1 | Per-IP rate limits on setup, redeem and login (NFR-SEC-004); single-use challenges and tokens; uniform error responses for invalid tokens | Distributed attempts; passkeys have no guessable secret, and tokens are random. |
 | `SETUP_TOKEN` leak before setup | TB-1 | Setup is disabled once an operator exists (FR-USR-002); rotate the secret; complete setup right after deploy | A leak between deploy and first setup lets a stranger become the first operator. |
 | Phishing | TB-1 | Passkeys are bound to the RP ID, so a look-alike site cannot obtain an assertion (IR-006) | Phishing of an invite link falls under the leaked-invite row. |
-| Abuse of play endpoint (session exhaustion, origin hammering) | TB-3 | Per-user rate limits (NFR-SEC-004, proposed); session expiry (BR-9); concurrent-session bound within NFR-SCALE-001; negotiation timeouts and bounded retries (NFR-REL-002) | Authenticated viewer can still burn origin transcode capacity within limits. |
-| D1 data loss or corruption | TB-5 | Catalog is derived and rebuildable (DR-001); primary data restorable via Time Travel with documented, rehearsed restore (NFR-REL-003); JSON export (FR-OPS-006, Could); expand-migrate-contract migrations (DR-004) | Time Travel retention window to verify in M0; RPO/RTO are proposed targets. |
+| Abuse of play endpoint (session exhaustion, origin hammering) | TB-3 | Per-user rate limits (NFR-SEC-008, proposed); session expiry (BR-9); concurrent-session bound within NFR-SCALE-001; negotiation timeouts and bounded retries (NFR-REL-002) | Authenticated viewer can still burn origin transcode capacity within limits. |
+| D1 data loss or corruption | TB-5 | Catalog is derived and rebuildable (DR-001); primary data restorable via Time Travel with documented, rehearsed restore (NFR-REL-003); JSON export (FR-OPS-006, Could); expand-migrate-contract migrations (DR-004) | Time Travel retention is 30 days on Workers Paid (verified 2026-10-04, [Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/)); RPO/RTO are proposed targets. |
 | Cache poisoning or cross-user artwork leak | TB-3 | Permission check before cache lookup; cache key excludes user identity; origin responses restricted to image content types | Cached artwork may outlive a grant revocation for the TTL; acceptable for posters, to confirm in [ADR-0012](../adr/0012-artwork-proxy-with-edge-cache.md). |
 
 ## 11. Capacity and cost assumptions
@@ -232,15 +233,15 @@ The Free plan is unsuitable (A-5): a single full sync exceeds Free-plan CPU, sub
 
 | Quantity | Assumption | Estimate |
 |---|---|---|
-| Origin page calls | 200 items per page (proposed), one list call per page | about 1,000 subrequests per full sync, spread over many queue messages; far below 10,000 per invocation |
-| Origin detail calls | Only for items whose list payload lacks versions or tracks; assume 10% | up to about 20,000 extra subrequests across the whole run, each in its own bounded job, 6 concurrent connections max |
+| Origin page calls | 200 items per page (proposed), one list call per page | about 1,000 subrequests per full sync, about 50 per server run, far below 10,000 per invocation |
+| Origin detail calls | Only for items whose list payload lacks versions or tracks; assume 10% | up to about 20,000 extra subrequests across the whole run, inside the run's time-bounded invocations, 6 concurrent connections max |
 | D1 rows written, first full sync | About 6 rows per source item (source, versions, external IDs, search index entry, canonical link) | about 1.2M rows |
-| D1 rows written, steady state | FR-SYNC-004 requires no changes on unchanged data; a content hash lets the writer skip unchanged items. Assume 2% churn per day | about 25k rows per day, under 1M per month |
+| D1 rows written, steady state | FR-SYNC-004 requires no catalog-visible changes on unchanged data; a content hash lets the writer skip unchanged items. Assume 2% churn per day (about 25k rows). Each full sync also touches `last_seen_sync_id` on every present source, which BR-4 missing-marking needs (LLD-SYNC) | about 200k rows per day from full-sync bookkeeping, about 6M per month (estimate; to be measured in M5), still within the 50M/month included on Workers Paid |
 | D1 rows read per full sync | About 2 to 5 reads per item for hash comparison and match lookup | 0.4M to 1M rows |
 | Stored size | About 2 to 4 KB per item including indexes | 0.4 to 0.8 GB, within the 5 GB included |
-| Queue messages per full sync | One per page or detail batch | about 1,000 to 2,000 |
+| Queue messages per full sync | One message per server run (20 servers in the envelope), plus a continuation message each time a run reaches its 12 min deadline (LLD-SYNC); pages and detail calls are loops inside the consumer, not messages | about 20 to 60 across all servers |
 
-Reading: the first sync and any forced re-sync dominate write cost, yet 1.2M rows is small against the 50M/month included. A naive daily full sync that rewrote every row would cost about 36M writes per month, close to the included amount, which is why idempotent skip-unchanged writes (FR-SYNC-004) are a cost requirement as well as a correctness one. Steady-state cost is expected to stay within the Workers Paid base fee (NFR-COST-001, proposed target US$10/month); to be confirmed by measurement in M5.
+Reading: the first sync and any forced re-sync dominate write cost, yet 1.2M rows is small against the 50M/month included. The steady-state full-sync bookkeeping adds about 6M rows a month. A naive daily full sync that rewrote every row would cost about 36M writes per month, close to the included amount, which is why idempotent skip-unchanged writes (FR-SYNC-004) are a cost requirement as well as a correctness one. Steady-state cost is expected to stay within the Workers Paid base fee (NFR-COST-001, proposed target US$10/month); to be confirmed by measurement in M5.
 
 Concurrent playback load on the Worker is low: a play request is one D1 read set and at most two origin calls; progress writes are 20 sessions at 15 s intervals (proposed), roughly 1.3 writes per second at the envelope.
 
@@ -248,7 +249,7 @@ Concurrent playback load on the Worker is low: a play request is one D1 read set
 
 | Situation | Behaviour | Requirement |
 |---|---|---|
-| One origin down | Browse unaffected. Sources on that server are excluded at play time once marked `unreachable`, and failover to the next source is offered (FR-OPS-002, FR-PLAY-004). Title is hidden only if no source remains (BR-1). | FR-SYNC-007, CAP-10 |
+| One origin down | Browse unaffected. Sources on that server are excluded at play time once marked `unreachable`, and failover to the next source is offered from M3 (FR-PLAY-004; health-based exclusion is FR-OPS-002, M5). Title is hidden only if no source remains (BR-1). | FR-SYNC-007, CAP-10 |
 | All origins down | Browse, search and detail work from last-synced data; play returns a clear "no playable source" error. | NFR-REL-001 |
 | Sync failing | Existing catalog stays; failures isolated per server and visible to the operator. | FR-SYNC-007, FR-OPS-003 |
 | Cloudflare outage (Workers, D1 or Queues) | The entire control plane is unavailable. Already-started streams continue because they are browser-to-origin, but no new playback starts. There is no second provider. | Accepted single-provider risk (Owner direction on Cloudflare, C-1); mitigation limited to export (FR-OPS-006) and restore (NFR-REL-003). No availability target is set for v1. |

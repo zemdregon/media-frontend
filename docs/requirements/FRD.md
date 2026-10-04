@@ -160,11 +160,11 @@ sequenceDiagram
 
 **Alternate paths**
 - Manual choice of version or source: used for this request only. The filter step still applies, and if the chosen source is unavailable, the response says so rather than silently choosing another.
-- Replacement request: the browser repeats the request with the failed sources excluded (FR-PLAY-004).
+- Replacement request: the browser repeats the request with the failed sources excluded (FR-PLAY-004, Should, M3).
 
 **Failure paths**
 - No candidate survives filtering: "no playable source" error. It does not list hidden sources (BR-1).
-- Negotiation fails on the selected origin: that source is treated as excluded and the next candidate is tried within the same request, within the time bound of NFR-PERF-002.
+- Negotiation fails on the selected origin: that source is treated as excluded and the next candidate is tried within the same request (automatic failover, FR-PLAY-004, Should, M3), within the time bound of NFR-PERF-002. Health-based exclusion of sources is FR-OPS-002 (M5).
 - Session not started within the BR-9 window: it becomes `expired`.
 - Origin refuses the stream: the browser reports failure. The session becomes `failed`.
 
@@ -179,7 +179,7 @@ sequenceDiagram
     V->>W: POST play (item, device capabilities, exclusions)
     W->>D: Visible sources for this user (BR-1)
     W->>W: Filter and rank (BR-5)
-    W->>O: Negotiate playback and obtain session-scoped credential
+    W->>O: Negotiate playback and obtain session-scoped credential (pending ADR-0013 / M1 spike)
     alt negotiation fails
         O-->>W: error
         W->>W: Exclude source, try next candidate
@@ -223,11 +223,11 @@ sequenceDiagram
 | Trigger | The deployment's first visit to `/setup`; an operator creates an invite or re-enrollment link; someone opens such a link; a user signs in or out. |
 | Actors | Operator, Viewer, signed-out visitor, System. |
 | Preconditions | The `SETUP_TOKEN` secret is set (setup only). The browser supports WebAuthn (NFR-COMPAT-001). |
-| Related SRS | FR-USR-001 to FR-USR-007, FR-OPS-007, IR-006, NFR-SEC-002, NFR-SEC-004, NFR-SEC-007, NFR-PRIV-001 |
+| Related SRS | FR-USR-001 to FR-USR-008, FR-OPS-007, IR-006, NFR-SEC-002, NFR-SEC-004, NFR-SEC-007, NFR-PRIV-001 |
 
 History: authentication through Cloudflare Access (ADR-0007) was superseded by [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) on 2026-10-04 (Owner decision). This workflow follows ADR-0014. Its token lifetimes and session details are Agent decisions (delegated) pending owner review.
 
-The only routes reachable without a session are setup (with the token), invite redemption (with a valid invite), login, and the public health endpoint (FR-USR-001, FR-OPS-007). Everything else answers 401.
+The only routes reachable without a session are static assets, setup (with the token), invite redemption (with a valid invite), login, and the public health endpoint (FR-USR-001, FR-OPS-007). Everything else answers 401.
 
 **Main flow A: setup bootstrap**
 1. The first operator opens `/setup` and enters the `SETUP_TOKEN` value.
@@ -242,7 +242,7 @@ The only routes reachable without a session are setup (with the token), invite r
 
 **Main flow C: redeem with passkey registration**
 1. The invitee opens the link. The system validates the invite (see [Validation rules](#validation-rules)) and shows the signup page.
-2. The invitee confirms a display name and completes a WebAuthn registration ceremony.
+2. The invitee completes a WebAuthn registration ceremony. The display name is the one the operator set on the invite.
 3. The system stores the passkey, marks the invite `redeemed`, moves the user to `active` with the invite's role and grants, and starts a session.
 
 **Main flow D: login with passkey**
@@ -267,11 +267,11 @@ The only routes reachable without a session are setup (with the token), invite r
 
 **Failure paths**
 - Invite expired, revoked or already used: the signup page is not shown and the "invite not valid" error appears. The page does not say which case applies. The operator can issue a new invite.
-- Setup already completed (an operator exists): `/setup` refuses, whatever the token. A wrong or missing token is refused with the same generic error.
+- Setup already completed (an operator exists): `/setup` responds 404 not found, whatever the token. A wrong or missing token gets the same 404 response.
 - WebAuthn ceremony fails, times out or is cancelled: nothing is saved. An invite stays `issued` and can be tried again until it expires. Challenges are single-use, so a retry starts a new ceremony.
 - Disabled user: login is refused with the not-allowed error, with no session issued. A deleted or unknown account cannot be told apart from a disabled one.
 - Removing the last passkey is refused (FR-USR-006).
-- Too many attempts on setup, redeem or login: rate limited (NFR-SEC-004).
+- Too many attempts on setup, redeem or login from one IP: rate limited (NFR-SEC-004).
 - Session missing or expired: 401, and the app shows the sign-in page (FR-USR-001).
 
 **Postconditions**: an account exists only if it came from `/setup` or a redeemed invite. User records hold passkeys, not passwords. Deleting a user removes their data per DR-005. Setup, invite, revocation, re-enrollment and recovery actions are audited without token values (FR-OPS-005).
@@ -391,8 +391,8 @@ Legend: Y = allowed; N = refused; own = only the user's own data; — = not appl
 | Register, edit, disable, remove servers; rotate credentials | Y | N | N |
 | Enable or disable libraries; set server priority | Y | N | N |
 | Trigger sync; view sync status and health history | Y | N | N |
-| Create and revoke invites; issue re-enrollment links | Y | N | N |
-| Disable, enable, delete users; change roles | Y | N | N |
+| Create, list and revoke invites (FR-USR-004); issue re-enrollment links (FR-USR-007) | Y | N | N |
+| Disable, enable, delete users (FR-USR-008); change roles | Y | N | N |
 | Grant or revoke library access | Y | N | N |
 | Merge, split | Y | N | N |
 | View audit log; export data | Y | N | N |
@@ -524,10 +524,10 @@ stateDiagram-v2
 | (none) | `active` | `/setup` completed with a passkey | `SETUP_TOKEN` matches and no operator exists (FR-USR-002) |
 | `invited` | `active` | Invite redeemed and a passkey registered | Invite is `issued` (see below) |
 | `invited` | `deleted` | Invite revoked or expired | |
-| `active` | `disabled` / back | Operator | Not the last active operator (BR-8) |
-| `active`, `disabled` | `deleted` | Operator | Not the last active operator (BR-8); data removed per DR-005 |
+| `active` | `disabled` / back | Operator (FR-USR-008) | Not the last active operator (BR-8) |
+| `active`, `disabled` | `deleted` | Operator | Not the last active operator (BR-8); data removed per DR-005 (FR-USR-008) |
 
-Disabling and deleting revoke the user's sessions immediately (FR-USR-004).
+Disabling and deleting revoke the user's sessions immediately (FR-USR-008).
 
 ### Invite state machine
 
@@ -565,7 +565,7 @@ stateDiagram-v2
 | Library choice | Only libraries returned by discovery can be enabled. |
 | Priority | Integer (FR-SRV-006). Range in the LLD. |
 | Invite | Role is `operator` or `viewer`; the default is `viewer`. Grants may only name enabled libraries and apply to viewers. Invitee name is required and trimmed. The link token is random, single-use, stored only as a hash, and expires (FR-USR-002). Redemption fails if the invite is not `issued`. Redemption never changes an existing user: only a re-enrollment link adds a passkey to an existing account (FR-USR-007). |
-| Signup | Display name required and trimmed. A passkey registration ceremony must complete with a fresh challenge (IR-006, NFR-SEC-007). |
+| Signup | The display name comes from the invite and is not edited by the invitee. A passkey registration ceremony must complete with a fresh challenge (IR-006, NFR-SEC-007). |
 | Setup | `SETUP_TOKEN` must match, and no operator may exist yet (FR-USR-002). |
 | Passkey removal | The user's last passkey cannot be removed (FR-USR-006). |
 | Grants | May only name enabled libraries. |
@@ -588,11 +588,11 @@ Wording is plain language. The envelope and codes are in [LLD-API](../design/LLD
 | Operator-only action by a viewer | Refusal (403). Operator controls are not shown to viewers. | Viewer |
 | Item not found or not visible | "Not found" (identical for both). | All |
 | No playable source | "This title can't be played right now." Shown when every source is hidden, down, excluded or unplayable. Offers retry. | Viewer |
-| Selected source fails to start | The player automatically requests a replacement. If one exists it starts, otherwise the message above. | Viewer |
+| Selected source fails to start | Automatic next-candidate failover is FR-PLAY-004 (Should, M3); health-based exclusion is FR-OPS-002 (M5). The player automatically requests a replacement. If one exists it starts, otherwise the message above. | Viewer |
 | Device cannot play any version | "Your device can't play this title." with the reason where known (for example codec). | Viewer |
 | Resume position stale after the source changes | Playback resumes at the stored position. No error. | Viewer |
 | Playback session expired | The player starts a new session at its current position. If that fails, shows a retry prompt. | Viewer |
-| Rate limit exceeded (NFR-SEC-004) | "Too many requests. Try again in a moment." | All |
+| Rate limit exceeded (NFR-SEC-004, NFR-SEC-008) | "Too many requests. Try again in a moment." | All |
 | Registration check failed | Names the failed check: unreachable or certificate; credentials rejected; identity mismatch or duplicate; unsupported version; URL rule. | Operator |
 | Sync in progress | "A sync is already running for this server." with a link to the run. | Operator |
 | Sync partial or failed | Status view shows the outcome, counts and a bounded error summary (FR-SYNC-006). | Operator |

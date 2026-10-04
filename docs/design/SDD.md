@@ -22,35 +22,35 @@ One Worker, one TypeScript codebase, strict typing ([ADR-0005](../adr/0005-singl
 ├── docs/                       # this documentation set
 ├── pnpm-workspace.yaml
 ├── apps/
-│   └── web/                    # C-WEB: React + Vite SPA, built into the Worker's assets dir
-│       └── src/{routes,components,player,api-client,state}
+│   ├── web/                    # C-WEB: React + Vite SPA, built into the Worker's assets dir
+│   │   └── src/{routes,components,player,api-client,state}
+│   └── worker/                 # the single deployable (wrangler.jsonc lives here)
+│       ├── migrations/         # forward-only D1 migrations (DR-004)
+│       ├── test/               # Workers-runtime integration tests + provider fixtures
+│       └── src/
+│           ├── index.ts        # exports { fetch, scheduled, queue }
+│           ├── api/                # C-API: Hono app, route modules, middleware, envelope
+│           ├── auth/               # C-AUTH (ADR-0014)
+│           │   ├── webauthn/       # registration and login ceremonies, challenge store
+│           │   ├── sessions/       # create, hash, validate, revoke; the one session middleware
+│           │   ├── invites/        # invite, re-enrollment and setup tokens (hashed, single-use)
+│           │   └── users.ts        # user, role and grant resolution
+│           ├── catalog/            # C-CAT: query layer, search, home rows, visibility filter
+│           ├── match/              # C-MATCH: matching and curation
+│           ├── sync/               # C-SYNC: schedule, job handlers, retention purge
+│           ├── health/             # C-HEALTH: probe job, status derivation
+│           ├── playback/           # C-PLAY: selection, sessions, progress
+│           ├── artwork/            # C-ART: proxy and cache
+│           ├── providers/
+│           │   ├── types.ts        # MediaProvider interface and normalized types (LLD-PROV)
+│           │   ├── jellyfin/  emby/  plex/
+│           │   └── contract/       # shared contract-test suite run against each adapter
+│           ├── crypto/             # C-CRYPTO: envelope encryption, key versioning
+│           ├── db/                 # D1 access: repositories, transaction helpers, migrations runner
+│           └── platform/           # clock, random, logger, request context, env typing, config
 ├── packages/
 │   └── shared/                 # API request/response types, error codes, zod schemas, enums
 │       └── src/{api,errors,domain}
-├── worker/                     # the single deployable (wrangler.jsonc lives here)
-│   ├── migrations/             # forward-only D1 migrations (DR-004)
-│   ├── test/                   # Workers-runtime integration tests + provider fixtures
-│   └── src/
-│       ├── index.ts            # exports { fetch, scheduled, queue }
-│       ├── api/                # C-API: Hono app, route modules, middleware, envelope
-│       ├── auth/               # C-AUTH (ADR-0014)
-│       │   ├── webauthn/       # registration and login ceremonies, challenge store
-│       │   ├── sessions/       # create, hash, validate, revoke; the one session middleware
-│       │   ├── invites/        # invite, re-enrollment and setup tokens (hashed, single-use)
-│       │   └── users.ts        # user, role and grant resolution
-│       ├── catalog/            # C-CAT: query layer, search, home rows, visibility filter
-│       ├── match/              # C-MATCH: matching and curation
-│       ├── sync/               # C-SYNC: schedule, job handlers, retention purge
-│       ├── health/             # C-HEALTH: probe job, status derivation
-│       ├── playback/           # C-PLAY: selection, sessions, progress
-│       ├── artwork/            # C-ART: proxy and cache
-│       ├── providers/
-│       │   ├── types.ts        # MediaProvider interface and normalized types (LLD-PROV)
-│       │   ├── jellyfin/  emby/  plex/
-│       │   └── contract/       # shared contract-test suite run against each adapter
-│       ├── crypto/             # C-CRYPTO: envelope encryption, key versioning
-│       ├── db/                 # D1 access: repositories, transaction helpers, migrations runner
-│       └── platform/           # clock, random, logger, request context, env typing, config
 └── (root config: tsconfig base, eslint, vitest, playwright)
 ```
 
@@ -62,7 +62,7 @@ Dependency rules (enforced by lint, design in [TDD](TDD.md)):
 | `catalog`, `match`, `playback`, `sync`, `health`, `artwork` | `db`, `providers/types` (interface only), `crypto` (only via `providers` factory), `platform`, `shared` | `providers/jellyfin` etc. directly |
 | `providers/*` | `providers/types`, `crypto` (to decrypt a credential for one call), `platform` | `db`, other services |
 | `db` | `platform`, `shared` | any service |
-| `apps/web` | `shared` only | `worker/*` |
+| `apps/web` | `shared` only | `apps/worker/*` |
 
 The rule that nothing outside `providers/*` depends on provider-specific types is how IR-002 is made checkable (inspection plus lint).
 
@@ -98,22 +98,25 @@ sequenceDiagram
   Cron->>Sync: tick (interval from config)
   Sync->>DB: select enabled servers; skip any with a running run
   Sync->>DB: create sync_run (queued)
-  Sync->>Q: enqueue job(server, library, cursor)
+  Sync->>Q: enqueue one message for the run (runId)
   Q->>Sync: deliver job (consumer)
-  Sync->>DB: mark run running; load server and library
+  Sync->>DB: claim the run (lease); load server, libraries and checkpoint
+  loop each library page, until the 12 min deadline
   Sync->>Prov: listItems(library, cursor) via factory (decrypts credential for the call)
   Prov-->>Sync: normalized page + next cursor
   Sync->>DB: upsert sources, versions (skip if content hash unchanged)
   Sync->>Match: link changed items to canonical items
   Match->>DB: read external IDs, write canonical links
-  alt more pages
-    Sync->>Q: enqueue next cursor
-  else last page of full sync
-    Sync->>DB: mark unseen sources missing; finish run (succeeded / partial / failed)
+  Sync->>DB: write checkpoint in the same batch
+  end
+  alt deadline reached with pages left
+    Sync->>Q: enqueue continuation message (same run)
+  else all libraries done
+    Sync->>DB: mark unseen sources missing (full runs); finish run (succeeded / partial / failed)
   end
 ```
 
-Design notes: one job is one bounded page; the cursor lives in the message and the run record, so a retry resumes. Errors in one server never touch another's jobs (FR-SYNC-007). Transient origin errors retry with backoff and jitter via the Queue and the adapter (NFR-REL-002). A job that exhausts retries marks the library failed and the run `partial` or `failed`. Missing-marking only happens after a completed full pass (FR-SYNC-005).
+Design notes: one queue message is one sync run of one server; the checkpoint (library index and cursor) lives in the run record and is written in the same batch as each page, so a retry or a continuation message at the time deadline resumes where it stopped (LLD-SYNC). Errors in one server never touch another's jobs (FR-SYNC-007). Transient origin errors retry with backoff and jitter via the Queue and the adapter (NFR-REL-002). A job that exhausts retries marks the library failed and the run `partial` or `failed`. Missing-marking only happens after a completed full pass (FR-SYNC-005).
 
 ### 4.2 WF-5 Play request, selection and authorization
 
@@ -139,7 +142,7 @@ sequenceDiagram
   Api-->>Web: descriptor
   Web->>Web: player loads origin URL directly (DF-4, no Worker involved)
   alt start fails
-    Web->>Api: play again with excluded sources (FR-PLAY-004)
+    Web->>Api: play again with excluded sources (FR-PLAY-004, M3)
   end
 ```
 
@@ -155,7 +158,7 @@ sequenceDiagram
   participant Play as playback
   participant DB as db
   participant Prov as providers
-  Web->>Api: PUT progress (session ID, position, event)
+  Web->>Api: POST /play/{sessionId}/events (seq, type, positionMs)
   Api->>Play: reportProgress(user ctx, session, position, event)
   Play->>DB: verify session belongs to user and is live
   Play->>DB: upsert position per (user, canonical item); apply BR-7 watched rule
@@ -163,10 +166,10 @@ sequenceDiagram
     Play->>Prov: reportPlayback(source, session, position, event) best effort
   end
   Play-->>Api: ok (+ watched flag)
-  Note over Web,Play: On play, Web asks for stored position and offers resume (FR-PROG-002)
+  Note over Web,Play: Manual watched toggle and position set use PUT /progress/{itemId}. On play, Web asks for stored position and offers resume (FR-PROG-002)
 ```
 
-Position is stored per user per canonical item, never per source, so resume works on whichever source is selected next (FR-PROG-001). Origin reporting failures never fail the progress write. Stop events end the session and trigger credential revocation (LLD-TOKEN); sessions silent beyond the BR-9 limit are expired by the scheduled retention job.
+Position is stored per user per canonical item, never per source, so resume works on whichever source is selected next (FR-PROG-001). Origin reporting failures never fail the progress write. Stop events end the session and trigger credential revocation (LLD-TOKEN); sessions silent beyond the BR-9 limit are expired by the 5-minute tick `sweepPlaybackSessions` (LLD-TOKEN).
 
 ### 4.4 WF-7 Authentication and user provisioning
 
@@ -243,11 +246,11 @@ The user context is computed once per request in the session middleware and pass
 
 | Interface | Requirement | Owner (design) | Producer | Consumer |
 |---|---|---|---|---|
-| Platform HTTP API `/api/v1` | IR-001 | LLD-API in [LLD](LLD.md) | `worker/src/api` | `apps/web` through `packages/shared` types |
-| Provider interface `MediaProvider` | IR-002, IR-003..005 | LLD-PROV in [LLD](LLD.md) | `worker/src/providers/*` | `sync`, `health`, `playback`, `artwork`, server-registration command |
-| WebAuthn authentication | IR-006 | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md); details in LLD-API | Browser WebAuthn API | `worker/src/auth` |
+| Platform HTTP API `/api/v1` | IR-001 | LLD-API in [LLD](LLD.md) | `apps/worker/src/api` | `apps/web` through `packages/shared` types |
+| Provider interface `MediaProvider` | IR-002, IR-003..005 | LLD-PROV in [LLD](LLD.md) | `apps/worker/src/providers/*` | `sync`, `health`, `playback`, `artwork`, server-registration command |
+| WebAuthn authentication | IR-006 | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md); details in LLD-API | Browser WebAuthn API | `apps/worker/src/auth` |
 | Browser media playback | IR-007 | [TDD](TDD.md) (player approach); descriptor in LLD-API | origin servers | `apps/web/src/player` |
-| D1 schema | DR-001, DR-004 | LLD-SCHEMA in [LLD](LLD.md) | `worker/migrations` | `worker/src/db` only |
+| D1 schema | DR-001, DR-004 | LLD-SCHEMA in [LLD](LLD.md) | `apps/worker/migrations` | `apps/worker/src/db` only |
 | Error envelope | IR-001 | LLD-ERR in [LLD](LLD.md) | `api` middleware | `apps/web/src/api-client` |
 
 The SDD does not repeat endpoint shapes, table definitions or provider method signatures; those live in the LLD and must not be duplicated here.
@@ -277,7 +280,7 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). T
 | FR-CAT-001 | C-MATCH | Strong external ID matching under BR-2 produces canonical item with N sources | LLD-MATCH, [ADR-0010](../adr/0010-external-id-matching-with-manual-overrides.md) |
 | FR-CAT-002 | C-CAT | Keyset-paginated sorted list queries over canonical items | LLD-API, LLD-SCHEMA |
 | FR-CAT-003 | C-CAT | Filter predicates on genre, year, best resolution (denormalized best-resolution column) | LLD-API, LLD-SCHEMA |
-| FR-CAT-004 | C-CAT | FTS5 index on normalized titles (fallback: LIKE on normalized column, verify in M0) | [ADR-0006](../adr/0006-d1-system-of-record.md), LLD-SCHEMA |
+| FR-CAT-004 | C-CAT | FTS5 index on normalized titles (D1 FTS5 support verified 2026-10-04: https://developers.cloudflare.com/d1/sql-api/sql-statements/) | [ADR-0006](../adr/0006-d1-system-of-record.md), LLD-SCHEMA |
 | FR-CAT-005 | C-CAT | Detail query aggregates versions and server counts from visible sources only | LLD-API |
 | FR-CAT-006 | C-AUTH, C-CAT | INV-1 single visibility filter using the request's user context | LLD-API |
 | FR-CAT-007 | C-MATCH | Override records consulted before automatic matching; persist across syncs | LLD-MATCH, LLD-SCHEMA |
@@ -287,7 +290,7 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). T
 | FR-PLAY-001 | C-PLAY | `startPlayback` returns descriptor built from selection plus negotiation | LLD-API, LLD-SEL |
 | FR-PLAY-002 | C-WEB, C-API | Client probes `MediaSource`/`canPlayType` and sends capabilities with every request | LLD-API, LLD-SEL |
 | FR-PLAY-003 | C-PLAY | Pure deterministic ranking function per BR-5 | LLD-SEL |
-| FR-PLAY-004 | C-PLAY | Request carries excluded source IDs; selection reruns over remaining | LLD-SEL |
+| FR-PLAY-004 | C-PLAY | Delivered in M3 (Should). Request carries excluded source IDs; selection reruns over remaining; in-request next-source attempt and client failover | LLD-SEL |
 | FR-PLAY-005 | C-PLAY | Explicit version or source in request overrides ranking after visibility check | LLD-API, LLD-SEL |
 | FR-PLAY-006 | C-PLAY, C-PROV, C-WEB | Adapter returns track lists and subtitle URLs (WebVTT); burn-in via transcode parameters | LLD-PROV |
 | FR-PLAY-007 | C-PLAY, C-PROV, C-CRYPTO | Per-session origin credential minted at negotiation and revoked at end | [ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md), LLD-TOKEN |
@@ -300,7 +303,8 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). T
 | FR-USR-001 | C-AUTH, C-API | One session middleware guards every route except setup, redeem, login, health and static assets (INV-9); WebAuthn login creates the session | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md), LLD-API |
 | FR-USR-002 | C-AUTH | Invite redemption (WF-7) is the only account-creation path; `/setup` with `SETUP_TOKEN` creates the first operator and is refused once an operator exists | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md), LLD-SCHEMA |
 | FR-USR-003 | C-AUTH, C-API | Role check in command handlers and an operator-only route guard | LLD-API |
-| FR-USR-004 | C-AUTH, C-API, db | Invite commands (create, list, revoke) and user commands (disable, enable, delete) with BR-8 guard, immediate session revocation and cascade | LLD-SCHEMA, LLD-API |
+| FR-USR-004 | C-AUTH, C-API, db | Invite commands only (M0): create, list, revoke | LLD-SCHEMA, LLD-API |
+| FR-USR-008 | C-AUTH, C-API, db | User commands (M2): disable, re-enable, delete, with BR-8 guard, immediate session revocation and DR-005 cascade | LLD-SCHEMA, LLD-API |
 | FR-USR-005 | C-AUTH, db | Grants table user x library; defaults chosen at invite | LLD-SCHEMA |
 | FR-USR-006 | C-AUTH, C-WEB | Sign-out command revokes the current session; passkey list, add and remove commands refuse removing the last passkey | LLD-API |
 | FR-USR-007 | C-AUTH | Re-enrollment link is an invite-style token (24 h, single-use) that adds a passkey to an existing user; the documented `wrangler`-run recovery command issues one for a locked-out operator | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md), LLD-API |
@@ -325,7 +329,7 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). T
 | IR-007 | C-WEB | `<video>` for direct play; native HLS or hls.js | [TDD](TDD.md) |
 | DR-001 | db | D1 as system of record; primary vs derived separation (INV-8) | [ADR-0006](../adr/0006-d1-system-of-record.md), LLD-SCHEMA |
 | DR-002 | C-CRYPTO | AES-256-GCM envelope, key from Worker secret, key version stored with ciphertext | [ADR-0008](../adr/0008-origin-service-accounts-and-credential-encryption.md), LLD-TOKEN |
-| DR-003 | C-SYNC | Scheduled retention purge by table and age (configuration values) | LLD-SYNC |
+| DR-003 | C-SYNC | Scheduled retention purge by table and age (configuration values); progress is kept until the user is deleted or the item is purged under DR-005, whichever comes first | LLD-SYNC |
 | DR-004 | db | Forward-only migrations; expand, migrate, contract | LLD-SCHEMA, [TDD](TDD.md) |
 | DR-005 | db | Cascading deletes in schema plus explicit steps for audit anonymization and orphan item removal | LLD-SCHEMA |
 
@@ -336,7 +340,8 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). T
 | NFR-SEC-001 | C-CRYPTO, C-PROV, C-API | INV-2; log redaction; export excludes secrets | [ADR-0008](../adr/0008-origin-service-accounts-and-credential-encryption.md), LLD-TOKEN |
 | NFR-SEC-002 | C-AUTH, C-CAT | Per-request user context; ID-addressed reads re-check access | LLD-API |
 | NFR-SEC-003 | C-API | HSTS and CSP middleware; `media-src`/`connect-src` built from registered server hostnames | LLD-API |
-| NFR-SEC-004 | C-API | Per-user rate limit middleware on play, progress, mutations; per-IP limits on setup, redeem and login (mechanism chosen in TDD/LLD) | [TDD](TDD.md), LLD-API |
+| NFR-SEC-004 | C-API | Per-IP rate limits on the setup, redeem and login endpoints only (M0; mechanism in TDD §6.3) | [TDD](TDD.md), LLD-API |
+| NFR-SEC-008 | C-API | Per-user rate limit middleware on play, progress and operator mutations (M5, Should) | [TDD](TDD.md), LLD-API |
 | NFR-SEC-005 | C-PROV | Single outbound helper pinned to registered host; redirects refused (INV-7) | LLD-PROV |
 | NFR-SEC-007 | C-AUTH, C-API | Session cookie attributes, hashed session and token storage, expiries, single-use challenges, `Origin` check in the session middleware (INV-9, INV-10) | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md), LLD-TOKEN |
 | NFR-SEC-006 | CI | Dependency and secret scanning in pipeline | [TDD](TDD.md) |
@@ -347,7 +352,7 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). T
 | NFR-SCALE-001 | all | Sizing and cost estimate in [HLD](HLD.md) Section 11; bounded jobs, indexed queries | [HLD](HLD.md) |
 | NFR-REL-001 | C-CAT, C-SYNC | Catalog served from D1 only; no origin call on browse paths | [ADR-0006](../adr/0006-d1-system-of-record.md) |
 | NFR-REL-002 | C-SYNC, C-PROV | Backoff with jitter and bounded attempts via injected clock and random | LLD-SYNC, LLD-ERR |
-| NFR-REL-003 | db | Time Travel restore procedure; export; rehearsal on staging | [TDD](TDD.md), [HLD](HLD.md) Section 10 |
+| NFR-REL-003 | db | Time Travel restore procedure (30 days on Paid, verified 2026-10-04: https://developers.cloudflare.com/d1/reference/time-travel/); export; rehearsal on staging | [TDD](TDD.md), [HLD](HLD.md) Section 10 |
 | NFR-COST-001 | C-SYNC, C-PLAY | No stream bytes through Cloudflare; skip-unchanged writes limit D1 cost | [ADR-0002](../adr/0002-cloudflare-control-plane-origins-deliver-media.md), [HLD](HLD.md) |
 | NFR-COMP-001 | deployment | Origin hostnames must be non-proxied; documented in setup guide; no video routes | [ADR-0002](../adr/0002-cloudflare-control-plane-origins-deliver-media.md), [HLD](HLD.md) Section 8 |
 | NFR-A11Y-001 | C-WEB | Semantic components, keyboard-operable player, captions support | [TDD](TDD.md) |
@@ -363,7 +368,7 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). T
 
 | ID | Item | Home |
 |---|---|---|
-| OD-1 | Rate-limiting mechanism. **Closed:** the Workers rate limiting binding ([TDD](TDD.md)). | NFR-SEC-004, [TDD](TDD.md) |
-| OD-2 | Queue topology. **Closed:** one jobs queue with typed messages plus a dead-letter queue. Health probes run inline in a cron handler, with two cron triggers (LLD-SYNC). | LLD-SYNC |
+| OD-1 | Rate-limiting mechanism. **Closed:** the Workers rate limiting binding ([TDD](TDD.md)). | NFR-SEC-004, NFR-SEC-008, [TDD](TDD.md) |
+| OD-2 | Queue topology. **Closed:** one jobs queue with typed messages plus a dead-letter queue (Queues are available on the Free and Paid plans, verified 2026-10-04: https://developers.cloudflare.com/changelog/post/2026-02-04-queues-free-plan/). Health probes run inline in a cron handler, with two cron triggers (LLD-SYNC). | LLD-SYNC |
 | OD-3 | Closed: Access removed (ADR-0014). Passkeys work on localhost, so no dev bypass is needed. | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) |
 | OD-4 | Server URL host restrictions. **Closed:** IP-literal and local or internal hostnames are blocked outside local mode. Resolved private IPs are an accepted residual risk (LLD-PROV). | LLD-PROV |

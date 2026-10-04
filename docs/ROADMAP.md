@@ -50,6 +50,7 @@
 | A-7 | Personal or household use of media the operator is entitled to. No binding regulatory regime is identified. | A legal review would be needed before wider use. |
 | A-8 | English-only UI | — |
 | A-9 | Origins expose TMDB, IMDb or TVDB IDs for most items | Matching quality drops. TMDB enrichment (DEF-9) would be reconsidered. |
+| A-10 | "Single operator per deployment" (owner decision 2026-10-04) means one operating party. Several accounts may hold the operator role, for example two household admins, which also lets BR-8 keep a spare operator. *Agent interpretation.* | Restrict operator invites to one account, and rely on CLI recovery (FR-USR-007) only. |
 
 ### Material decisions
 14 ADRs are indexed in [adr/README.md](adr/README.md). ADR-0002 records owner direction. **ADR-0014 (passkeys and invite-only signup) is an owner decision**, and it supersedes ADR-0007 (Cloudflare Access). ADR-0003 and ADR-0011 are owner-confirmed. The rest are agent decisions. **ADR-0013 (session-scoped stream credentials) is `Proposed`** until the M1 spike confirms it.
@@ -58,10 +59,10 @@
 
 | Ref | Question | Owner decision | Effect |
 |---|---|---|---|
-| B-1 | Cloudflare account and identity layer | Owner has Workers Paid. Asked why Access was planned, then chose **passkeys only, with operator invite links as the only way to create an account**. | ADR-0014 supersedes ADR-0007. FR-USR-* rewritten. T0.5 reworked. No Zero Trust team needed. |
+| B-1 | Cloudflare account and identity layer | Owner has Workers Paid. Asked why Access was planned, then chose **passkeys only, with operator invite links as the only way to create an account**. | ADR-0014 supersedes ADR-0007, and no Zero Trust team is needed. Agent follow-ups: FR-USR-* rewritten, T0.5 reworked, and bootstrap and recovery details in ADR-0014. |
 | B-2 | Test servers for the T1.1 spike | **Containers (Jellyfin, Emby) plus the owner's Plex** | T1.1 can proceed. The Plex checks use the owner's account or server. |
 | Q-2 | Hide origin hostnames? | **Public HTTPS is fine** | ADR-0003 confirmed. DEF-1 stays deferred. |
-| Q-1 | Audience | **Others may self-host** (one operator per deployment) | ADR-0011 confirmed and extended. CAP-14, FR-OPS-008 and NFR-MAINT-003 added. M5 packaging tasks added. |
+| Q-1 | Audience | **Others may self-host** (one operator per deployment) | ADR-0011 confirmed. Agent follow-ups: CAP-14, FR-OPS-008, NFR-MAINT-003, T5.5, and the A-10 interpretation. |
 
 ### Open questions (none block M0)
 | ID | Question | Blocks | Default until answered |
@@ -109,7 +110,7 @@
 
 | Milestone | Goal | Depends on | Status |
 |---|---|---|---|
-| M0 | Foundations: scaffold, CI, auth, schema v1, staging | — | Planned (docs portion `Done`: this commit) |
+| M0 | Foundations: scaffold, CI, auth, schema v1, staging | — | Planned (documentation set `Done`: commits cd18afd onward on branch `c/laughing-dirac-nh2651`) |
 | M1 | Provider spike, Jellyfin adapter, server registration | M0 | Planned |
 | M2 | Catalog: sync, matching, browse/search/detail, users and grants | M1 | Planned |
 | M3 | Playback on Jellyfin: selection, session credentials, player, progress | M2 | Planned |
@@ -143,13 +144,13 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 |---|---|---|---|---|
 | T0.1 | Scaffold the repository: pnpm, TypeScript strict, Vite + React SPA, Hono Worker with Static Assets, `wrangler` config for `local` / `staging` / `production`, ESLint and Prettier | ADR-0005, [TDD](design/TDD.md), [SDD](design/SDD.md) (module layout) | — | `pnpm build` and `pnpm typecheck` pass. `wrangler dev` serves the SPA shell at `/` and `/api/v1/health` responds locally. |
 | T0.2 | CI workflow: install, typecheck, lint, unit and Workers integration tests (Vitest pool-workers), docs check, dependency audit, secret scanning | NFR-TEST-001, NFR-SEC-006, [TDD](design/TDD.md) | T0.1 | A PR shows all jobs. A deliberately broken link or type error fails CI. |
-| T0.3 | Docs check script (`scripts/check-docs.mjs`): relative links resolve, IDs referenced are defined, LLD section IDs exist | NFR-MAINT-002 | — | **Done** in this commit. It runs locally (see §9). CI wiring is part of T0.2. |
+| T0.3 | Docs check script (`scripts/check-docs.mjs`): relative links resolve, IDs referenced are defined, LLD section IDs exist | NFR-MAINT-002 | — | **Done.** Evidence: `scripts/check-docs.mjs` (commit cd18afd), which passes locally. CI wiring is part of T0.2. |
 | T0.4 | D1 schema v1 migration covering the M0 to M2 tables, with the migration runner in local and CI | DR-001, DR-004, [LLD-SCHEMA](design/LLD.md) | T0.1 | Migrations apply to an empty local D1. An integration test asserts the tables, indexes and FK cascades. |
-| T0.5 | Passkey auth: `/setup` bootstrap with `SETUP_TOKEN`, invite create/redeem with passkey registration, passkey login and logout, own-passkey management, sessions, Origin check, auth rate limits, role guard | FR-USR-001 to FR-USR-003, FR-USR-006, IR-006, NFR-SEC-002, NFR-SEC-004, NFR-SEC-007, ADR-0014 | T0.4 | Tests (with a virtual WebAuthn authenticator): no session → 401. Setup works once, and only with the token. Account creation without a valid invite is refused. Expired, used or revoked invites are refused. Login with a registered passkey yields a session. A cross-origin mutation is refused. A viewer gets 403 on an operator route. Removing the last passkey is refused. The WebAuthn library runs in the Workers runtime. |
-| T0.6 | API conventions: request ID, error envelope, structured logger, security headers baseline, health endpoint | IR-001, NFR-OBS-001, NFR-PRIV-001, FR-OPS-007 | T0.1 | Tests assert the envelope shape, the `x-request-id` header, that no email appears in log lines, and that health returns DB status. |
+| T0.5 | Passkey auth: `/setup` bootstrap with `SETUP_TOKEN`, invite create/redeem with passkey registration, passkey login and logout, own-passkey management, sessions, Origin check, auth rate limits, role guard | FR-USR-001 to FR-USR-004, FR-USR-006, IR-006, NFR-SEC-002, NFR-SEC-004, NFR-SEC-007, ADR-0014 | T0.4 | Tests (with a virtual WebAuthn authenticator): no session → 401. Setup works once, and only with the token. Account creation without a valid invite is refused. Expired, used or revoked invites are refused. Login with a registered passkey yields a session. A cross-origin mutation is refused. A viewer gets 403 on an operator route. Removing the last passkey is refused. The WebAuthn library runs in the Workers runtime. |
+| T0.6 | API conventions: request ID, error envelope, structured logger, security headers baseline, health endpoint | IR-001, NFR-OBS-001, NFR-PRIV-001, FR-OPS-007 | T0.1 | Tests assert the envelope shape, the `x-request-id` header, that no display name, token, cookie value or credential appears in log lines, and that health returns DB status. |
 | T0.7 | Staging environment: Worker, D1 and secrets (`SETUP_TOKEN`, credential key). Documented in an operator setup guide (`docs/operations/setup.md`, created in this task). | A-5, [HLD](design/HLD.md) deployment | T0.5, T0.6 | **Demonstration:** on staging, `/setup` creates the operator's passkey. An invite link creates a viewer. A signed-out visitor sees only the login page. *Prerequisite: Workers Paid (owner confirmed 2026-10-04).* |
 
-**M0 exit:** T0.1 to T0.7 done. M0 Must IDs verified. ADR-0006's FTS5 assumption confirmed or replaced on D1 (spike within T0.4).
+**M0 exit:** T0.1 to T0.7 done. M0 Must IDs verified. FTS5 search exercised on local D1 (support confirmed in docs on 2026-10-04).
 
 ### M1 — Provider spike, Jellyfin adapter, server registration · Planned
 
@@ -169,20 +170,20 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 
 **Objective:** viewers see one deduplicated, permission-filtered catalog from synced servers.
 
-| Task | Objective | Refs | Depends |
-|---|---|---|---|
-| T2.1 | Sync orchestrator: cron → Queue → consumer; checkpointed paging; per-server lock; run records | FR-SYNC-001, FR-SYNC-002, FR-SYNC-004, FR-SYNC-006, FR-SYNC-007, NFR-REL-002, ADR-0009, [LLD-SYNC](design/LLD.md) | M1 |
-| T2.2 | Normalization and upsert; missing marking; retention purge | FR-SYNC-003, FR-SYNC-005, DR-003, BR-4 | T2.1 |
-| T2.3 | Matching (external IDs, episode alignment, conflict flags) | FR-CAT-001, BR-2, ADR-0010, [LLD-MATCH](design/LLD.md) | T2.2 |
-| T2.4 | Catalog query layer with central BR-1 filtering; browse, filters, search (FTS5), detail, home "Recently added" | FR-CAT-002 to FR-CAT-006, FR-CAT-008, NFR-REL-001 | T2.3 |
-| T2.5 | Artwork proxy with edge cache | FR-CAT-009, ADR-0012 | T2.4 |
-| T2.6 | Users and grants: invite, disable, delete with cascades; library grants; server disable and removal | FR-USR-004, FR-USR-005, FR-SRV-004, DR-005, BR-8 | T2.4 |
-| T2.7 | Web UI: home, browse, search, detail (versions badge, "Available from N servers"), operator sync-status page | FR-OPS-003, NFR-PERF-003, [PRD](requirements/PRD.md) J-2 | T2.4–T2.6 |
-| T2.8 | E2E harness: Playwright against `wrangler dev` with a mock origin | NFR-TEST-001 | T2.7 |
+| Task | Objective | Refs | Depends | Done when |
+|---|---|---|---|---|
+| T2.1 | Sync orchestrator: cron → Queue → consumer; checkpointed runs with continuation; per-server lock; run records | FR-SYNC-001, FR-SYNC-002, FR-SYNC-004, FR-SYNC-006, FR-SYNC-007, NFR-REL-002, ADR-0009, [LLD-SYNC](design/LLD.md) | M1 | Integration tests: a scheduled tick enqueues one run per due server; a second trigger while running is refused; injected transient errors retry with backoff and then succeed; one server failing leaves the others' runs `succeeded`. |
+| T2.2 | Normalization and upsert; missing marking; retention purge | FR-SYNC-003, FR-SYNC-005, DR-003, BR-4 | T2.1 | Fixture tests: a re-run over unchanged data produces no catalog-visible change; a source absent from a completed full sync becomes `missing` and is restored when seen again; the purge removes sources missing for more than 30 days *(proposed)*. |
+| T2.3 | Matching (external IDs, episode alignment, conflict flags) | FR-CAT-001, BR-2, ADR-0010, [LLD-MATCH](design/LLD.md) | T2.2 | Table-driven tests: a shared TMDB or IMDb ID merges; title-only similarity doesn't merge; conflicting IDs create a conflict flag; episodes align by series, season and episode. |
+| T2.4 | Catalog query layer with central BR-1 filtering; browse, filters, search (FTS5), detail, home "Recently added" | FR-CAT-002 to FR-CAT-006, FR-CAT-008, NFR-REL-001 | T2.3 | API tests for each endpoint. An IDOR test: an ungranted item returns 404 from detail and artwork and never appears in browse or search. Search ignores case and diacritics. |
+| T2.5 | Artwork proxy with edge cache | FR-CAT-009, ADR-0012 | T2.4 | Tests: the response never contains the origin URL or credential; a permission check runs before any cached response is served. |
+| T2.6 | User lifecycle and grants: disable, re-enable and delete with cascades; viewer library grants; operator re-enrollment link; server disable and removal | FR-USR-005, FR-USR-007, FR-USR-008, FR-SRV-004, DR-005, BR-8 | T2.4 | Tests: disabling a user revokes their sessions immediately; deletion cascades per DR-005; the last operator cannot be removed; a re-enrollment link adds a passkey once and then expires; server removal deletes its sources and hides them at once. |
+| T2.7 | Web UI: home, browse, search, detail (versions badge, "Available from N servers"), operator sync-status page | FR-OPS-003, NFR-PERF-003, [PRD](requirements/PRD.md) J-2 | T2.4–T2.6 | Component tests. A bundle-size check fails CI above 250 KB gzipped *(proposed)*. The sync page shows the last run, its outcome and errors. |
+| T2.8 | E2E harness: Playwright against `wrangler dev` with a mock origin | NFR-TEST-001 | T2.7 | CI runs the E2E job on every PR. One journey (sign in, browse, open detail) passes. |
 
 **M2 exit checks:**
 - (a) The integration test "same movie on two mock servers yields one item with two sources" passes.
-- (b) A viewer without a grant can't reach a restricted item by ID. Detail, artwork and search all return 404, verified by an IDOR test.
+- (b) The T2.4 IDOR test passes.
 - (c) A killed sync mid-run, when retried, leaves no duplicates.
 - (d) Browse works with all mock origins offline.
 - (e) **Demonstration:** a staging catalog from a real Jellyfin server.
@@ -191,36 +192,45 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 
 **Objective:** press play, start the best Jellyfin source directly from the origin, and resume later.
 
-| Task | Objective | Refs | Depends |
-|---|---|---|---|
-| T3.1 | Device capability detection in the client | FR-PLAY-002, NFR-COMPAT-001 | M2 |
-| T3.2 | Source selection (BR-5) with a fixture-driven test table, including the Interstellar example | FR-PLAY-003, FR-SRV-006, [LLD-SEL](design/LLD.md) | M2 |
-| T3.3 | Playback sessions and session-scoped stream credentials (per the T1.1 outcome); expiry and revocation job | FR-PLAY-001, FR-PLAY-007, BR-9, ADR-0013, [LLD-TOKEN](design/LLD.md) | T1.1, T3.2 |
-| T3.4 | Player: direct play and HLS (hls.js / native), audio and subtitle selection, manual version choice, dynamic CSP | FR-PLAY-005, FR-PLAY-006, FR-PLAY-008, IR-007, NFR-SEC-003 | T3.3 |
-| T3.5 | Progress, resume, watched state, next episode, "Continue watching"; start/stop reporting to the origin | FR-PROG-001 to FR-PROG-004, FR-PLAY-009, FR-CAT-008, BR-7 | T3.4 |
-| T3.6 | Compliance check: the operator setup guide documents non-proxied origin hostnames; a test asserts every descriptor URL host equals a registered origin host | NFR-COMP-001, FR-PLAY-008 | T3.4 |
+| Task | Objective | Refs | Depends | Done when |
+|---|---|---|---|---|
+| T3.1 | Device capability detection in the client | FR-PLAY-002, NFR-COMPAT-001 | M2 | Unit tests over mocked `canPlayType`, `MediaSource.isTypeSupported` and MediaCapabilities produce the expected capability payloads for representative browsers. |
+| T3.2 | Source selection (BR-5) with a fixture-driven test table, including the Interstellar example; failover to the next candidate | FR-PLAY-003, FR-PLAY-004, FR-SRV-006, [LLD-SEL](design/LLD.md) | M2 | The table test passes and matches the LLD-SEL worked example. A request excluding a failed source returns the next candidate or `NO_PLAYABLE_SOURCE`. |
+| T3.3 | Playback sessions and session-scoped stream credentials (per the T1.1 outcome); expiry and revocation sweep | FR-PLAY-001, FR-PLAY-007, BR-9, ADR-0013, [LLD-TOKEN](design/LLD.md) | T1.1, T3.2 | Tests: the descriptor has a session ID and expiry; an unstarted session expires after 5 min *(proposed)*; after the session ends, the mock origin rejects the stream credential. |
+| T3.4 | Player: direct play and HLS (hls.js / native), audio and subtitle selection, manual version choice, dynamic CSP | FR-PLAY-005, FR-PLAY-006, FR-PLAY-008, IR-007, NFR-SEC-003 | T3.3 | E2E: direct play and HLS both start against the mock origin; switching subtitle and audio tracks works; the CSP header lists only self plus registered origin hosts. |
+| T3.5 | Progress, resume, watched state, next episode, "Continue watching"; session telemetry to the origin | FR-PROG-001 to FR-PROG-004, FR-PLAY-009, FR-CAT-008, BR-7 | T3.4 | E2E: play, pause, reload, then resume from the stored position. Reaching the BR-7 threshold marks the item watched. The next-episode query passes fixture tests. The mock origin receives start, progress and stop. |
+| T3.6 | Compliance check: the operator setup guide documents non-proxied origin hostnames; a test asserts every descriptor URL host equals a registered origin host | NFR-COMP-001, FR-PLAY-008 | T3.4 | Test green, and the setup-guide section is merged. |
 
 **M3 exit checks:**
-- (a) An E2E test against the mock origin plays, pauses, reloads and resumes.
-- (b) A test shows a stream credential is rejected by the mock origin after session end or expiry.
+- (a) The T3.5 E2E journey passes.
+- (b) The T3.3 credential-revocation test passes.
 - (c) **Demonstration:** on staging, a real Jellyfin title plays in current Chrome, Firefox and Safari. Browser devtools show media requests going only to the origin host.
 - (d) All M3 Must IDs verified.
 
 ### M4 — Emby and Plex parity · Planned
 
-| Task | Objective | Refs | Depends |
-|---|---|---|---|
-| T4.1 | Emby adapter (likely close to Jellyfin; confirm in T1.1) | IR-004 | T1.2, T3.3 |
-| T4.2 | Plex adapter, including Q-3 terms check | IR-005, Q-3 | T1.2, T3.3 |
-| T4.3 | Cross-provider matching test: one title on all three types merges into one item | FR-CAT-001 | T4.1, T4.2 |
+| Task | Objective | Refs | Depends | Done when |
+|---|---|---|---|---|
+| T4.1 | Emby adapter (likely close to Jellyfin; confirm in T1.1) | IR-004 | T1.2, T3.3 | The shared contract suite is green on Emby fixtures, and a playback E2E passes against an Emby fixture origin. |
+| T4.2 | Plex adapter, including the Q-3 terms check | IR-005, Q-3 | T1.2, T3.3 | The Q-3 outcome is recorded in §3. The shared contract suite is green on Plex fixtures, and a playback E2E passes against a Plex fixture origin. |
+| T4.3 | Cross-provider matching test: one title on all three server types merges into one item | FR-CAT-001 | T4.1, T4.2 | Integration test green. |
 
-**M4 exit:** the shared contract suite is green for all three adapters. **Demonstration:** one title present on Jellyfin, Emby and Plex shows as one item and plays from each source via manual override.
+**M4 exit:** T4.1 to T4.3 done. **Demonstration:** one title present on Jellyfin, Emby and Plex shows as one item and plays from each source via manual override.
 
-### M5 — Hardening and v1.0 · Planned (high level)
+### M5 — Hardening, self-host packaging and v1.0 · Planned
 
-Scope: health probing and failover (FR-OPS-001, FR-OPS-002, FR-OPS-004, FR-PLAY-004); curation merge/split and the conflict list (FR-CAT-007, FR-CAT-010); credential rotation (FR-SRV-005); audit log (FR-OPS-005); export (FR-OPS-006); per-user rate limits beyond the auth endpoints (NFR-SEC-004 itself is delivered in M0); re-enrollment and last-operator recovery are verified on staging (FR-USR-007); **self-host packaging (owner decision 2026-10-04):** a self-host guide, a Deploy to Cloudflare button or `wrangler` install path, SemVer releases with notes, and a tested upgrade path that applies migrations (FR-OPS-008, NFR-MAINT-003, CAP-14); operational retention (DR-003); metrics (NFR-OBS-002); accessibility audit (NFR-A11Y-001); performance and cost analysis at the envelope (NFR-PERF-001, NFR-PERF-002, NFR-SCALE-001, NFR-COST-001); restore rehearsal (NFR-REL-003); a security review against the [HLD](design/HLD.md) threat model.
+| Task | Objective | Refs | Depends | Done when |
+|---|---|---|---|---|
+| T5.1 | Health probing, status derivation, health-aware selection, health view | FR-OPS-001, FR-OPS-002, FR-OPS-004 | M3 | Tests: probe failures move a server through `degraded` to `unreachable`, and selection excludes or deprioritizes it. The health page is demonstrated. |
+| T5.2 | Curation: merge, split, conflict list | FR-CAT-007, FR-CAT-010, BR-3 | M2 | Tests: overrides persist across a full re-sync; a resolved conflict leaves the list. |
+| T5.3 | Credential rotation, audit log, export | FR-SRV-005, FR-OPS-005, FR-OPS-006 | M2 | Tests: rotation keeps catalog rows; every operator mutation writes one audit row; the export contains no secrets (asserted by a test). |
+| T5.4 | Per-user rate limits, operational retention, metrics | NFR-SEC-008, DR-003, NFR-OBS-002 | M3 | Tests: limits return 429 above threshold; retention jobs purge per DR-003. A metrics query is demonstrated. |
+| T5.5 | **Self-host packaging** (owner decision 2026-10-04: others may self-host; packaging details are agent decisions): self-host guide, Deploy to Cloudflare button or `wrangler` path, SemVer releases with notes, upgrade path | FR-OPS-008, NFR-MAINT-003, CAP-14 | M4 | **Demonstration:** a fresh Cloudflare account deploys a tagged release by following only the guide, completes `/setup`, then upgrades to the next tag with migrations applied. |
+| T5.6 | Last-operator CLI recovery rehearsal and D1 restore rehearsal | FR-USR-007, NFR-REL-003 | M4 | Both procedures are executed on staging and their notes are linked here. |
+| T5.7 | Accessibility audit; performance and cost analysis at the envelope | NFR-A11Y-001, NFR-PERF-001, NFR-PERF-002, NFR-SCALE-001, NFR-COST-001 | M4 | The audit report has no open WCAG 2.2 AA failures on core journeys. A load test at the NFR-SCALE-001 envelope reports p95 figures and the monthly cost estimate. |
+| T5.8 | Security review against the [HLD](design/HLD.md) threat model | NFR-SEC-* | T5.1–T5.5 | The review report is linked here, with every finding rated. Findings rated high or critical are fixed or carry an owner-accepted exception. |
 
-**v1.0 exit:** every `Must` in the SRS is verified with evidence. Any `Should` not done has a recorded decision here. The security review has no open high findings. A production deploy and rollback have been rehearsed.
+**v1.0 exit:** every `Must` in the SRS is verified with linked evidence. Every `Should` that isn't done has a dated decision row in §3. T5.8 has no open high or critical findings. A production deploy and a rollback have been rehearsed, and the notes are linked.
 
 ### Later — Deferred
 DEF-1 to DEF-11 per [PRD §6](requirements/PRD.md#6-non-goals-and-deferred-capabilities). Each needs its revisit trigger met and, where it is architectural (DEF-1, DEF-3, DEF-10), a new ADR.
@@ -235,7 +245,7 @@ DEF-1 to DEF-11 per [PRD §6](requirements/PRD.md#6-non-goals-and-deferred-capab
 | R-4 | Plex API terms or stability for third-party clients | Plex adapter delayed or dropped | Q-3 is checked in T1.1 and T4.2. Plex is the last adapter. |
 | R-5 | Cloudflare terms or limit changes | Architecture assumptions break | Facts re-checked at each milestone exit, with dates noted in ADR-0002. |
 | R-6 | Poor external-ID coverage on origins | Duplicate items | Manual curation (FR-CAT-007). DEF-9 enrichment can be reconsidered. |
-| R-7 | D1 FTS5 is unavailable or limited | Search design changes | Checked in T0.4. The fallback is in ADR-0006. |
+| ~~R-7~~ | D1 FTS5 is unavailable or limited | — | **Retired 2026-10-04:** FTS5 support confirmed in Cloudflare docs (https://developers.cloudflare.com/d1/sql-api/sql-statements/). T0.4 still exercises it. |
 | ~~B-1~~ | Cloudflare account for staging | — | **Resolved 2026-10-04:** owner has Workers Paid. No Access needed (ADR-0014). |
 | ~~B-2~~ | Test servers | — | **Resolved 2026-10-04:** containers for Jellyfin and Emby, plus the owner's Plex. Hand-over of Plex access is needed when T1.1 starts. |
 

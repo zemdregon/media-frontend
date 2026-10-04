@@ -10,11 +10,13 @@ Accepted. **Owner decision (2026-10-04):** each deployment has one operator, and
 
 ## Deciders
 
-Agent under delegation (2026-10-04); owner review pending. Rests on assumption A-1; the owner has not confirmed it.
+Agent under delegation (2026-10-04). Rests on assumption A-1.
+
+Note (2026-10-04): the owner decided Q-1: others may self-host, with one operator per deployment. The reading "operator = operating party; multiple operator accounts allowed" is an agent interpretation (A-10).
 
 ## Context
 
-Nothing in the owner's concept requires multiple tenants. Multi-tenancy affects data isolation, billing, abuse handling, key management and legal exposure (the operator carries content responsibility, A-7). The target is a household or friends group. Envelope: <= 50 users, <= 20 servers (NFR-SCALE-001). Question Q-1 (will Cinewren ever be multi-operator or hosted?) is open.
+Nothing in the owner's concept requires multiple tenants. Multi-tenancy affects data isolation, billing, abuse handling, key management and legal exposure (the operator carries content responsibility, A-7). The target is a household or friends group. Envelope: <= 50 users, <= 20 servers (NFR-SCALE-001). Question Q-1 (will Cinewren ever be multi-operator or hosted?) was decided by the owner on 2026-10-04: others may self-host, and hosted multi-tenancy is out of scope.
 
 ## Decision
 
@@ -34,6 +36,10 @@ Each deployment belongs to one operator in the operator's own Cloudflare account
 - Negative: no shared deployment; each operator deploys and upgrades their own. Setup must be well documented (J-1).
 - Negative: changing to multi-tenancy later would be a schema and security-model change requiring a new ADR and likely a migration.
 - Neutral: scale limits are those of one D1 and one Worker (NFR-SCALE-001).
+
+## Notes
+
+- 2026-10-04: Cloudflare Access was removed by ADR-0014; references to Access below are historical.
 
 ## Revisit when
 

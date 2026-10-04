@@ -45,6 +45,10 @@ Workers limits (checked 2026-10-04, <https://developers.cloudflare.com/workers/p
 - Negative: operators must pay for Workers Paid (base fee; see NFR-COST-001).
 - Neutral: Hono, Vite, Vitest versions to be pinned in M0.
 
+## Notes
+
+- 2026-10-04: Cloudflare Access was removed by ADR-0014; references to Access below are historical.
+
 ## Revisit when
 
 - Bundle size or startup time approach Worker limits.

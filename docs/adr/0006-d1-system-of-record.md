@@ -18,13 +18,13 @@ Cinewren stores primary data (users, grants, progress, curation overrides, serve
 
 Facts (Cloudflare docs, checked 2026-10-04, <https://developers.cloudflare.com/workers/platform/pricing/>): D1 Free plan gives 5M rows read/day, 100k rows written/day, 5 GB total, and from 2026-09-01 queries fail once a daily limit is exceeded. Paid includes 25B reads/month, 50M writes/month, 5 GB, then $0.75/GB-month. Per-database size limit: see <https://developers.cloudflare.com/d1/platform/limits/>.
 
-Not verified: FTS5 support in D1, and Time Travel retention (both to verify in M0).
+FTS5 support in D1: verified 2026-10-04 (<https://developers.cloudflare.com/d1/sql-api/sql-statements/>). Not verified: Time Travel retention (to verify in M0).
 
 ## Decision
 
 - D1 is the system of record for primary and derived data. The catalog is derived and may be rebuilt from origins; primary data is backed up and restorable (NFR-REL-003).
 - No KV in v1. One store, one consistency model.
-- Search uses D1 FTS5 over a normalized title column (to verify in M0). Fallback if FTS5 is unavailable: indexed `LIKE` prefix search on a normalized (lowercased, diacritic-folded) title column.
+- Search uses D1 FTS5 over a normalized title column (support verified 2026-10-04). Fallback if FTS5 is unavailable: indexed `LIKE` prefix search on a normalized (lowercased, diacritic-folded) title column.
 - Schema changes are forward-only migrations compatible with the previously deployed Worker (DR-004).
 - Reads are filtered by user grants in SQL so that unauthorized sources are never loaded (BR-1, FR-CAT-006).
 

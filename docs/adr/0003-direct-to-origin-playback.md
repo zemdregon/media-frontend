@@ -10,7 +10,7 @@ Accepted. **Owner confirmed (2026-10-04):** viewers seeing origin hostnames is a
 
 ## Deciders
 
-Agent under delegation (2026-10-04); owner review pending. This follows the recommendation of the owner-provided [concept](../sources/2026-10-04-initial-architecture-concept.md) ("Option A, which I'd recommend"), but the selection was made by the agent. The owner supplied the concept and asked for a plan; that is not approval of this ADR.
+Agent under delegation (2026-10-04). The owner confirmed on 2026-10-04 that origin hostnames being visible is acceptable and that origins are on public HTTPS (see Status). This follows the recommendation of the owner-provided [concept](../sources/2026-10-04-initial-architecture-concept.md) ("Option A, which I'd recommend"), but the selection was made by the agent. The owner supplied the concept and asked for a plan; that alone was not approval of the selection.
 
 ## Context
 

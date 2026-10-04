@@ -90,7 +90,7 @@ CREATE TABLE servers (
   id TEXT PRIMARY KEY, type TEXT NOT NULL CHECK (type IN ('jellyfin','emby','plex')),
   name TEXT NOT NULL, base_url TEXT NOT NULL, origin_server_id TEXT NOT NULL UNIQUE, -- provider's unique ID (FR-SRV-002)
   version TEXT, priority INTEGER NOT NULL DEFAULT 0,                                 -- FR-SRV-006
-  status TEXT NOT NULL CHECK (status IN ('active','degraded','unreachable','disabled','removing')),
+  status TEXT NOT NULL CHECK (status IN ('pending_validation','active','degraded','unreachable','disabled','removing')),  -- 'removed' = row deleted
   last_latency_ms INTEGER, consecutive_failures INTEGER NOT NULL DEFAULT 0, consecutive_ok INTEGER NOT NULL DEFAULT 0,
   last_validated_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 
@@ -187,7 +187,7 @@ CREATE TABLE playback_sessions (
   source_id TEXT REFERENCES sources(id) ON DELETE SET NULL, server_id TEXT REFERENCES servers(id) ON DELETE SET NULL,
   version_id TEXT, mode TEXT NOT NULL CHECK (mode IN ('direct_play','direct_stream','transcode')),
   status TEXT NOT NULL CHECK (status IN ('authorized','started','ended','expired','failed')),
-  credential_envelope TEXT,                   -- session-scoped origin credential (LLD-TOKEN); NULL once revoked
+  credential_envelope TEXT,                   -- session-scoped origin credential (LLD-TOKEN; pending ADR-0013 / M1 spike); NULL once revoked
   revoke_pending INTEGER NOT NULL DEFAULT 0, provider_session_ref TEXT,
   replaces_session_id TEXT, decision TEXT,    -- ranking keys snapshot (NFR-OBS-002)
   last_event_seq INTEGER NOT NULL DEFAULT 0,
@@ -199,7 +199,7 @@ CREATE INDEX ps_revoke ON playback_sessions(revoke_pending) WHERE revoke_pending
 
 CREATE TABLE watch_progress (                -- primary data (DR-001)
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  media_item_id TEXT NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,  -- see gap note below
+  media_item_id TEXT NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,  -- DR-003 / DR-005: kept until the user is deleted or the item is purged
   position_ms INTEGER NOT NULL, runtime_ms INTEGER, watched INTEGER NOT NULL DEFAULT 0, watched_at INTEGER,
   last_source_id TEXT, updated_at INTEGER NOT NULL, PRIMARY KEY (user_id, media_item_id));
 CREATE INDEX wp_continue ON watch_progress(user_id, watched, updated_at DESC);
@@ -243,21 +243,19 @@ Notes:
   ```sql
   EXISTS (SELECT 1 FROM item_availability a
           JOIN libraries l ON l.id = a.library_id AND l.enabled = 1
-          JOIN servers s   ON s.id = l.server_id AND s.status NOT IN ('disabled','removing')
+          JOIN servers s   ON s.id = l.server_id AND s.status IN ('active','degraded','unreachable')
           WHERE a.media_item_id = i.id
             AND (:is_operator = 1 OR EXISTS (SELECT 1 FROM library_grants g WHERE g.user_id = :uid AND g.library_id = a.library_id)))
   ```
-  For seasons and episodes the predicate is applied to the row itself, because every provider item, including seasons and episodes, becomes a source. Source lists in responses use the same join per source. `unreachable` servers stay visible for browsing (NFR-REL-001) and are filtered out only at selection (BR-5).
+  For seasons and episodes the predicate is applied to the row itself, because every provider item, including seasons and episodes, becomes a source. Source lists in responses use the same join per source. Only `active`, `degraded` and `unreachable` servers are exposed: `pending_validation`, `disabled` and `removing` servers are hidden. The FRD's `removed` state means the `servers` row is deleted, so it has no status value. `unreachable` servers stay visible for browsing (NFR-REL-001) and are filtered out only at selection (BR-5).
 
 ### Cascades and deletion (DR-005)
 
 | Action | Mechanism |
 |---|---|
-| Delete user | One `batch`: `UPDATE audit_log SET target_id = NULL WHERE target_type='user' AND target_id=?`, then `DELETE FROM users`. FK cascades remove `library_grants`, `watch_progress`, `playback_sessions`, `passkey_credentials`, `sessions` (so access ends immediately, FR-USR-004) and their invites. `idempotency_keys` are deleted explicitly, since that table has no FK. `invites.created_by` is set to NULL on invites the user issued. `audit_log.actor_user_id` is set to NULL. Audit `details` reference users by ID only, never by display name, so no rewrite is needed. Before the batch runs, any live sessions are revoked (LLD-TOKEN). BR-8: the delete fails with `LAST_OPERATOR` if it would leave no active operator, checked by a conditional statement in the same batch. |
+| Delete user | One `batch`: `UPDATE audit_log SET target_id = NULL WHERE target_type='user' AND target_id=?`, then `DELETE FROM users`. FK cascades remove `library_grants`, `watch_progress`, `playback_sessions`, `passkey_credentials`, `sessions` (so access ends immediately, FR-USR-008) and their invites. `idempotency_keys` are deleted explicitly, since that table has no FK. `invites.created_by` is set to NULL on invites the user issued. `audit_log.actor_user_id` is set to NULL. Audit `details` reference users by ID only, never by display name, so no rewrite is needed. Before the batch runs, any live sessions are revoked (LLD-TOKEN). BR-8: the delete fails with `LAST_OPERATOR` if it would leave no active operator, checked by a conditional statement in the same batch. |
 | Remove server | Set `status='removing'`, which hides its sources immediately, delete `server_credentials`, and enqueue `purge_server`. The job deletes `media_versions` and `sources` in chunks of 500 *(proposed)* to stay inside D1 query limits, then deletes the `servers` row (cascades: libraries, grants, sync_runs, health_probes, overrides). Orphaned items are then removed as below. Revoking open sessions comes first. This refines the FRD's "removed" state with a short transitional `removing` status. |
 | Orphan items | After any source purge, `DELETE FROM media_items WHERE id IN (… items of the affected set with no sources …)`, children first. Cascades remove `external_ids`, `curation_overrides`, `match_conflicts`, `item_availability` and `watch_progress`. |
-
-**Gap (reported):** DR-003 keeps progress "until the user is deleted", but DR-005 removes canonical items with no sources. That deletes their progress through the cascade. An item only becomes sourceless after its sources have been missing for 30 days, so the loss is narrow, but the SRS should say which rule wins.
 
 ### Migration practice
 
@@ -279,8 +277,8 @@ Conventions (IR-001):
 | GET | `/api/v1/health` | *public* | — | `{status:"ok"\|"degraded"}` only | — | FR-OPS-007 |
 | GET | `/api/v1/admin/status` | operator | — | `{db:"ok"\|"error", appVersion, schemaApplied, schemaRequired, queueBacklog?, serversByStatus, keyVersionsInUse}` | — | FR-OPS-007, TDD §9 |
 | GET | `/api/v1/setup` | *public* | — | `{available:boolean}` (false once any operator exists) | — | FR-USR-002 |
-| POST | `/api/v1/setup/options` | *public* | `{setupToken, displayName}` | `{challengeId, options}` (WebAuthn creation options) | 404 `SETUP_DISABLED`, 403 `SETUP_TOKEN_INVALID`, 429 | FR-USR-002 |
-| POST | `/api/v1/setup/verify` | *public* | `{setupToken, challengeId, response}` | `201 {user}` + session cookie | 404, 403, 400 `WEBAUTHN_VERIFICATION_FAILED`, 429 | FR-USR-002, IR-006 |
+| POST | `/api/v1/setup/options` | *public* | `{setupToken, displayName}` | `{challengeId, options}` (WebAuthn creation options) | 404 `NOT_FOUND` (setup disabled and invalid token are indistinguishable), 429 | FR-USR-002 |
+| POST | `/api/v1/setup/verify` | *public* | `{setupToken, challengeId, response}` | `201 {user}` + session cookie | 404 `NOT_FOUND` (same for disabled setup and invalid token), 400 `WEBAUTHN_VERIFICATION_FAILED`, 429 | FR-USR-002, IR-006 |
 | POST | `/api/v1/invites/inspect` | *public* | `{token}` | `{kind, role, displayName, expiresAt}` | 404 `INVITE_INVALID` (unknown, expired, revoked or used: one code, no oracle), 429 | FR-USR-002 |
 | POST | `/api/v1/invites/redeem/options` | *public* | `{token}` | `{challengeId, options}` (WebAuthn `user.name` = the invited display name) | 404 `INVITE_INVALID`, 429 | FR-USR-002, FR-USR-007 |
 | POST | `/api/v1/invites/redeem/verify` | *public* | `{token, challengeId, response}` | `201 {user}` + session cookie. Signup: the user goes from `invited` to `active`; reenroll: a passkey is added. | 404, 400 `WEBAUTHN_VERIFICATION_FAILED`, 429 | FR-USR-002, FR-USR-005, FR-USR-007 |
@@ -315,13 +313,13 @@ Conventions (IR-001):
 | GET | `/api/v1/admin/servers/{id}/sync-runs` | operator | `cursor`, `limit` | `Page<SyncRun>` plus `nextScheduled` | 404 | FR-SYNC-006, FR-OPS-003 |
 | GET | `/api/v1/admin/servers/{id}/health` | operator | `since` | `{status, probes:[{at,ok,latencyMs,errorCode}]}` | 404 | FR-OPS-004 |
 | GET | `/api/v1/admin/metrics` | operator | `window=24h\|7d` | sync durations/errors per server, play outcomes, mode distribution | — | NFR-OBS-002 |
-| GET | `/api/v1/admin/users` | operator | `cursor` | `Page<User>` with passkey count and last sign-in | — | FR-USR-004 |
+| GET | `/api/v1/admin/users` | operator | `cursor` | `Page<User>` with passkey count and last sign-in | — | FR-USR-008 |
 | POST | `/api/v1/admin/invites` | operator | `{displayName, role, libraryIds?}` (`libraryIds` omitted = all enabled; ignored for operators) | `201 {id, userId, link:"https://<host>/invite#t=<token>", expiresAt}`. In one batch this creates the user in state `invited`, their grants and the invite. The token is returned **once** and only its hash is stored. The operator delivers the link; Cinewren sends no email. | 400, 409 `DISPLAY_NAME_TAKEN` | FR-USR-002, FR-USR-004, FR-USR-005 |
 | GET | `/api/v1/admin/invites` | operator | `status=open\|redeemed\|expired\|revoked` | `Page<Invite>` (never the token) | — | FR-USR-004 |
 | DELETE | `/api/v1/admin/invites/{id}` | operator | — | `204`. Sets `revoked_at`; for a signup invite it also deletes the still-`invited` user (FRD rule). | 404, 409 `INVITE_ALREADY_REDEEMED` | FR-USR-004 |
 | POST | `/api/v1/admin/users/{id}/reenroll` | operator | — | `201 {link, expiresAt}` (24 h, proposed) | 404 | FR-USR-007 |
-| PATCH | `/api/v1/admin/users/{id}` | operator | `{role?, status?:"active"\|"disabled", displayName?}` (disable also deletes the user's sessions) | `User` | 409 `LAST_OPERATOR` | FR-USR-004, BR-8 |
-| DELETE | `/api/v1/admin/users/{id}` | operator | — | `204` | 409 `LAST_OPERATOR` | FR-USR-004, DR-005 |
+| PATCH | `/api/v1/admin/users/{id}` | operator | `{role?, status?:"active"\|"disabled", displayName?}` (disable also deletes the user's sessions) | `User` | 409 `LAST_OPERATOR` | FR-USR-008, BR-8 |
+| DELETE | `/api/v1/admin/users/{id}` | operator | — | `204` | 409 `LAST_OPERATOR` | FR-USR-008, DR-005 |
 | PUT | `/api/v1/admin/users/{id}/grants` | operator | `{libraryIds:[…]}` (viewers only) | `{libraryIds}` | 409 `GRANTS_NOT_APPLICABLE` for operators | FR-USR-005 |
 | POST | `/api/v1/admin/curation/merge` | operator | `{intoItemId, fromItemId}` | `{itemId}` | 409 `TYPE_MISMATCH` | FR-CAT-007 |
 | POST | `/api/v1/admin/curation/split` | operator | `{itemId, sourceId}` | `{newItemId}` | 409 `LAST_SOURCE` | FR-CAT-007 |
@@ -377,7 +375,7 @@ Pagination uses cursors. `Page<T> = { items: T[], nextCursor: string | null }`. 
   "alternatives": 2 }
 ```
 
-`streamUrl` and subtitle URLs always point at the selected server's own host (FR-PLAY-008). The query string carries only the session-scoped credential (FR-PLAY-007). `alternatives` is the number of other candidates the user may see; it is used to decide whether to offer a replacement (FR-PLAY-004).
+`streamUrl` and subtitle URLs always point at the selected server's own host (FR-PLAY-008). The query string carries only the session-scoped credential (FR-PLAY-007; pending ADR-0013 / M1 spike). `alternatives` is the number of other candidates the user may see; it is used to decide whether to offer a replacement (FR-PLAY-004).
 
 ## LLD-PROV — MediaProvider interface & adapters
 
@@ -466,7 +464,7 @@ The checks run in order, and the first failure is reported with its check name:
 | Negotiation | `POST /Items/{id}/PlaybackInfo` with a DeviceProfile built from capabilities → `SupportsDirectPlay`/`SupportsDirectStream`/`TranscodingUrl` | Same | `GET /video/:/transcode/universal/decision` then `start.m3u8`; direct play via part URL |
 | Stream URL | Direct: `/Videos/{id}/stream?static=true&MediaSourceId=…&api_key=<session token>`; HLS: `/Videos/{id}/master.m3u8?…` | Similar | Part URL or `start.m3u8` with `X-Plex-Token` query |
 | Text subtitles | `/Videos/{id}/{msId}/Subtitles/{idx}/Stream.vtt` | Similar | Transcoder subtitle option or stream URL with `format=vtt` (to verify) |
-| Session credential (ADR-0013) | Re-authenticate service account with `DeviceId=cinewren-ps-<sessionId>` → per-session token; revoke with `POST /Sessions/Logout` using that token | Same approach | Transient/delegation token (e.g. `/security/token?type=delegation`) — unknown; fallback per ADR-0013 |
+| Session credential (ADR-0013, pending ADR-0013 / M1 spike) | Re-authenticate service account with `DeviceId=cinewren-ps-<sessionId>` → per-session token; revoke with `POST /Sessions/Logout` using that token | Same approach | Transient/delegation token (e.g. `/security/token?type=delegation`) — unknown; fallback per ADR-0013 |
 | Telemetry (FR-PLAY-009) | `POST /Sessions/Playing`, `/Sessions/Playing/Progress`, `/Sessions/Playing/Stopped` | Same | `GET /:/timeline?state=playing\|stopped&time=…` |
 | Artwork | `/Items/{id}/Images/Primary?tag=…` (may not need auth) | Similar | `/library/metadata/{key}/thumb/{ts}` with token |
 | Probe | `GET /System/Info/Public` (unauthenticated) | Same | `GET /identity` |
@@ -521,7 +519,7 @@ onMessage({runId, leaseToken}):
             WHERE id=runId AND (status='queued' OR (status='running' AND (lease_token=:leaseToken OR lease_expires_at<now)))
   if claimed == 0: ack; return                                  # someone else holds it
   libs = enabled libraries of server (fixed order by id); cp = run.checkpoint ?? {libraryIdx:0, cursor:null}
-  deadline = now + 12 min                                       # < 15 min consumer limit (SPINE fact)
+  deadline = now + 12 min                                       # < 15 min consumer limit (Workers limits: https://developers.cloudflare.com/workers/platform/limits/ (checked 2026-10-04))
   while cp.libraryIdx < libs.length:
     lib = libs[cp.libraryIdx]
     try:
@@ -584,7 +582,7 @@ The daily job runs each step as chunked `DELETE … WHERE rowid IN (SELECT rowid
 2. Delete sourceless canonical items, children first (DR-005).
 3. Delete `sync_runs` older than 90 d (never the latest run per server), `playback_sessions` older than 30 d with a terminal status, `health_probes` older than 7 d, `audit_log` older than 365 d, and `idempotency_keys` older than 24 h.
 
-Progress is not touched (DR-003), apart from the cascade gap noted in LLD-SCHEMA.
+Progress is not touched directly (DR-003). It is deleted only with its user, or through the cascade when its item is purged under DR-005, whichever comes first.
 
 ## LLD-MATCH — Matching & curation algorithm
 
@@ -641,7 +639,7 @@ Overrides are keyed by `(server_id, provider_item_id)`, so they survive re-sync 
 
 ## LLD-SEL — Source selection algorithm
 
-Implements BR-5, FR-PLAY-003, FR-PLAY-004, FR-PLAY-005 and FR-OPS-002. Candidates are (source, version) pairs.
+Implements BR-5, FR-PLAY-003, FR-PLAY-004, FR-PLAY-005 and FR-OPS-002. Candidates are (source, version) pairs. In-request failover to the next candidate (the bounded loop below) and client replacement requests are FR-PLAY-004, delivered in M3; health-based exclusion is FR-OPS-002 (M5).
 
 ```
 select(user, item, caps, prefs, exclude):
@@ -729,13 +727,13 @@ AAD = "cinewren|" + purpose + "|" + rowId      # purpose ∈ {server_secret, ser
 
 **Key loss:** decryption fails for every server. Servers are shown as "credentials unavailable"; the catalog, users and progress are untouched. The operator re-enters each server's credentials (FR-SRV-005).
 
-### Auth sessions, invites and challenges (FR-USR-001 to FR-USR-007, NFR-SEC-007, ADR-0014)
+### Auth sessions, invites and challenges (FR-USR-001 to FR-USR-008, NFR-SEC-007, ADR-0014)
 
 These are *not* envelope-encrypted. They are random secrets that are **hashed** (SHA-256), because the server only needs to recognise them, never to read them back.
 
 | Artefact | Created | Validated | Ends |
 |---|---|---|---|
-| Session | On successful setup, invite redemption or login verify: 32 random bytes go into the cookie, the hash into `sessions`. Idle expiry = now + 14 d, absolute = now + 90 d *(proposed)*. | Each request hashes the cookie and looks up `id_hash`, joining `users.status='active'`. It requires `now < idle_expires_at AND now < absolute_expires_at`, and slides `idle_expires_at` at most hourly. | On logout, passkey removal, user disable or delete (FR-USR-004), or expiry. The sweep deletes expired rows. |
+| Session | On successful setup, invite redemption or login verify: 32 random bytes go into the cookie, the hash into `sessions`. Idle expiry = now + 14 d, absolute = now + 90 d *(proposed)*. | Each request hashes the cookie and looks up `id_hash`, joining `users.status='active'`. It requires `now < idle_expires_at AND now < absolute_expires_at`, and slides `idle_expires_at` at most hourly. | On logout, passkey removal, user disable or delete (FR-USR-008), or expiry. The sweep deletes expired rows. |
 | Invite (signup) | The operator creates it. One batch inserts `users(status='invited', role)`, `library_grants` and `invites(token_hash, expires_at=now+7d)`. | Redeem: `token_hash` matches, `redeemed_at IS NULL AND revoked_at IS NULL AND expires_at > now`. | **Redeem**, one batch: CAS `UPDATE invites SET redeemed_at=now WHERE id=? AND redeemed_at IS NULL AND revoked_at IS NULL AND expires_at>now`, insert the passkey, set the user `active`, create the session. If the CAS changes 0 rows, the whole batch aborts (a guard statement raises a constraint error). **Revoke or expire:** the invited user is deleted (FRD rule), which cascades to grants and the invite. |
 | Invite (reenroll / CLI recovery) | `POST …/reenroll` or the recovery command (TDD §5.1); 24 h *(proposed)*. | As above. | Redeem adds a passkey to the existing user and creates a session; existing passkeys are kept. Expiry or revocation affects only the invite. |
 | Setup | — (token is the `SETUP_TOKEN` secret) | Constant-time compare **and** no operator exists. | Inserting the first operator uses `INSERT … SELECT … WHERE NOT EXISTS (SELECT 1 FROM users WHERE role='operator')`, so two concurrent setups cannot both succeed. |
@@ -746,6 +744,8 @@ These are *not* envelope-encrypted. They are random secrets that are **hashed** 
 
 ### Playback session lifecycle (FR-PLAY-001, FR-PLAY-007, FR-PLAY-009, BR-9)
 
+This lifecycle assumes per-session origin stream credentials (pending ADR-0013 / M1 spike). ADR-0013 is Proposed, and the spike decides per provider whether this model or the shared-restricted fallback applies.
+
 ```mermaid
 sequenceDiagram
   participant B as Browser
@@ -755,7 +755,7 @@ sequenceDiagram
   B->>W: POST /api/v1/play (Idempotency-Key, caps)
   W->>D: visible candidates (BR-1) + ranking inputs
   W->>W: select (LLD-SEL), decrypt service secret
-  W->>O: createSessionCredential(sessionId)  [e.g. auth with DeviceId=cinewren-ps-<id>]
+  W->>O: createSessionCredential(sessionId)  [pending ADR-0013 / M1 spike; e.g. auth with DeviceId=cinewren-ps-<id>]
   O-->>W: session token
   W->>O: negotiatePlayback(caps, tracks, session token)
   O-->>W: mode + stream URL (origin host)
@@ -802,11 +802,10 @@ Events for a session that has reached a terminal status return `410 SESSION_EXPI
 | `CSRF_REJECTED` | 403 | State-changing request whose `Origin` is not `APP_ORIGIN` (NFR-SEC-007). |
 | `WEBAUTHN_VERIFICATION_FAILED` | 400 / 401 | Challenge missing, expired or reused; origin or RP ID mismatch; bad signature; unknown credential; disabled user. One generic message. |
 | `INVITE_INVALID` | 404 | Unknown, expired, revoked or redeemed invite. These are indistinguishable on purpose. |
-| `SETUP_DISABLED` / `SETUP_TOKEN_INVALID` | 404 / 403 | FR-USR-002. |
 | `LAST_PASSKEY` | 409 | FR-USR-006. |
 | `INVITE_ALREADY_REDEEMED` | 409 | Revoking a used invite. |
 | `MIGRATIONS_PENDING` | 503 | Worker newer than the applied schema (TDD §9.3). |
-| `NOT_FOUND` | 404 | Resource missing **or not visible** (BR-1). |
+| `NOT_FOUND` | 404 | Resource missing **or not visible** (BR-1). Also returned by the setup endpoints both when setup is disabled and when the token is invalid, so the two cases are indistinguishable (FR-USR-002, NFR-SEC-004). |
 | `VALIDATION_FAILED` | 400 | Request schema (zod) failure; `details.fields`. |
 | `INSECURE_ORIGIN_URL` / `BLOCKED_ORIGIN_URL` | 400 | FR-SRV-007, OD-4 policy. |
 | `SERVER_VALIDATION_FAILED` | 422 | FR-SRV-002; `details.check`. |
@@ -817,7 +816,7 @@ Events for a session that has reached a terminal status return `410 SESSION_EXPI
 | `NO_PLAYABLE_SOURCE` | 409 | No candidate after filtering; `details.reason`. |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | Same key with a different request hash. |
 | `SESSION_EXPIRED` | 410 | Event for a terminal session. |
-| `RATE_LIMITED` | 429 | NFR-SEC-004, per user or, on public auth routes, per IP; includes `Retry-After`. |
+| `RATE_LIMITED` | 429 | NFR-SEC-004 (per IP on setup, redeem and login) and NFR-SEC-008 (per user on play, progress and operator mutations); includes `Retry-After`. |
 | `ORIGIN_UNAVAILABLE` / `ORIGIN_TIMEOUT` / `ORIGIN_REDIRECT_REFUSED` / `ORIGIN_PROTOCOL` | 502 / 504 / 502 / 502 | Provider errors on the request path (NFR-SEC-005). |
 | `CREDENTIAL_KEY_MISSING` | 500 | DR-002 key loss; operator-facing. |
 | `INTERNAL` | 500 | Anything else; message generic, details only in logs. |
