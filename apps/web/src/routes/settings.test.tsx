@@ -37,10 +37,12 @@ it('System removes the override', async () => {
 });
 
 it('rolls back and explains when the preference cannot be saved', async () => {
-  renderApp('/settings', viewer, (m) =>
+  renderApp('/settings', viewer, (m, p) =>
     m === 'PATCH'
       ? [500, { error: { code: 'INTERNAL', message: 'Something went wrong.', requestId: 'r' } }]
-      : undefined,
+      : p === '/me/passkeys'
+        ? [200, []]
+        : undefined,
   );
   await userEvent.click(await screen.findByRole('radio', { name: 'Light' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Your appearance was not changed.');

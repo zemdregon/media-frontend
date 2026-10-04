@@ -39,7 +39,7 @@ Each row is a threat from [HLD §10](../design/HLD.md#10-threat-model-concise).
 | SSRF via server URL (TB-3) | HTTPS only. Outside local mode, IP literals, `localhost`, `*.local`, `*.internal`, `*.home.arpa`, single-label names, userinfo, query and fragment are refused. All origin I/O goes through one host-pinned fetch with `redirect: 'manual'`, at most 3 same-origin hops, and timeouts. Identity is checked before credentials are sent. Only operators can register servers. | `providers/url-policy.ts`, `providers/origin-fetch.ts`; `test/providers/origin-fetch.test.ts`, `test/servers.test.ts` | **Holds.** DNS names that resolve to private ranges stay an accepted residual (SR-11). |
 | Hostile origin metadata or XSS (TB-3) | React renders text only. There is no `dangerouslySetInnerHTML` and no data-built `href` other than internal, `encodeURIComponent`-encoded paths. Stream and subtitle URLs must match the origin's scheme and host. CSP is `script-src 'self'` with `base-uri 'none'` and `frame-ancestors 'none'`. Artwork content types are allowlisted (no SVG) and capped at 10 MB. | `apps/web/src`, `playback/service.ts` (`onOriginHost`), `api/middleware/security-headers.ts`, `artwork/proxy.ts`; `test/csp.test.ts`, `test/artwork.test.ts` | **Holds.** |
 | Invite link leaked or forwarded (TB-1) | 256-bit tokens, stored as SHA-256 only, carried in the URL fragment. A compare-and-set redeem is guarded inside one batch. Expiry is 7 days for signup and 24 hours for re-enrollment. Operators can revoke. Every failure returns one `INVITE_INVALID` code. | `auth/invites.ts`, `db/auth.ts`; `test/auth.test.ts` | **Holds.** Expired invitees are now swept (SR-03). |
-| Session cookie theft (TB-2) | `__Host-cw_session` cookie: `HttpOnly; Secure; SameSite=Lax; Path=/`. The 256-bit ID is stored hashed. Idle expiry is 14 days and absolute 90; the idle window slides at most hourly. The session row is deleted on logout, passkey removal, disable and delete. Role and status are re-read from `users` on every request. | `auth/sessions.ts`, `db/auth.ts`; `test/auth.test.ts`, `test/users.test.ts` | **Holds with an open medium.** A stolen cookie can enroll a new passkey (SR-04). Users cannot list their sessions (SR-15). |
+| Session cookie theft (TB-2) | `__Host-cw_session` cookie: `HttpOnly; Secure; SameSite=Lax; Path=/`. The 256-bit ID is stored hashed. Idle expiry is 14 days and absolute 90; the idle window slides at most hourly. The session row is deleted on logout, passkey removal, disable and delete. Role and status are re-read from `users` on every request. | `auth/sessions.ts`, `db/auth.ts`; `test/auth.test.ts`, `test/users.test.ts` | **Holds after fix.** A stolen cookie can no longer enroll a new passkey without a fresh passkey assertion (SR-04). Users cannot list their sessions (SR-15). |
 | Brute force or enumeration on public auth endpoints (TB-1) | `RL_AUTH` allows 10 requests per minute per IP on setup, invite and login. Challenges are single use (deleted first, with `DELETE … RETURNING`). Login failures look alike (one 401). Setup-disabled and bad-token are both 404. | `api/middleware/rate-limit.ts`, `auth/webauthn.ts`, `auth/setup.ts`; `test/auth.test.ts` (real binding wired) | **Holds.** Timing note: SR-10. |
 | `SETUP_TOKEN` leak before setup (TB-1) | Constant-time compare of hashes. The first-operator insert is guarded by `NOT EXISTS`, so concurrent setups cannot both win (the passkey insert's foreign key aborts the loser's batch). Setup is disabled once any operator exists. | `auth/setup.ts`, `auth/tokens.ts`, `db/auth.ts`; `test/auth.test.ts` | **Holds** (residual as stated in the HLD). |
 | Phishing (TB-1) | WebAuthn checks the expected origin and RP ID and requires user verification. `RP_ID` must equal the `APP_ORIGIN` host or a parent of it, checked fail-closed at config load. | `auth/webauthn.ts`, `platform/config.ts` | **Holds.** |
@@ -69,7 +69,7 @@ Additional areas the brief named:
 | SR-01 | User delete and disable left origin stream credentials valid | **High** | `apps/worker/src/users/service.ts:182, :200` | **Fixed** |
 | SR-02 | Server removal deleted the credentials that revocation needs | **High** | `apps/worker/src/servers/purge.ts:193, :210` | **Fixed** |
 | SR-03 | `sweepAuth` was never implemented | Medium | `apps/worker/src/db/auth.ts:518`, `apps/worker/src/index.ts:50` | **Fixed** |
-| SR-04 | Adding a passkey needs only a session, with no fresh authentication | Medium | `apps/worker/src/auth/passkeys.ts:40, :54` | Open |
+| SR-04 | Adding a passkey needs only a session, with no fresh authentication | Medium | `apps/worker/src/auth/passkeys.ts:40, :54` | **Fixed** (this change) |
 | SR-05 | Artwork cache key ignored the source server | Low | `apps/worker/src/artwork/proxy.ts:160` | **Fixed** |
 | SR-06 | A live playback session outlived the loss of access (BR-1) | Medium | `apps/worker/src/playback/service.ts:423` | **Fixed** |
 | SR-07 | Master-key rotation is not wired | Low | `apps/worker/src/sync/jobs.ts:45`, `apps/worker/src/vault/rotation.ts` | **Fixed** |
@@ -87,7 +87,7 @@ Additional areas the brief named:
 | SR-19 | Crash window between minting and recording a Jellyfin token | Info | `apps/worker/src/playback/service.ts` (`attempt`) | Accepted (LLD-TOKEN M3 notes) |
 | SR-20 | A stream token carries the service account's full non-admin scope | Info | Provider behaviour; ADR-0013 correction | Accepted (ADR-0013) |
 
-Counts: critical 0, high 2, medium 3, low 4, info 11. Fixed: 7 (both highs, two mediums, three lows).
+Counts: critical 0, high 2, medium 3, low 4, info 11. Fixed: 8 (both highs, all three mediums, three lows). SR-04 and SR-07 were fixed after the review, in follow-up changes, on owner decision 2026-10-04.
 
 ### SR-01 — User delete and disable left origin stream credentials valid (High, fixed)
 
@@ -112,12 +112,14 @@ Counts: critical 0, high 2, medium 3, low 4, info 11. Fixed: 7 (both highs, two 
 - **Fix:** `sweepAuth(db, now)` in `db/auth.ts` deletes in chunks of 500, at most 20 chunks per step per tick. It is wired as its own task on the five-minute tick.
 - **Test:** `test/auth.test.ts`, "T5.8 SR-03: sweepAuth removes expired auth artefacts". Live rows survive and a second run finds nothing.
 
-### SR-04 — Adding a passkey needs only a session (Medium, open)
+### SR-04 — Adding a passkey needs only a session (Medium, fixed)
 
 - **Rationale:** AV:N/AC:H/PR:N/UI:N, confidentiality and integrity high, but it requires a stolen `HttpOnly` cookie first, which is AC:H.
 - **Problem and exploit:** whoever holds a stolen session cookie can call `POST /me/passkeys/options` and `/verify` with their own authenticator. They then hold a permanent credential, which survives the stolen session's expiry or revocation. For an operator account this is full control.
 - **Mitigations present:** the passkey appears in the victim's passkey list, and removing it ends every session created with it (the `sessions.passkey_id` cascade).
 - **Recommendation:** require a fresh assertion from an existing passkey in the add-passkey ceremony, or a recent-sign-in window (for example, a session younger than 10 minutes) before options are issued. Audit-log passkey additions for operators. This needs an LLD-API and UX change, so it was not done in this review.
+- **Fix (this change; owner decision 2026-10-04, "Require fresh login to register new passkey"):** `POST /me/passkeys/options` and `/verify` answer 401 `REAUTH_REQUIRED` unless the current session completed a user-verified passkey ceremony within the last 5 minutes *(proposed)*. That is the sign-in itself, or the new `POST /me/reauth/options` and `/verify`, an assertion limited to the user's own passkeys that sets `sessions.reauth_at` (migration `0005_session_reauth.sql`). A successful add clears `reauth_at` with a compare-and-set, so each fresh authentication adds one passkey. Removing a passkey is not gated (agent decision): it only reduces access. Settings → Passkeys runs "Confirm it's you" before creating the new passkey. Operator audit logging of passkey additions is not part of this fix.
+- **Tests:** `test/auth.test.ts`, "T5.8 SR-04: adding a passkey needs a fresh authentication" (no fresh auth, after re-auth, after 5 minutes, another user's passkey or challenge, sign-in versus re-auth challenges, single use, failed registration, login sets freshness); `apps/web/src/routes/passkeys.test.tsx`.
 
 ### SR-05 — Artwork cache key ignored the source server (Low, fixed)
 
@@ -184,7 +186,7 @@ Counts: critical 0, high 2, medium 3, low 4, info 11. Fixed: 7 (both highs, two 
 
 1. **Token scope (SR-20).** While a session is live, its token can browse every library the service account sees. The control is BR-1 before issuing a descriptor, plus prompt revocation. Keep the service account limited to the libraries Cinewren needs.
 2. **Unreachable origin at removal (SR-09)** leaves an unrevoked token, which is logged.
-3. **Stolen session cookie becomes a permanent passkey (SR-04)** until SR-04 is fixed. It is detectable in the passkey list.
+3. **Stolen session cookie (SR-04, fixed).** A stolen cookie can no longer add a passkey on its own. Within 5 minutes of the victim's own sign-in or re-authentication, a thief holding that cookie could still add one; it would show in the passkey list.
 4. **Private-address resolution of an operator-entered host (SR-11).**
 5. **`SETUP_TOKEN` window** between deploy and first setup (HLD).
 6. **Cached artwork can outlive a grant revocation in the browser** for its `private` max-age. The edge cache never serves without a fresh permission check.
@@ -207,7 +209,7 @@ None of these blocks T5.8: no critical or high finding is open. They are listed 
 
 | Item | Recommendation | Agent proposal |
 |---|---|---|
-| SR-04, passkey enrollment without fresh authentication | Fix before v1.0 with a fresh-assertion step (LLD-API and UX change) | Fix in a follow-up task; accept until then |
+| SR-04, passkey enrollment without fresh authentication | Fix before v1.0 with a fresh-assertion step (LLD-API and UX change) | Owner decision 2026-10-04: require a fresh login. **Fixed** (this change) |
 | SR-09, best-effort revocation when the origin is down at delete or removal | Accept for v1.0; harden later by deleting credentials last | Accept |
 | SR-07, no master-key rotation tooling | Wire the `reencrypt` job before the first real key rotation | Accept for v1.0, with the manual procedure documented |
 | SR-11, private-range DNS names | Already accepted in LLD-PROV as an agent decision; owner confirmation requested | Accept |

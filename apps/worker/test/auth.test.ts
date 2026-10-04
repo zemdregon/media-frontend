@@ -16,6 +16,7 @@ import {
   login,
   loginOptions,
   ORIGIN,
+  reauth,
   redeem,
   redeemOptions,
   resetDb,
@@ -42,6 +43,8 @@ describe('FR-USR-001: every non-public API route needs a session', () => {
     ['GET', '/api/v1/me'],
     ['GET', '/api/v1/me/passkeys'],
     ['POST', '/api/v1/me/passkeys/options'],
+    ['POST', '/api/v1/me/reauth/options'],
+    ['POST', '/api/v1/me/reauth/verify'],
     ['DELETE', '/api/v1/me/passkeys/x'],
     ['POST', '/api/v1/auth/logout'],
     ['GET', '/api/v1/admin/invites'],
@@ -852,6 +855,160 @@ describe('FR-USR-006: own passkeys', () => {
       expect(res.status).toBe(400);
       expect(await errorCode(res)).toBe('WEBAUTHN_VERIFICATION_FAILED');
     }
+  });
+});
+
+describe('T5.8 SR-04: adding a passkey needs a fresh authentication', () => {
+  const reauthAt = async (cookie: string) =>
+    (await db
+      .prepare('SELECT reauth_at, created_at FROM sessions WHERE id_hash = ?')
+      .bind(await sha256Hex(cookie.split('=')[1] ?? ''))
+      .first<{ reauth_at: number | null; created_at: number }>()) ?? {
+      reauth_at: null,
+      created_at: 0,
+    };
+  const setReauthAt = async (cookie: string, value: number | null) =>
+    db
+      .prepare('UPDATE sessions SET reauth_at = ? WHERE id_hash = ?')
+      .bind(value, await sha256Hex(cookie.split('=')[1] ?? ''))
+      .run();
+  const passkeyCount = async () =>
+    (await db.prepare('SELECT COUNT(*) AS n FROM passkey_credentials').first<{ n: number }>())?.n;
+  const expectReauthRequired = async (res: Response) => {
+    expect(res.status).toBe(401);
+    expect(await errorCode(res)).toBe('REAUTH_REQUIRED');
+  };
+
+  it('without a fresh authentication, options and verify answer 401 REAUTH_REQUIRED', async () => {
+    const { cookie } = await setupOperator();
+    // Options issued while fresh; the session goes stale before verify.
+    const optRes = await call('POST', '/api/v1/me/passkeys/options', { cookie });
+    const { challengeId, options } = await json<{
+      challengeId: string;
+      options: PublicKeyCredentialCreationOptionsJSON;
+    }>(optRes);
+    await setReauthAt(cookie, null);
+    await expectReauthRequired(await call('POST', '/api/v1/me/passkeys/options', { cookie }));
+    const response = await new VirtualAuthenticator().register(options, ORIGIN);
+    await expectReauthRequired(
+      await call('POST', '/api/v1/me/passkeys/verify', { cookie, body: { challengeId, response } }),
+    );
+    expect(await passkeyCount()).toBe(1);
+    // The session itself is still valid: a stale session is not signed out.
+    expect((await call('GET', '/api/v1/me', { cookie })).status).toBe(200);
+  });
+
+  it('after re-authentication with an own passkey, adding succeeds', async () => {
+    const { auth, cookie } = await setupOperator();
+    await setReauthAt(cookie, null);
+    const res = await reauth(cookie, auth);
+    expect(res.status).toBe(200);
+    const { freshUntil } = await json<{ freshUntil: number }>(res);
+    expect(freshUntil - Date.now()).toBeGreaterThan(290_000);
+    expect((await addPasskey(cookie, new VirtualAuthenticator())).status).toBe(201);
+    expect(await passkeyCount()).toBe(2);
+  });
+
+  it('a re-authentication older than 5 minutes no longer counts', async () => {
+    const { cookie } = await setupOperator();
+    await setReauthAt(cookie, Date.now() - 300_000 - 1_000);
+    await expectReauthRequired(await call('POST', '/api/v1/me/passkeys/options', { cookie }));
+    await setReauthAt(cookie, Date.now() - 280_000);
+    expect((await call('POST', '/api/v1/me/passkeys/options', { cookie })).status).toBe(200);
+  });
+
+  it("refuses a re-authentication assertion from another user's passkey", async () => {
+    const { auth: opAuth, cookie: opCookie } = await setupOperator();
+    const viewer = await viewerSession(opCookie);
+    await setReauthAt(viewer.cookie, null);
+    const res = await reauth(viewer.cookie, opAuth);
+    expect(res.status).toBe(400);
+    expect(await errorCode(res)).toBe('WEBAUTHN_VERIFICATION_FAILED');
+    expect((await reauthAt(viewer.cookie)).reauth_at).toBeNull();
+    await expectReauthRequired(
+      await call('POST', '/api/v1/me/passkeys/options', { cookie: viewer.cookie }),
+    );
+  });
+
+  it("refuses a re-authentication challenge issued to another user's session", async () => {
+    const { auth: opAuth, cookie: opCookie } = await setupOperator();
+    const viewer = await viewerSession(opCookie);
+    await setReauthAt(opCookie, null);
+    const optRes = await call('POST', '/api/v1/me/reauth/options', { cookie: viewer.cookie });
+    const { challengeId, options } = await json<{
+      challengeId: string;
+      options: Parameters<VirtualAuthenticator['authenticate']>[0];
+    }>(optRes);
+    const response = await opAuth.authenticate(options, ORIGIN);
+    const res = await call('POST', '/api/v1/me/reauth/verify', {
+      cookie: opCookie,
+      body: { challengeId, response },
+    });
+    expect(res.status).toBe(400);
+    expect((await reauthAt(opCookie)).reauth_at).toBeNull();
+  });
+
+  it('a re-authentication challenge cannot be used to sign in, nor a sign-in one to re-authenticate', async () => {
+    const { auth, cookie } = await setupOperator();
+    const optRes = await call('POST', '/api/v1/me/reauth/options', { cookie });
+    const reauthCeremony = await json<{
+      challengeId: string;
+      options: Parameters<VirtualAuthenticator['authenticate']>[0];
+    }>(optRes);
+    const asLogin = await call('POST', '/api/v1/auth/login/verify', {
+      body: {
+        challengeId: reauthCeremony.challengeId,
+        response: await auth.authenticate(reauthCeremony.options, ORIGIN),
+      },
+    });
+    expect(asLogin.status).toBe(401);
+
+    await setReauthAt(cookie, null);
+    const loginCeremony = await loginOptions();
+    const asReauth = await call('POST', '/api/v1/me/reauth/verify', {
+      cookie,
+      body: {
+        challengeId: loginCeremony.challengeId,
+        response: await auth.authenticate(loginCeremony.options, ORIGIN),
+      },
+    });
+    expect(asReauth.status).toBe(400);
+    expect((await reauthAt(cookie)).reauth_at).toBeNull();
+  });
+
+  it('is single use: each new passkey needs its own fresh authentication', async () => {
+    const { auth, cookie } = await setupOperator();
+    expect((await addPasskey(cookie, new VirtualAuthenticator())).status).toBe(201);
+    expect((await reauthAt(cookie)).reauth_at).toBeNull();
+    await expectReauthRequired(await call('POST', '/api/v1/me/passkeys/options', { cookie }));
+    expect((await reauth(cookie, auth)).status).toBe(200);
+    expect((await addPasskey(cookie, new VirtualAuthenticator())).status).toBe(201);
+    expect(await passkeyCount()).toBe(3);
+  });
+
+  it('a failed registration does not spend the fresh authentication', async () => {
+    const { cookie } = await setupOperator();
+    const optRes = await call('POST', '/api/v1/me/passkeys/options', { cookie });
+    const { challengeId, options } = await json<{
+      challengeId: string;
+      options: PublicKeyCredentialCreationOptionsJSON;
+    }>(optRes);
+    const response = await new VirtualAuthenticator().register(options, 'https://evil.example');
+    const res = await call('POST', '/api/v1/me/passkeys/verify', {
+      cookie,
+      body: { challengeId, response },
+    });
+    expect(await errorCode(res)).toBe('WEBAUTHN_VERIFICATION_FAILED');
+    expect((await addPasskey(cookie, new VirtualAuthenticator())).status).toBe(201);
+  });
+
+  it('signing in counts as a fresh authentication', async () => {
+    const { auth, cookie: setupCookie } = await setupOperator();
+    await setReauthAt(setupCookie, null);
+    const cookie = sessionCookie(await login(auth));
+    const row = await reauthAt(cookie);
+    expect(row.reauth_at).toBe(row.created_at);
+    expect((await addPasskey(cookie, new VirtualAuthenticator())).status).toBe(201);
   });
 });
 

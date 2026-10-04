@@ -23,6 +23,8 @@ export interface SessionRow {
   last_seen_at: number;
   idle_expires_at: number;
   absolute_expires_at: number;
+  /** Last fresh passkey ceremony on this session (SR-04); NULL once used or never. */
+  reauth_at: number | null;
   display_name: string;
   role: Role;
   theme_preference: ThemePreference;
@@ -339,12 +341,16 @@ export async function deleteOwnPasskey(
 
 // --- sessions ---
 
+/**
+ * Every session is created by a passkey ceremony with user verification (setup, invite redemption
+ * or login), so it starts fresh: `reauth_at = created_at` (SR-04).
+ */
 export function insertSessionStmt(db: D1Database, s: NewSession): D1PreparedStatement {
   return db
     .prepare(
       `INSERT INTO sessions (id_hash, user_id, passkey_id, created_at, last_seen_at, idle_expires_at,
-         absolute_expires_at, user_agent_hint)
-       VALUES (?1, ?2, ?3, ?4, ?4, ?5, ?6, ?7)`,
+         absolute_expires_at, user_agent_hint, reauth_at)
+       VALUES (?1, ?2, ?3, ?4, ?4, ?5, ?6, ?7, ?4)`,
     )
     .bind(
       s.idHash,
@@ -366,7 +372,7 @@ export async function findLiveSession(
   return db
     .prepare(
       `SELECT s.id_hash, s.user_id, s.passkey_id, s.last_seen_at, s.idle_expires_at, s.absolute_expires_at,
-              u.display_name, u.role, u.theme_preference
+              s.reauth_at, u.display_name, u.role, u.theme_preference
        FROM sessions s JOIN users u ON u.id = s.user_id
        WHERE s.id_hash = ?1 AND u.status = 'active' AND s.idle_expires_at > ?2 AND s.absolute_expires_at > ?2`,
     )
@@ -387,6 +393,28 @@ export async function slideSession(
       .bind(now, idleExpiresAt, idHash),
     touchUserStmt(db, userId, now),
   ]);
+}
+
+/** Records a successful re-authentication on the session (`POST /me/reauth/verify`, SR-04). */
+export function markReauthStmt(db: D1Database, idHash: string, now: number): D1PreparedStatement {
+  return db.prepare('UPDATE sessions SET reauth_at = ? WHERE id_hash = ?').bind(now, idHash);
+}
+
+/**
+ * Consumes the session's fresh authentication: clears `reauth_at` only if it is at or after
+ * `notBefore`. Compare-and-set, so two concurrent add-passkey verifies cannot both use one
+ * re-authentication. Returns true when it was consumed.
+ */
+export async function consumeReauth(
+  db: D1Database,
+  idHash: string,
+  notBefore: number,
+): Promise<boolean> {
+  const res = await db
+    .prepare('UPDATE sessions SET reauth_at = NULL WHERE id_hash = ? AND reauth_at >= ?')
+    .bind(idHash, notBefore)
+    .run();
+  return res.meta.changes > 0;
 }
 
 export async function deleteSession(db: D1Database, idHash: string): Promise<void> {

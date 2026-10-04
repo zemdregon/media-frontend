@@ -60,14 +60,19 @@ export async function registrationOptions(
   });
 }
 
+/**
+ * Login passes no `allowCredentialIds`: discoverable login needs no username (LLD-API).
+ * Re-authentication (SR-04) lists the signed-in user's own credentials.
+ */
 export async function authenticationOptions(
   config: Config,
+  allowCredentialIds?: string[],
 ): Promise<PublicKeyCredentialRequestOptionsJSON> {
-  // No allowCredentials: discoverable login needs no username (LLD-API).
   return generateAuthenticationOptions({
     rpID: config.rpId,
     userVerification: 'required',
     timeout: config.challengeTtlMs,
+    ...(allowCredentialIds ? { allowCredentials: allowCredentialIds.map((id) => ({ id })) } : {}),
   });
 }
 
@@ -154,6 +159,7 @@ export async function verifyAuthentication(
   response: unknown,
   challenge: string,
   passkey: PasskeyRow,
+  failStatus: 400 | 401 = 401,
 ): Promise<number> {
   try {
     const result = await verifyAuthenticationResponse({
@@ -177,6 +183,6 @@ export async function verifyAuthentication(
       passkey_id: passkey.id,
       error: err,
     });
-    throw ceremonyFailed(401);
+    throw ceremonyFailed(failStatus);
   }
 }

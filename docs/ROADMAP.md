@@ -63,7 +63,7 @@
 | B-2 | Test servers for the T1.1 spike | **Containers (Jellyfin, Emby) plus the owner's Plex** | T1.1 can proceed. The Plex checks use the owner's account or server. |
 | Q-2 | Hide origin hostnames? | **Public HTTPS is fine** | ADR-0003 confirmed. DEF-1 stays deferred. |
 | Q-7 | Collections and people/collection search (shown in the design canvas) | **Add both to v1** | CAP-15, CAP-16, FR-SYNC-008, FR-CAT-011, FR-CAT-012, M2 tasks T2.9 and T2.10. Agent follow-up: merge rules in ADR-0015. |
-| Q-8 | SR-04 | Passkey enrollment without fresh authentication (security review) | **Require a fresh login to register a new passkey** | FR-USR-006 amended; re-auth ceremony and `REAUTH_REQUIRED`; ADR-0014 note. |
+| Q-8 | SR-04 | Passkey enrollment without fresh authentication (security review) | **Require a fresh login to register a new passkey** | Done: FR-USR-006 amended; `/me/reauth` ceremony, `REAUTH_REQUIRED`, migration 0005; tests in `apps/worker/test/auth.test.ts`. |
 | SR-07, SR-09, SR-11, SR-20 | Security-review risk acceptances | **SR-07: build the key-rotation job before v1.0. SR-09: accept best-effort revocation for v1.0. SR-11: accept. SR-20: accept the token scope.** | SR-07 is implemented: `apps/worker/src/vault/rotation.ts`, `apps/worker/src/vault/admin.ts`, `apps/worker/test/vault-rotation.test.ts`. The others are recorded as accepted residual risks in the security report §8. |
 | Light theme | **Dark and light at v1** | NFR-UX-001 (M2). Light tokens are agent-proposed in UX.md, pending light artboards (T2.11). |
 | Light theme | Sign-off on the agent-proposed light palette and stronger control borders | **Accepted** ("looks good", after reviewing the light artboards) | T2.11 done. UX.md light values marked owner-accepted. |

@@ -28,7 +28,11 @@ const keysJson = (versions: number[]) =>
 const ring = (versions: number[], current: number): Promise<Keyring> =>
   loadKeyring({ CREDENTIAL_KEYS: keysJson(versions), CREDENTIAL_KEY_CURRENT: String(current) });
 
-const SECRET = JSON.stringify({ kind: 'password', username: 'svc', password: 'hunter2-plain' });
+const SECRET = JSON.stringify({
+  kind: 'password',
+  username: 'svc',
+  password: 'test-only-password',
+});
 const TOKEN = 'cached-service-token-plain';
 const SESSION_CRED = JSON.stringify({ token: 'session-token-plain' });
 const IDEM_BODY = JSON.stringify({ streamUrl: 'https://o.example/s?ApiKey=idem-plain' });
@@ -313,7 +317,7 @@ describe('POST /admin/vault/rotate and the reencrypt job (SR-07)', () => {
     for (const secret of [
       key(1),
       key(2),
-      'hunter2-plain',
+      'test-only-password',
       TOKEN,
       'session-token-plain',
       'idem-plain',

@@ -44,6 +44,12 @@ ADR-0007 delegated authentication to Cloudflare Access. That stops strangers at 
 - **Negative:** Cinewren now owns auth code (WebAuthn ceremonies, sessions, CSRF, rate limiting), which adds M0 scope (ROADMAP T0.5). Strangers reach the Worker, where unauthenticated routes are limited to the setup, redeem, login and health endpoints. Recovery depends on operators. Passkeys need a WebAuthn-capable browser or device, which every NFR-COMPAT-001 browser is.
 - **To verify in M0:** that the chosen WebAuthn server library (proposed `@simplewebauthn/server`) runs in the Workers runtime, and the Workers rate-limiting options.
 
+## Notes
+
+### 2026-10-04: adding a passkey requires a fresh login (SR-04)
+
+Owner decision 2026-10-04: adding a passkey requires a fresh login (SR-04). The Decision above is unchanged. The [security review](../reports/2026-security-review.md) found that a stolen session cookie could enroll an attacker's passkey and keep permanent access. Adding a passkey now needs a user-verified assertion from one of the user's existing passkeys on the same session within the last 5 minutes *(proposed)*: the sign-in ceremony itself, or `POST /api/v1/me/reauth/*`. Each fresh authentication allows one new passkey. Agent decisions (delegated): removing a passkey stays ungated, because it only reduces access and the last one cannot be removed; re-authentication challenges reuse the `login` purpose bound to the user. Details: FR-USR-006, [LLD](../design/LLD.md) (LLD-API, LLD-TOKEN, LLD-ERR `REAUTH_REQUIRED`).
+
 ## Revisit when
 
 - Viewers commonly lack passkey-capable devices, or recovery load becomes significant.

@@ -4,8 +4,9 @@ import { savePreferences } from '../api-client/catalog';
 import { Alert, PageHead, Segmented } from '../components/ui';
 import { applyTheme } from '../theme/theme';
 import { errorMessage } from '../lib/useLoad';
+import { PasskeysSection } from './Passkeys';
 
-/** Settings: appearance override (NFR-UX-001) and account. Passkey management arrives with T0.5 follow-ups. */
+/** Settings: appearance override (NFR-UX-001), own passkeys (FR-USR-006) and account (UX §5). */
 export function Settings({
   me,
   onThemeSaved,
@@ -65,6 +66,7 @@ export function Settings({
           </p>
         )}
       </section>
+      <PasskeysSection />
       <section aria-labelledby="account-h" className="stack">
         <h2 id="account-h" className="h-section">
           Account
