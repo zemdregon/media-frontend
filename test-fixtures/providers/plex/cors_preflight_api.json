@@ -1,0 +1,30 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "OPTIONS",
+    "path": "/library/sections",
+    "headers": {
+      "Accept": "application/json",
+      "Origin": "https://cinewren.example",
+      "Access-Control-Request-Method": "GET",
+      "Access-Control-Request-Headers": "x-plex-token"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT, HEAD",
+      "Access-Control-Max-Age": "1209600",
+      "Content-Length": "0",
+      "Content-Type": "text/plain",
+      "Access-Control-Allow-Headers": "x-plex-token",
+      "Access-Control-Allow-Origin": "https://cinewren.example"
+    },
+    "body": ""
+  }
+}

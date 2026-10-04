@@ -1,0 +1,13 @@
+node_modules
+dist
+.wrangler
+.dev.vars
+.env*
+!.env.example
+*.log
+coverage
+.claude/worktrees/
+apps/e2e/test-results/
+apps/e2e/playwright-report/
+apps/e2e/.state/
+scripts/perf/.state/

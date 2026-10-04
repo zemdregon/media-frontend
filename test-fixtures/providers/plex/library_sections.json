@@ -1,0 +1,89 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/library/sections",
+    "headers": {
+      "Accept": "application/json",
+      "X-Plex-Client-Identifier": "cinewren-spike",
+      "X-Plex-Product": "Cinewren",
+      "X-Plex-Version": "0.0.1",
+      "X-Plex-Platform": "Web",
+      "X-Plex-Device": "Spike",
+      "X-Plex-Token": "<PLEX_TOKEN>"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Content-Length": "934"
+    },
+    "body": {
+      "MediaContainer": {
+        "size": 2,
+        "allowSync": false,
+        "title1": "Plex Library",
+        "Directory": [
+          {
+            "allowSync": true,
+            "filters": true,
+            "refreshing": false,
+            "key": "1",
+            "type": "movie",
+            "title": "Movies",
+            "agent": "tv.plex.agents.movie",
+            "scanner": "Plex Movie",
+            "language": "en-US",
+            "metadataAgentProviderGroupId": 1,
+            "uuid": "46c5cf5a-867c-4793-a534-564be2d8e10f",
+            "updatedAt": 1791097144,
+            "createdAt": 1791097144,
+            "scannedAt": 1791097146,
+            "content": true,
+            "directory": true,
+            "contentChangedAt": 10,
+            "hidden": 0,
+            "Location": [
+              {
+                "id": 1,
+                "path": "/data/movies"
+              }
+            ]
+          },
+          {
+            "allowSync": true,
+            "filters": true,
+            "refreshing": false,
+            "key": "2",
+            "type": "show",
+            "title": "Shows",
+            "agent": "tv.plex.agents.series",
+            "scanner": "Plex TV Series",
+            "language": "en-US",
+            "metadataAgentProviderGroupId": 2,
+            "uuid": "53ece43c-2459-4e55-beb5-49e2f2870b50",
+            "updatedAt": 1791097144,
+            "createdAt": 1791097144,
+            "scannedAt": 1791097147,
+            "content": true,
+            "directory": true,
+            "contentChangedAt": 58,
+            "hidden": 0,
+            "Location": [
+              {
+                "id": 2,
+                "path": "/data/tv"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

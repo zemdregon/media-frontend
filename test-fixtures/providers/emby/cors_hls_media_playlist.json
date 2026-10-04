@@ -1,0 +1,29 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Videos/12/main.m3u8?DeviceId=cinewren-ps-play1&MediaSourceId=mediasource_12&PlaySessionId=77fd5b0c95a84ccfa65830050bdf8df8&api_key=<SESSION_TOKEN_PLAY>&VideoCodec=h264&AudioCodec=aac&VideoBitrate=19808000&AudioBitrate=192000&AudioStreamIndex=1&TranscodingMaxAudioChannels=2&SegmentContainer=ts&MinSegments=1&BreakOnNonKeyFrames=True&TranscodeReasons=ContainerNotSupported",
+    "headers": {
+      "Accept": "application/json",
+      "Origin": "https://cinewren.example"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Length": "538",
+      "Content-Type": "application/vnd.apple.mpegurl",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "https://cinewren.example",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": "#EXTM3U\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:4\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:3.0000, nodesc\nhls1/main/0.ts?PlaySessionId=77fd5b0c95a84ccfa65830050bdf8df8\n#EXTINF:3.0000, nodesc\nhls1/main/1.ts?PlaySessionId=77fd5b0c95a84ccfa65830050bdf8df8\n#EXTINF:3.0000, nodesc\nhls1/main/2.ts?PlaySessionId=77fd5b0c95a84ccfa65830050bdf8df8\n#EXTINF:3.0000, nodesc\nhls1/main/3.ts?PlaySessionId=77fd5b0c95a84ccfa65830050bdf8df8\n#EXTINF:3.0000, nodesc\nhls1/main/4.ts?PlaySessionId=77fd5b0c95a84ccfa65830050bdf8df8\n#EXT-X-ENDLIST\n"
+  }
+}

@@ -1,0 +1,451 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/video/:/transcode/universal/decision?path=%2Flibrary%2Fmetadata%2F3&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&subtitleSize=100&audioBoost=100&location=lan&session=cinewren-ps-plex1&subtitles=auto&copyts=1&X-Plex-Client-Identifier=cinewren-ps-plex1&X-Plex-Session-Identifier=cinewren-ps-plex1&X-Plex-Product=Cinewren&X-Plex-Platform=Chrome&X-Plex-Client-Profile-Extra=add-direct-play-profile%28type%3DvideoProfile%26container%3Dmp4%26videoCodec%3Dh264%26audioCodec%3Daac%29%2Badd-transcode-target%28type%3DvideoProfile%26context%3Dstreaming%26protocol%3Dhls%26container%3Dmpegts%26videoCodec%3Dh264%26audioCodec%3Daac%29",
+    "headers": {
+      "Accept": "application/json",
+      "X-Plex-Client-Identifier": "cinewren-ps-plex1",
+      "X-Plex-Product": "Cinewren",
+      "X-Plex-Version": "0.0.1",
+      "X-Plex-Platform": "Web",
+      "X-Plex-Device": "Spike",
+      "X-Plex-Token": "<PLEX_TRANSIENT_TOKEN>"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Content-Length": "8956"
+    },
+    "body": {
+      "MediaContainer": {
+        "size": 1,
+        "allowSync": "1",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "identifier": "com.plexapp.plugins.library",
+        "librarySectionID": "1",
+        "librarySectionTitle": "Movies",
+        "librarySectionUUID": "46c5cf5a-867c-4793-a534-564be2d8e10f",
+        "mediaTagPrefix": "/system/bundle/media/flags/",
+        "mediaTagVersion": "1786914632",
+        "resourceSession": "cinewren-ps-plex1",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK.",
+        "Metadata": [
+          {
+            "addedAt": 1791096331,
+            "art": "/library/metadata/3/art/1791097147",
+            "audienceRating": 4.5,
+            "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+            "contentRating": "Not Rated",
+            "duration": 12023,
+            "guid": "plex://movie/5d9f34fbd74e670020020087",
+            "key": "/library/metadata/3",
+            "librarySectionID": "1",
+            "librarySectionKey": "/library/sections/1",
+            "librarySectionTitle": "Movies",
+            "originallyAvailableAt": "1959-07-22",
+            "primaryExtraKey": "/library/metadata/13",
+            "rating": 6.6,
+            "ratingImage": "rottentomatoes://image.rating.ripe",
+            "ratingKey": "3",
+            "slug": "plan-9-from-outer-space",
+            "studio": "Reynolds Pictures",
+            "summary": "Evil aliens attack Earth and set their terrible \"Plan 9\" into action. As the aliens resurrect the dead of the Earth, the lives of the living are in danger.",
+            "tagline": "Unspeakable horrors from outer space paralyze the living and resurrect the dead!",
+            "thumb": "/library/metadata/3/thumb/1791097147",
+            "title": "Plan 9 from Outer Space",
+            "type": "movie",
+            "updatedAt": 1791097147,
+            "year": 1959,
+            "Media": [
+              {
+                "hasVoiceActivity": "0",
+                "id": "3",
+                "videoProfile": "main",
+                "audioChannels": 1,
+                "audioCodec": "aac",
+                "bitrate": 20000,
+                "container": "mpegts",
+                "duration": 12023,
+                "height": 1080,
+                "protocol": "hls",
+                "videoCodec": "h264",
+                "videoFrameRate": "24p",
+                "videoResolution": "1080p",
+                "width": 1920,
+                "selected": true,
+                "Part": [
+                  {
+                    "id": "3",
+                    "videoProfile": "main",
+                    "bitrate": 20000,
+                    "container": "mpegts",
+                    "duration": 12023,
+                    "height": 1080,
+                    "protocol": "hls",
+                    "width": 1920,
+                    "decision": "transcode",
+                    "selected": true,
+                    "Stream": [
+                      {
+                        "bitDepth": 8,
+                        "bitrate": 20000,
+                        "codec": "h264",
+                        "displayTitle": "1080p",
+                        "extendedDisplayTitle": "1080p (HEVC Main)",
+                        "frameRate": 24.0,
+                        "height": 1080,
+                        "id": "43",
+                        "language": "English",
+                        "languageCode": "eng",
+                        "languageTag": "en",
+                        "streamType": 1,
+                        "width": 1920,
+                        "decision": "transcode",
+                        "location": "segments-av"
+                      },
+                      {
+                        "bitrateMode": "cbr",
+                        "canNormalizeLoudness": "0",
+                        "channels": 1,
+                        "codec": "aac",
+                        "displayTitle": "English (AAC Mono)",
+                        "extendedDisplayTitle": "English (AAC Mono)",
+                        "id": "44",
+                        "language": "English",
+                        "languageCode": "eng",
+                        "languageTag": "en",
+                        "samplingRate": 44100,
+                        "selected": true,
+                        "streamType": 2,
+                        "decision": "copy",
+                        "location": "segments-av"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "UltraBlurColors": [
+              {
+                "bottomLeft": "a9222c",
+                "bottomRight": "2d2558",
+                "topLeft": "4f181d",
+                "topRight": "96394e"
+              }
+            ],
+            "Genre": [
+              {
+                "filter": "genre=8",
+                "id": "8",
+                "tag": "Science Fiction"
+              },
+              {
+                "filter": "genre=6",
+                "id": "6",
+                "tag": "Horror"
+              }
+            ],
+            "Country": [
+              {
+                "filter": "country=96",
+                "id": "96",
+                "tag": "United States of America"
+              }
+            ],
+            "Rating": [
+              {
+                "image": "imdb://image.rating",
+                "type": "audience",
+                "value": "3.9"
+              },
+              {
+                "image": "rottentomatoes://image.rating.ripe",
+                "type": "critic",
+                "value": "6.6"
+              },
+              {
+                "image": "rottentomatoes://image.rating.spilled",
+                "type": "audience",
+                "value": "4.5"
+              },
+              {
+                "image": "themoviedb://image.rating",
+                "type": "audience",
+                "value": "4.2"
+              }
+            ],
+            "Director": [
+              {
+                "filter": "director=152",
+                "id": "152",
+                "tag": "Edward D. Wood Jr.",
+                "tagKey": "5d77682e7e9a3c0020c6ba00",
+                "thumb": "https://metadata-static.plex.tv/9/people/9dd511fed7614b6b07d6e779ffb5537e.jpg"
+              }
+            ],
+            "Writer": [
+              {
+                "filter": "writer=153",
+                "id": "153",
+                "tag": "Edward D. Wood Jr.",
+                "tagKey": "5d77682e7e9a3c0020c6ba00",
+                "thumb": "https://metadata-static.plex.tv/9/people/9dd511fed7614b6b07d6e779ffb5537e.jpg"
+              }
+            ],
+            "Role": [
+              {
+                "filter": "actor=154",
+                "id": "154",
+                "role": "Jeff Trent",
+                "tag": "Gregory Walcott",
+                "tagKey": "5d776827880197001ec90a7c",
+                "thumb": "https://metadata-static.plex.tv/4/people/46475ca60622ec978febb1f7b727667e.jpg"
+              },
+              {
+                "filter": "actor=155",
+                "id": "155",
+                "role": "Paula Trent",
+                "tag": "Mona McKinnon",
+                "tagKey": "5d77684b961905001eb98061",
+                "thumb": "https://metadata-static.plex.tv/people/5d77684b961905001eb98061.jpg"
+              },
+              {
+                "filter": "actor=156",
+                "id": "156",
+                "role": "Lt. John Harper",
+                "tag": "Duke Moore",
+                "tagKey": "5d77685e103a2d001f56f280",
+                "thumb": "https://metadata-static.plex.tv/people/5d77685e103a2d001f56f280.jpg"
+              },
+              {
+                "filter": "actor=157",
+                "id": "157",
+                "role": "Col. Tom Edwards",
+                "tag": "Tom Keene",
+                "tagKey": "5d776856880197001ec99545",
+                "thumb": "https://metadata-static.plex.tv/6/people/6b0d26b553d4b685dd0abfd8c9fdf388.jpg"
+              },
+              {
+                "filter": "actor=158",
+                "id": "158",
+                "role": "Patrolman Larry",
+                "tag": "Carl Anthony",
+                "tagKey": "5d77685c33f255001e853dd5",
+                "thumb": "https://metadata-static.plex.tv/people/5d77685c33f255001e853dd5.jpg"
+              },
+              {
+                "filter": "actor=159",
+                "id": "159",
+                "role": "Patrolman Kelton",
+                "tag": "Paul Marco",
+                "tagKey": "5d7768598718ba001e3196ba",
+                "thumb": "https://metadata-static.plex.tv/b/people/b7f0e14fcafe4e23b2561fe2d5a0567a.jpg"
+              },
+              {
+                "filter": "actor=160",
+                "id": "160",
+                "role": "Inspector Clay",
+                "tag": "Tor Johnson",
+                "tagKey": "5d77683c54f42c001f8c588b",
+                "thumb": "https://metadata-static.plex.tv/0/people/00af25dff607fd09f7eecb64940ec6f9.jpg"
+              },
+              {
+                "filter": "actor=161",
+                "id": "161",
+                "role": "Eros",
+                "tag": "Dudley Manlove",
+                "tagKey": "5d7768ae9ab54400214ea07b",
+                "thumb": "https://metadata-static.plex.tv/people/5d7768ae9ab54400214ea07b.jpg"
+              },
+              {
+                "filter": "actor=162",
+                "id": "162",
+                "role": "Tanna",
+                "tag": "Joanna Lee",
+                "tagKey": "5d7768911999bc0020dc93f5"
+              },
+              {
+                "filter": "actor=163",
+                "id": "163",
+                "role": "Ruler",
+                "tag": "Bunny Breckinridge",
+                "tagKey": "5d9f34fbd74e6700200200ab",
+                "thumb": "https://metadata-static.plex.tv/people/5d9f34fbd74e6700200200ab.jpg"
+              },
+              {
+                "filter": "actor=164",
+                "id": "164",
+                "role": "General Roberts",
+                "tag": "Lyle Talbot",
+                "tagKey": "5d77682d5af944001f1f80f7",
+                "thumb": "https://metadata-static.plex.tv/5/people/54dafd31724674cd6f259027983871b3.jpg"
+              },
+              {
+                "filter": "actor=165",
+                "id": "165",
+                "role": "Patrolman Jamie",
+                "tag": "Conrad Brooks",
+                "tagKey": "5d776827880197001ec90a6f",
+                "thumb": "https://metadata-static.plex.tv/7/people/7333be9115e9eefcb08c60e555783c4b.jpg"
+              },
+              {
+                "filter": "actor=166",
+                "id": "166",
+                "role": "Vampire Girl",
+                "tag": "Maila Nurmi",
+                "tagKey": "5d77682e7e9a3c0020c6b9fb",
+                "thumb": "https://metadata-static.plex.tv/e/people/e4bfcff4577a574e5ec400a565e163c2.jpg"
+              },
+              {
+                "filter": "actor=167",
+                "id": "167",
+                "role": "Ghoul Man",
+                "tag": "Bela Lugosi",
+                "tagKey": "5d7768262e80df001ebdcd00",
+                "thumb": "https://metadata-static.plex.tv/2/people/2446820feb65d644940320633a8699a7.jpg"
+              },
+              {
+                "filter": "actor=168",
+                "id": "168",
+                "role": "Self / Narrator",
+                "tag": "Criswell",
+                "tagKey": "5d77686133f255001e854663",
+                "thumb": "https://metadata-static.plex.tv/people/5d77686133f255001e854663.jpg"
+              },
+              {
+                "filter": "actor=169",
+                "id": "169",
+                "role": "Danny",
+                "tag": "David De Mering",
+                "tagKey": "6323e83693de28374b31ee3b"
+              },
+              {
+                "filter": "actor=170",
+                "id": "170",
+                "role": "Edith",
+                "tag": "Norma McCarty",
+                "tagKey": "5d7768b533f255001e85d85c"
+              },
+              {
+                "filter": "actor=171",
+                "id": "171",
+                "role": "Reverend",
+                "tag": "Lynn Lemon",
+                "tagKey": "6a0bedd8dd3b523074e27d4c"
+              },
+              {
+                "filter": "actor=172",
+                "id": "172",
+                "role": "Man",
+                "tag": "Ben Frommer",
+                "tagKey": "5d7768262e80df001ebdce1e"
+              },
+              {
+                "filter": "actor=173",
+                "id": "173",
+                "role": "Girl",
+                "tag": "Gloria Dea",
+                "tagKey": "5d776a5aad5437001f77b019",
+                "thumb": "https://metadata-static.plex.tv/c/people/c516691346d43218d1c697291435cee9.jpg"
+              },
+              {
+                "filter": "actor=174",
+                "id": "174",
+                "role": "Drunk (uncredited)",
+                "tag": "Donald A. Davis",
+                "tagKey": "5d77682f961905001eb92e46"
+              },
+              {
+                "filter": "actor=175",
+                "id": "175",
+                "role": "Second Stretcher Bearer (uncredited)",
+                "tag": "Johnny Duncan",
+                "tagKey": "5d77682954f42c001f8c2d57",
+                "thumb": "https://metadata-static.plex.tv/3/people/36267aff8af684ff790ce7606125412e.jpg"
+              },
+              {
+                "filter": "actor=176",
+                "id": "176",
+                "role": "Ghoul Man (uncredited)",
+                "tag": "Tom Mason",
+                "tagKey": "6a0bf251141002df6909a33b",
+                "thumb": "https://image.tmdb.org/t/p/original/bVWmk63dKNnFQBOhbXhXx9cXq0P.jpg"
+              },
+              {
+                "filter": "actor=177",
+                "id": "177",
+                "role": "Farmer Calder (uncredited)",
+                "tag": "Karl Johnson",
+                "tagKey": "5d77686133f255001e85466b"
+              },
+              {
+                "filter": "actor=178",
+                "id": "178",
+                "role": "Gravedigger (uncredited)",
+                "tag": "J. Edward Reynolds",
+                "tagKey": "5dcd4bee45de43001e4615ef"
+              },
+              {
+                "filter": "actor=179",
+                "id": "179",
+                "role": "Gravedigger (uncredited)",
+                "tag": "Hugh Thomas Jr",
+                "tagKey": "5dcd4bee45de43001e4615f1"
+              },
+              {
+                "filter": "actor=180",
+                "id": "180",
+                "role": "Woman in Telephone Booth (uncredited)",
+                "tag": "Pauline Reynolds",
+                "tagKey": "64997e483f62254e48a35096"
+              },
+              {
+                "filter": "actor=181",
+                "id": "181",
+                "role": "Mourner Reading Bible in Opening Scene (uncredited)",
+                "tag": "Clay Stone",
+                "tagKey": "693d089af741f3302e786fcd"
+              },
+              {
+                "filter": "actor=182",
+                "id": "182",
+                "role": "Man (uncredited)",
+                "tag": "James Miller",
+                "tagKey": "64997e47ee73a72b1ce2f21a"
+              },
+              {
+                "filter": "actor=183",
+                "id": "183",
+                "role": "Man Holding Newspaper (uncredited)",
+                "tag": "Edward D. Wood Jr.",
+                "tagKey": "5d77682e7e9a3c0020c6ba00",
+                "thumb": "https://metadata-static.plex.tv/9/people/9dd511fed7614b6b07d6e779ffb5537e.jpg"
+              }
+            ],
+            "Producer": [
+              {
+                "filter": "producer=184",
+                "id": "184",
+                "tag": "Edward D. Wood Jr.",
+                "tagKey": "5d77682e7e9a3c0020c6ba00",
+                "thumb": "https://metadata-static.plex.tv/9/people/9dd511fed7614b6b07d6e779ffb5537e.jpg"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

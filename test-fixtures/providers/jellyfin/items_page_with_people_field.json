@@ -1,0 +1,198 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Items?userId=148dded263c74cb885d9819605d68044&Recursive=true&IncludeItemTypes=Movie&Fields=People,ProviderIds",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SESSION_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "Items": [
+        {
+          "Name": "His Girl Friday",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "5bd7c114c62f47e8cd0dbaceb156ff8e",
+          "Container": "mov,mp4,m4a,3gp,3g2,mj2",
+          "ChannelId": null,
+          "RunTimeTicks": 120000000,
+          "ProductionYear": 1940,
+          "ProviderIds": {
+            "Imdb": "tt0032599",
+            "Tmdb": "3085"
+          },
+          "IsFolder": false,
+          "Type": "Movie",
+          "People": [
+            {
+              "Name": "Cary Grant",
+              "Id": "61b0d738788a93e5906342b0022382d9",
+              "Role": "Walter Burns",
+              "Type": "Actor"
+            },
+            {
+              "Name": "Rosalind Russell",
+              "Id": "fdc76bb47f31a46e1429d7db23dc0a88",
+              "Role": "Hildy Johnson",
+              "Type": "Actor"
+            },
+            {
+              "Name": "Howard Hawks",
+              "Id": "354db137deb8d56e433cd25f7825a99f",
+              "Role": "",
+              "Type": "Director"
+            }
+          ],
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 1,
+            "IsFavorite": true,
+            "LastPlayedDate": "2026-10-04T07:03:39.0599041Z",
+            "Played": true,
+            "Key": "5bd7c114-c62f-47e8-cd0d-baceb156ff8e",
+            "ItemId": "5bd7c114c62f47e8cd0dbaceb156ff8e"
+          },
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "384ff45a2c8a2341d935fc188c40e37d"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "384ff45a2c8a2341d935fc188c40e37d": "WkGbk@.hwz+OE+OB-:c5sD=MpIpGaxt7W.RjRjWBt8aNjbS#fljI"
+            }
+          },
+          "LocationType": "FileSystem",
+          "MediaType": "Video"
+        },
+        {
+          "Name": "Night of the Living Dead",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "ea7efa1224758f90a2a989d8cc93a42a",
+          "Container": "mkv",
+          "ChannelId": null,
+          "RunTimeTicks": 120230000,
+          "ProductionYear": 1968,
+          "ProviderIds": {
+            "Imdb": "tt0063350",
+            "Tmdb": "10331",
+            "TmdbCollection": "900001"
+          },
+          "IsFolder": false,
+          "Type": "Movie",
+          "People": [
+            {
+              "Name": "Duane Jones",
+              "Id": "98f4a5c661af4abab8b78099e81b8f86",
+              "Role": "Ben",
+              "Type": "Actor"
+            },
+            {
+              "Name": "Judith O'Dea",
+              "Id": "a269870e3a7f5bdc0d090aed3caadbdd",
+              "Role": "Barbara",
+              "Type": "Actor"
+            },
+            {
+              "Name": "George A. Romero",
+              "Id": "b82f2a32b689d9ab612eeefa9eef056a",
+              "Role": "",
+              "Type": "Director"
+            },
+            {
+              "Name": "John A. Russo",
+              "Id": "ff170aa5a1261f6dbffd526682097caf",
+              "Role": "",
+              "Type": "Writer"
+            }
+          ],
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false,
+            "Key": "ea7efa12-2475-8f90-a2a9-89d8cc93a42a",
+            "ItemId": "ea7efa1224758f90a2a989d8cc93a42a"
+          },
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "b66ca575b92c4b2d19099e0b6848c277"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "b66ca575b92c4b2d19099e0b6848c277": "W~K_Ua;Zorz6iQ]~xunzW.j1WCs,WqaybFbFayW;xtoHayaPaisl"
+            }
+          },
+          "LocationType": "FileSystem",
+          "MediaType": "Video"
+        },
+        {
+          "Name": "Plan 9 from Outer Space",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "25900aea80a228d02844e045bdd4213f",
+          "HasSubtitles": true,
+          "Container": "mkv",
+          "ChannelId": null,
+          "RunTimeTicks": 120230000,
+          "ProductionYear": 1957,
+          "ProviderIds": {
+            "Imdb": "tt0052077",
+            "Tmdb": "10513",
+            "TmdbCollection": "900001"
+          },
+          "IsFolder": false,
+          "Type": "Movie",
+          "People": [
+            {
+              "Name": "Bela Lugosi",
+              "Id": "5e35154b8255d7b03f9a259bb359362f",
+              "Role": "Ghoul Man",
+              "Type": "Actor"
+            },
+            {
+              "Name": "Ed Wood",
+              "Id": "5e5ef24e1db403800e455e7574fb32b2",
+              "Role": "",
+              "Type": "Director"
+            }
+          ],
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 1,
+            "IsFavorite": false,
+            "LastPlayedDate": "2026-10-04T07:03:39.3478854Z",
+            "Played": true,
+            "Key": "25900aea-80a2-28d0-2844-e045bdd4213f",
+            "ItemId": "25900aea80a228d02844e045bdd4213f"
+          },
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "3972aec7507dc5870650943eb6ff7bdb"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "3972aec7507dc5870650943eb6ff7bdb": "W~KxVTILOGK.XdMR%2V]nSS0X4Vxn%nOjZn%jFXSxuahX7fzjYbH"
+            }
+          },
+          "LocationType": "FileSystem",
+          "MediaType": "Video"
+        }
+      ],
+      "TotalRecordCount": 3,
+      "StartIndex": 0
+    }
+  }
+}

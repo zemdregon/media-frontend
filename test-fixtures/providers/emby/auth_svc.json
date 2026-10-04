@@ -1,0 +1,141 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "POST",
+    "path": "/Users/AuthenticateByName",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Client=\"Cinewren\", Device=\"Cinewren Sync\", DeviceId=\"cinewren-svc-main\", Version=\"0.0.1\"",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "Username": "cinewren-svc",
+      "Pw": "<PASSWORD>"
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Length": "2891",
+      "Content-Type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": {
+      "User": {
+        "Name": "cinewren-svc",
+        "ServerId": "66831b99153e41cb824035fd4f81aa23",
+        "Prefix": "C",
+        "DateCreated": "2026-10-04T06:58:36.3613134Z",
+        "Id": "5c84ecbdbf494494a7fa03913ea2e020",
+        "HasPassword": true,
+        "HasConfiguredPassword": true,
+        "LastLoginDate": "2026-10-04T07:03:54.9167446Z",
+        "LastActivityDate": "2026-10-04T07:03:54.9174755Z",
+        "Configuration": {
+          "PlayDefaultAudioTrack": true,
+          "DisplayMissingEpisodes": false,
+          "SubtitleMode": "Smart",
+          "OrderedViews": [],
+          "LatestItemsExcludes": [],
+          "MyMediaExcludes": [],
+          "HidePlayedInLatest": true,
+          "HidePlayedInMoreLikeThis": false,
+          "HidePlayedInSuggestions": false,
+          "RememberAudioSelections": true,
+          "RememberSubtitleSelections": true,
+          "EnableNextEpisodeAutoPlay": true,
+          "ResumeRewindSeconds": 0,
+          "IntroSkipMode": "ShowButton",
+          "EnableLocalPassword": false
+        },
+        "Policy": {
+          "IsAdministrator": false,
+          "IsHidden": false,
+          "IsHiddenRemotely": true,
+          "IsHiddenFromUnusedDevices": false,
+          "IsDisabled": false,
+          "LockedOutDate": 0,
+          "AllowTagOrRating": false,
+          "BlockedTags": [],
+          "IsTagBlockingModeInclusive": false,
+          "IncludeTags": [],
+          "EnableUserPreferenceAccess": false,
+          "AccessSchedules": [],
+          "BlockUnratedItems": [],
+          "EnableRemoteControlOfOtherUsers": false,
+          "EnableSharedDeviceControl": false,
+          "EnableRemoteAccess": true,
+          "EnableLiveTvManagement": true,
+          "EnableLiveTvAccess": true,
+          "EnableMediaPlayback": true,
+          "EnableAudioPlaybackTranscoding": true,
+          "EnableVideoPlaybackTranscoding": true,
+          "EnableTranscodingQuality": true,
+          "AutoRemoteQuality": 0,
+          "EnablePlaybackRemuxing": true,
+          "EnableContentDeletion": false,
+          "RestrictedFeatures": [],
+          "EnableContentDeletionFromFolders": [],
+          "EnableContentDownloading": true,
+          "EnableSubtitleDownloading": true,
+          "EnableSubtitleManagement": false,
+          "EnableSyncTranscoding": true,
+          "EnableMediaConversion": true,
+          "EnabledChannels": [],
+          "EnableAllChannels": true,
+          "EnabledFolders": [],
+          "EnableAllFolders": true,
+          "InvalidLoginAttemptCount": 0,
+          "EnablePublicSharing": true,
+          "RemoteClientBitrateLimit": 0,
+          "AuthenticationProviderId": "Emby.Server.Implementations.Library.DefaultAuthenticationProvider",
+          "ExcludedSubFolders": [],
+          "SimultaneousStreamLimit": 0,
+          "EnabledDevices": [],
+          "EnableAllDevices": true,
+          "AllowCameraUpload": true,
+          "AllowSharingPersonalItems": false
+        }
+      },
+      "SessionInfo": {
+        "PlayState": {
+          "CanSeek": false,
+          "IsPaused": false,
+          "IsMuted": false,
+          "RepeatMode": "RepeatNone",
+          "SleepTimerMode": "None",
+          "SubtitleOffset": 0,
+          "Shuffle": false,
+          "PlaybackRate": 1
+        },
+        "AdditionalUsers": [],
+        "RemoteEndPoint": "172.17.0.1",
+        "Protocol": "HTTP/1.1",
+        "PlayableMediaTypes": [],
+        "PlaylistIndex": 0,
+        "PlaylistLength": 0,
+        "Id": "3ee506b134dde3c210fe1853e61c346e",
+        "ServerId": "66831b99153e41cb824035fd4f81aa23",
+        "UserId": "5c84ecbdbf494494a7fa03913ea2e020",
+        "UserName": "cinewren-svc",
+        "Client": "Cinewren",
+        "LastActivityDate": "2026-10-04T07:03:54.9174755Z",
+        "DeviceName": "Cinewren Sync",
+        "InternalDeviceId": 4,
+        "DeviceId": "cinewren-svc-main",
+        "ApplicationVersion": "0.0.1",
+        "SupportedCommands": [],
+        "SupportsRemoteControl": false
+      },
+      "AccessToken": "<SERVICE_TOKEN>",
+      "ServerId": "66831b99153e41cb824035fd4f81aa23"
+    }
+  }
+}

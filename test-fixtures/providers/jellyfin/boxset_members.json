@@ -1,0 +1,101 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Items?userId=148dded263c74cb885d9819605d68044&ParentId=275b474076ee2847be682160e284766c&Fields=ProviderIds",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SERVICE_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "Items": [
+        {
+          "Name": "Plan 9 from Outer Space",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "25900aea80a228d02844e045bdd4213f",
+          "HasSubtitles": true,
+          "Container": "mkv",
+          "ChannelId": null,
+          "RunTimeTicks": 120230000,
+          "ProductionYear": 1957,
+          "ProviderIds": {
+            "Imdb": "tt0052077",
+            "Tmdb": "10513",
+            "TmdbCollection": "900001"
+          },
+          "IsFolder": false,
+          "Type": "Movie",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false,
+            "Key": "25900aea-80a2-28d0-2844-e045bdd4213f",
+            "ItemId": "25900aea80a228d02844e045bdd4213f"
+          },
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "3972aec7507dc5870650943eb6ff7bdb"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "3972aec7507dc5870650943eb6ff7bdb": "W~KxVTILOGK.XdMR%2V]nSS0X4Vxn%nOjZn%jFXSxuahX7fzjYbH"
+            }
+          },
+          "LocationType": "FileSystem",
+          "MediaType": "Video"
+        },
+        {
+          "Name": "Night of the Living Dead",
+          "ServerId": "e8a0c84738be4ea3a75540d3c5ea8225",
+          "Id": "ea7efa1224758f90a2a989d8cc93a42a",
+          "Container": "mkv",
+          "ChannelId": null,
+          "RunTimeTicks": 120230000,
+          "ProductionYear": 1968,
+          "ProviderIds": {
+            "Imdb": "tt0063350",
+            "Tmdb": "10331",
+            "TmdbCollection": "900001"
+          },
+          "IsFolder": false,
+          "Type": "Movie",
+          "UserData": {
+            "PlaybackPositionTicks": 0,
+            "PlayCount": 0,
+            "IsFavorite": false,
+            "Played": false,
+            "Key": "ea7efa12-2475-8f90-a2a9-89d8cc93a42a",
+            "ItemId": "ea7efa1224758f90a2a989d8cc93a42a"
+          },
+          "VideoType": "VideoFile",
+          "ImageTags": {
+            "Primary": "b66ca575b92c4b2d19099e0b6848c277"
+          },
+          "BackdropImageTags": [],
+          "ImageBlurHashes": {
+            "Primary": {
+              "b66ca575b92c4b2d19099e0b6848c277": "W~K_Ua;Zorz6iQ]~xunzW.j1WCs,WqaybFbFayW;xtoHayaPaisl"
+            }
+          },
+          "LocationType": "FileSystem",
+          "MediaType": "Video"
+        }
+      ],
+      "TotalRecordCount": 2,
+      "StartIndex": 0
+    }
+  }
+}

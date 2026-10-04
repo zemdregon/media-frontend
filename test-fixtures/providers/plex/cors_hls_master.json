@@ -1,0 +1,26 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/video/:/transcode/universal/start.m3u8?path=%2Flibrary%2Fmetadata%2F3&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&subtitleSize=100&audioBoost=100&location=lan&session=cinewren-ps-plex1&subtitles=auto&copyts=1&X-Plex-Client-Identifier=cinewren-ps-plex1&X-Plex-Session-Identifier=cinewren-ps-plex1&X-Plex-Product=Cinewren&X-Plex-Platform=Chrome&X-Plex-Client-Profile-Extra=add-direct-play-profile%28type%3DvideoProfile%26container%3Dmp4%26videoCodec%3Dh264%26audioCodec%3Daac%29%2Badd-transcode-target%28type%3DvideoProfile%26context%3Dstreaming%26protocol%3Dhls%26container%3Dmpegts%26videoCodec%3Dh264%26audioCodec%3Daac%29&X-Plex-Token=<PLEX_TRANSIENT_TOKEN>",
+    "headers": {
+      "Accept": "application/json",
+      "Origin": "https://cinewren.example"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Access-Control-Expose-Headers": "Location, Date",
+      "Content-Type": "application/vnd.apple.mpegurl",
+      "Content-Length": "141",
+      "Access-Control-Allow-Origin": "https://cinewren.example"
+    },
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=8007000,RESOLUTION=1920x1080,FRAME-RATE=24.000000\nsession/cinewren-ps-plex1/base/index.m3u8\n"
+  }
+}

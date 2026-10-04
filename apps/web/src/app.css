@@ -1,0 +1,1559 @@
+/*
+ * Signed-in app layout and catalog components (UX §3 to §6). Colours, radii and fonts come from
+ * the tokens in theme/tokens.css only; there is no theme-specific CSS in this file (UX §3.5).
+ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.sr-only-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -64px;
+  z-index: 10;
+  padding: 12px 16px;
+  border-radius: var(--cw-r-button);
+  background: var(--cw-accent);
+  color: var(--cw-on-accent);
+  font-weight: 700;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
+a {
+  color: var(--cw-accent);
+}
+
+a:hover {
+  color: var(--cw-accent-hover);
+}
+
+.muted {
+  color: var(--cw-text-muted);
+  font-weight: 400;
+}
+
+.helper a {
+  font-weight: 600;
+}
+
+.centered-note {
+  padding: 32px;
+}
+
+/* ---- Shell (UX §4) ---- */
+
+.app {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  min-height: 100vh;
+}
+
+.side-nav {
+  flex: 1 1 232px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 28px 18px;
+  border-right: 1px solid var(--cw-border);
+  background: var(--cw-surface-nav);
+}
+
+.side-nav ul {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+}
+
+.wordmark-text {
+  color: var(--cw-text);
+  font: 750 22px var(--cw-font-display);
+  letter-spacing: -0.02em;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--cw-r-nav);
+  color: var(--cw-text-body);
+  text-decoration: none;
+}
+
+.nav-item:hover {
+  background: var(--cw-surface-2);
+  color: var(--cw-text-body);
+}
+
+.nav-item[aria-current='page'] {
+  background: var(--cw-surface-selected);
+  color: var(--cw-text);
+  font-weight: 600;
+}
+
+.main-col {
+  flex: 999 1 560px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 28px clamp(16px, 4vw, 48px) 0;
+}
+
+.search {
+  flex: 1 1 320px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--cw-border-control);
+  border-radius: var(--cw-r-callout);
+  background: var(--cw-surface-1);
+  color: var(--cw-text-muted);
+}
+
+.search:focus-within {
+  outline: 2px solid var(--cw-accent);
+  outline-offset: 2px;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--cw-text);
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+}
+
+.search input::placeholder {
+  color: var(--cw-text-placeholder);
+}
+
+.account-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--cw-border-control);
+  border-radius: var(--cw-r-circle);
+  background: var(--cw-surface-2);
+  color: var(--cw-text);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.account-button:hover {
+  color: var(--cw-text);
+  background: var(--cw-surface-selected);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  padding: 28px clamp(16px, 4vw, 48px) 64px;
+  outline: none;
+}
+
+.main > * {
+  min-width: 0;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+}
+
+/* ---- Typography (UX §3.3) ---- */
+
+.h-display {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.h-title {
+  margin: 0;
+  font-size: clamp(48px, 7vw, 88px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+  overflow-wrap: anywhere;
+}
+
+.h-hero {
+  margin: 0;
+  color: var(--cw-text);
+  font: 700 34px/1.05 var(--cw-font-display);
+  letter-spacing: -0.02em;
+}
+
+.h-section {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.h-card {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.mono-label {
+  margin: 0;
+  color: var(--cw-text-muted);
+  font: 500 12px var(--cw-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.mono-heading {
+  font-size: 12px;
+}
+
+.mono-value {
+  color: var(--cw-text-muted);
+  font: 400 13px var(--cw-font-mono);
+}
+
+.count {
+  margin-left: 6px;
+  color: var(--cw-text-muted);
+}
+
+.meta-line {
+  margin: 0;
+  color: var(--cw-text-muted);
+}
+
+.overview {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--cw-text-body);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.link-strong {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* ---- Buttons (UX §6) ---- */
+
+a.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.button {
+  min-height: 44px;
+}
+
+.auth-page .button-primary {
+  width: 100%;
+}
+
+a.button-primary {
+  min-height: 48px;
+  padding: 0 22px;
+  border: 1px solid var(--cw-accent);
+  border-radius: var(--cw-r-pill);
+  background: var(--cw-accent);
+  color: var(--cw-on-accent);
+  font-weight: 700;
+}
+
+a.button-primary:hover {
+  background: var(--cw-accent-hover);
+  color: var(--cw-on-accent);
+}
+
+.button-outline {
+  border-color: var(--cw-border-control);
+}
+
+.button-outline:hover {
+  background: var(--cw-surface-2);
+  color: var(--cw-text);
+}
+
+a.button-outline {
+  padding: 0 20px;
+  border: 1px solid var(--cw-border-control);
+  border-radius: var(--cw-r-pill);
+  color: var(--cw-text);
+  font-weight: 600;
+}
+
+/* ---- Alerts, callouts ---- */
+
+.alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alert p {
+  margin: 0;
+}
+
+.alert-info {
+  border-color: var(--cw-border-control);
+}
+
+.callout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 20px 22px;
+  border: 1px solid var(--cw-border);
+  border-radius: var(--cw-r-callout);
+  background: var(--cw-surface-1);
+}
+
+.callout p {
+  margin: 0;
+}
+
+/* ---- Status ---- */
+
+.status-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--cw-text-muted);
+}
+
+.dot-ok {
+  background: var(--cw-status-ok);
+}
+
+.dot-warn {
+  background: var(--cw-status-warn);
+}
+
+.dot-bad {
+  background: var(--cw-status-bad);
+}
+
+/* ---- Poster grid and cards (UX §4, §6) ---- */
+
+.poster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(168px, 100%), 1fr));
+  gap: 24px 20px;
+}
+
+.poster-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--cw-text-2);
+  text-decoration: none;
+}
+
+.poster-card:hover {
+  color: var(--cw-text-2);
+}
+
+.poster {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  aspect-ratio: 2 / 3;
+  padding: 12px;
+  overflow: hidden;
+  border: 1px solid var(--cw-poster-hairline);
+  border-radius: var(--cw-r-button);
+  background: color-mix(in srgb, hsl(var(--cw-hue) 55% 50%) 14%, var(--cw-surface-2));
+  transition: transform 0.15s ease;
+}
+
+.poster-card:hover .poster {
+  transform: translateY(-2px);
+}
+
+.poster-card-offline .poster {
+  opacity: 0.6;
+}
+
+.poster img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.poster-title {
+  position: relative;
+  color: var(--cw-text);
+  font: 800 28px/0.94 var(--cw-font-display);
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.poster-year {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  color: var(--cw-text-2);
+  font: 400 11px var(--cw-font-mono);
+}
+
+.poster-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.poster-name {
+  color: var(--cw-text-2);
+  font-weight: 600;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.poster-best {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cw-text-muted);
+  font-size: 13px;
+}
+
+.chip {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: var(--cw-r-chip);
+  background: var(--cw-surface-2);
+  color: var(--cw-text-body);
+  font: 400 12px var(--cw-font-mono);
+  white-space: nowrap;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip-button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--cw-border-control);
+  border-radius: var(--cw-r-pill);
+  background: var(--cw-surface-2);
+  color: var(--cw-text);
+  font: 600 14px var(--cw-font-body);
+  cursor: pointer;
+}
+
+.chip-button:hover {
+  background: var(--cw-surface-selected);
+}
+
+.person-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px 0 8px;
+  border: 1px solid var(--cw-border-control);
+  border-radius: var(--cw-r-pill);
+  color: var(--cw-text);
+  text-decoration: none;
+}
+
+.person-chip:hover {
+  background: var(--cw-surface-2);
+  color: var(--cw-text);
+}
+
+.person-initials,
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--cw-surface-2);
+  color: var(--cw-text);
+  font: 700 12px var(--cw-font-body);
+}
+
+.avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 44px;
+  border: 1px solid var(--cw-border);
+  font: 800 32px var(--cw-font-display);
+}
+
+.person-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.person-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 20px;
+}
+
+.collection-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.collection-art {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  aspect-ratio: 3 / 2;
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid var(--cw-poster-hairline);
+  border-radius: var(--cw-r-callout);
+  background: color-mix(in srgb, hsl(var(--cw-hue) 55% 50%) 14%, var(--cw-surface-2));
+  color: var(--cw-text);
+  font: 800 24px/0.95 var(--cw-font-display);
+  letter-spacing: -0.03em;
+  transition: transform 0.15s ease;
+}
+
+.collection-tile:hover .collection-art {
+  transform: translateY(-2px);
+}
+
+.collection-art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---- Filters (UX §5 Movies / Shows) ---- */
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+}
+
+.filter-bar .field {
+  margin: 0;
+  min-width: 140px;
+}
+
+.filter-bar .field-narrow {
+  min-width: 100px;
+  max-width: 120px;
+}
+
+.field select,
+.field input {
+  min-height: 48px;
+}
+
+.field select {
+  padding: 0 14px;
+  border: 1px solid var(--cw-border-control);
+  border-radius: var(--cw-r-button);
+  background: var(--cw-bg);
+  color: var(--cw-text);
+  font: inherit;
+}
+
+/* ---- Hero (continue watching) ---- */
+
+.hero-row {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  padding: 28px;
+  border: 1px solid var(--cw-border);
+  border-radius: var(--cw-r-card);
+  background: var(--cw-surface-1);
+}
+
+.hero-art {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  flex: 1 1 280px;
+  max-width: 420px;
+  aspect-ratio: 16 / 9;
+  padding: 18px;
+  overflow: hidden;
+  border-radius: var(--cw-r-callout);
+  background: var(--cw-surface-2);
+}
+
+.hero-art-title {
+  color: var(--cw-text);
+  font: 800 40px/0.9 var(--cw-font-display);
+  letter-spacing: -0.03em;
+}
+
+.hero-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--cw-border);
+}
+
+.hero-progress span {
+  display: block;
+  height: 100%;
+  background: var(--cw-accent);
+}
+
+.hero-body {
+  display: flex;
+  flex: 1 1 300px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+}
+
+.hero-body p {
+  margin: 0;
+}
+
+/* ---- Title detail (UX §5) ---- */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+}
+
+.detail-poster {
+  flex: 0 1 240px;
+  width: 240px;
+  max-width: 100%;
+}
+
+.detail-poster .poster {
+  border-radius: var(--cw-r-poster-title);
+}
+
+.detail-text {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.badge {
+  padding: 4px 10px;
+  border: 1px solid var(--cw-border-control);
+  border-radius: var(--cw-r-chip);
+  color: var(--cw-text);
+  font: 500 12px var(--cw-font-mono);
+  letter-spacing: 0.06em;
+}
+
+.server-count {
+  color: var(--cw-text-2);
+  font-weight: 600;
+}
+
+.table-wrap {
+  /* Positioned, so the visually hidden labels inside the rows are clipped with the table and do not widen the page. */
+  position: relative;
+  overflow-x: auto;
+  border: 1px solid var(--cw-border);
+  border-radius: var(--cw-r-poster-title);
+  background: var(--cw-surface-nav);
+}
+
+.copies {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.copies th,
+.copies td {
+  min-height: 64px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--cw-border-row);
+  color: var(--cw-text-body);
+  font-weight: 400;
+  vertical-align: middle;
+}
+
+.copies thead th {
+  color: var(--cw-text-muted);
+  font: 500 11px var(--cw-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.copies tbody th {
+  color: var(--cw-text-2);
+  font-weight: 600;
+}
+
+.copies tbody tr:last-child th,
+.copies tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.copies .row-selected {
+  background: var(--cw-surface-selected-row);
+}
+
+.copy-server {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.best-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--cw-accent);
+  color: var(--cw-on-accent);
+  font: 500 10px var(--cw-font-mono);
+  letter-spacing: 0.06em;
+}
+
+/* ---- Segmented selector (UX §6) ---- */
+
+.segmented-set {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.segmented-set legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.segmented .segment {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--cw-border-control);
+  border-radius: var(--cw-r-button);
+  background: transparent;
+  color: var(--cw-text-body);
+  font: 600 14px var(--cw-font-body);
+  cursor: pointer;
+}
+
+.segmented .segment:hover {
+  background: var(--cw-surface-2);
+}
+
+.segmented .segment-on {
+  border-color: var(--cw-accent);
+  background: var(--cw-surface-selected);
+  color: var(--cw-text);
+}
+
+.segmented .segment:has(:focus-visible) {
+  outline: 2px solid var(--cw-accent);
+  outline-offset: 2px;
+}
+
+/* ---- Episodes ---- */
+
+.episodes {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--cw-border);
+  border-radius: var(--cw-r-callout);
+  background: var(--cw-surface-1);
+}
+
+.episode {
+  border-bottom: 1px solid var(--cw-border-row);
+}
+
+.episode:last-child {
+  border-bottom: 0;
+}
+
+.episode-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  min-height: 64px;
+  padding: 10px 16px;
+  color: var(--cw-text-2);
+  text-decoration: none;
+}
+
+.episode-link:hover {
+  background: var(--cw-surface-2);
+  color: var(--cw-text-2);
+}
+
+.episode-title {
+  flex: 1 1 200px;
+  font-weight: 600;
+}
+
+.episode-offline .episode-title {
+  color: var(--cw-text-muted);
+}
+
+/* ---- Loading skeletons (UX §6): pulse unless reduced motion ---- */
+
+.skeleton {
+  border-radius: var(--cw-r-chip);
+  background: var(--cw-surface-2);
+  animation: cw-pulse 1.2s ease-in-out infinite;
+}
+
+.skeleton-poster {
+  aspect-ratio: 2 / 3;
+  border-radius: var(--cw-r-button);
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-line {
+  height: 14px;
+}
+
+.skeleton-short {
+  width: 60%;
+}
+
+.skeleton-title {
+  height: 40px;
+  width: 50%;
+}
+
+.skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@keyframes cw-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+
+  .poster,
+  .collection-art {
+    transition: none;
+  }
+}
+
+/* ---- Sync status ---- */
+
+.progress-track {
+  height: 6px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--cw-border);
+}
+
+.progress-indeterminate {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--cw-accent);
+}
+
+.error-list ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--cw-text-body);
+}
+
+.error-list li {
+  overflow-wrap: anywhere;
+}
+
+/* ---- Narrow screens ---- */
+
+@media (max-width: 560px) {
+  .h-display,
+  .page-head h1 {
+    font-size: 34px;
+  }
+
+  .side-nav ul {
+    flex-flow: row wrap;
+  }
+}
+
+/* ---- Source picker radiogroup and "why this copy" (UX §6; canvas Title.dc.html) ---- */
+
+.copy-group {
+  display: flex;
+  min-width: 820px;
+  flex-direction: column;
+}
+
+.copy-row {
+  display: grid;
+  grid-template-columns: 28px 1.6fr 0.8fr 0.9fr 1fr 0.7fr 1.3fr;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 20px;
+}
+
+.copy-head {
+  border-bottom: 1px solid var(--cw-border);
+  color: var(--cw-text-muted);
+  font: 500 11px var(--cw-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.copy-option {
+  width: 100%;
+  min-height: 64px;
+  border: 0;
+  border-bottom: 1px solid var(--cw-border-row);
+  background: transparent;
+  color: var(--cw-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.copy-option:last-child {
+  border-bottom: 0;
+}
+
+.copy-option:hover {
+  background: var(--cw-surface-2);
+}
+
+.copy-option.copy-on {
+  background: var(--cw-surface-selected-row);
+}
+
+.radio-ring {
+  display: flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--cw-border-control);
+  border-radius: 9px;
+  box-sizing: border-box;
+}
+
+.radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: transparent;
+}
+
+.copy-on .radio-ring {
+  border-color: var(--cw-accent);
+}
+
+.copy-on .radio-dot {
+  background: var(--cw-accent);
+}
+
+.copy-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mono-small {
+  color: var(--cw-text-muted);
+  font: 400 11px var(--cw-font-mono);
+}
+
+.copy-muted {
+  color: var(--cw-text-body);
+}
+
+.copy-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.copy-status .dot {
+  flex: none;
+  background: currentcolor;
+}
+
+.copy-status-ok {
+  color: var(--cw-status-ok);
+}
+
+.copy-status-warn {
+  color: var(--cw-status-warn);
+}
+
+.copy-status-bad {
+  color: var(--cw-status-bad);
+}
+
+.copy-status-muted {
+  color: var(--cw-text-muted);
+}
+
+.why {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--cw-border);
+  border-radius: var(--cw-r-callout);
+  background: var(--cw-surface-1);
+}
+
+.why-icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--cw-accent);
+}
+
+.why[data-tone='bad'] .why-icon {
+  color: var(--cw-status-bad);
+}
+
+.why-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.why-text p {
+  margin: 0;
+  color: var(--cw-text-body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---- Player overlay (UX §5 "Player overlay"). Always dark, whatever the theme. ---- */
+
+.player {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #000;
+  color: #f2ede3;
+}
+
+.player-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  object-fit: contain;
+}
+
+.player-top,
+.player-bottom {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding: 14px clamp(12px, 3vw, 32px);
+  background: linear-gradient(#000000cc, #0000);
+  transition: opacity 0.2s;
+}
+
+.player-top {
+  align-items: center;
+}
+
+.player-bottom {
+  flex-direction: column;
+  background: linear-gradient(#0000, #000000cc);
+}
+
+.player-idle .player-top,
+.player-idle .player-bottom {
+  opacity: 0;
+}
+
+.player-idle {
+  cursor: none;
+}
+
+.player-title {
+  flex: 1;
+  margin: 0;
+  font: 700 18px var(--cw-font-display);
+}
+
+.player-chip,
+.player-seek .mono-value {
+  color: #cfc7b8;
+  font: 400 12px var(--cw-font-mono);
+}
+
+.player-seek {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.player-seek input {
+  flex: 1;
+}
+
+.player-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-spacer {
+  flex: 1;
+}
+
+.player-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #756d5a;
+  border-radius: 10px;
+  background: #000000a6;
+  color: #f2ede3;
+  font: 600 14px var(--cw-font-body);
+  cursor: pointer;
+}
+
+.player-button:hover:not(:disabled),
+.player-button[aria-pressed='true'],
+.player-button[aria-expanded='true'] {
+  background: #262219;
+}
+
+.player-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.player :focus-visible {
+  outline: 2px solid #f2a93b;
+  outline-offset: 2px;
+}
+
+.player-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.player-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  width: min(480px, calc(100vw - 32px));
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid #3a352a;
+  border-radius: 16px;
+  background: #14120e;
+  color: #f2ede3;
+  transform: translate(-50%, -50%);
+}
+
+.player-panel p {
+  margin: 0;
+  color: #cfc7b8;
+}
+
+/* The panel is dark in both themes, so its headings and outline buttons must not take the light theme's ink. */
+.player-panel .h-card {
+  color: #f2ede3;
+}
+
+.player-panel .button-outline,
+.player-panel a.button-outline {
+  border-color: #756d5a;
+  color: #f2ede3;
+}
+
+.player-panel .button-outline:hover {
+  background: #262219;
+  color: #f2ede3;
+}
+
+.player-menu {
+  /* The menu is dark in both themes (it sits over video), so it takes the dark token set: its
+     text, outline buttons and copy rows must not pick up the light theme's dark ink. */
+  --cw-surface-nav: #14120e;
+  --cw-surface-1: #17150f;
+  --cw-surface-2: #201d16;
+  --cw-surface-selected: #262219;
+  --cw-surface-selected-row: #211d15;
+  --cw-border-row: #221f18;
+  --cw-border: #2a261e;
+  --cw-border-strong: #3a352a;
+  --cw-border-control: #756d5a;
+  --cw-text: #f2ede3;
+  --cw-text-2: #e3dccf;
+  --cw-text-body: #cfc7b8;
+  --cw-text-muted: #a39b8b;
+  --cw-text-placeholder: #8a8272;
+  --cw-border-input: #2e2a21;
+  --cw-accent: #f2a93b;
+  --cw-accent-hover: #ffc56e;
+  --cw-on-accent: #1a1408;
+  --cw-status-ok: #5cc8b0;
+  --cw-status-warn: #f2a93b;
+  --cw-status-bad: #e8735a;
+  --cw-alt-teal: #7fd1c0;
+  --cw-alt-coral: #e8866a;
+  color-scheme: dark;
+  position: absolute;
+  right: clamp(12px, 3vw, 32px);
+  bottom: 150px;
+  display: flex;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 220px);
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  overflow: auto;
+  border: 1px solid #3a352a;
+  border-radius: 12px;
+  background: #14120e;
+  color: #f2ede3;
+}
+
+.player-menu-wide {
+  width: min(900px, calc(100vw - 24px));
+}
+
+.player-menu fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.menu-option {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #756d5a;
+  border-top-color: #f2a93b;
+  border-radius: 50%;
+  animation: cw-spin 0.9s linear infinite;
+}
+
+@keyframes cw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+/* ---- Health strip and audit table (UX §8: operator health, FR-OPS-004, FR-OPS-005) ---- */
+
+.health-panel {
+  margin-top: 12px;
+}
+
+.probe-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.probe-cell {
+  width: 8px;
+  height: 22px;
+  border-radius: 2px;
+  background: var(--cw-status-ok);
+}
+
+.probe-fail {
+  background: var(--cw-status-bad);
+  /* A failed probe is also shorter, so it reads without colour. */
+  height: 12px;
+  align-self: flex-end;
+}
+
+.audit-table {
+  min-width: 720px;
+}
+
+/* After the player rules above, so it wins: the control bar fades without animation. */
+@media (prefers-reduced-motion: reduce) {
+  .player-top,
+  .player-bottom {
+    transition: none;
+  }
+}
+
+/* ---- Operator curation: match conflicts and the detail-page panel (UX §5) ---- */
+
+.conflict-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.conflict-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--cw-border-strong);
+  border-radius: 12px;
+  background: var(--cw-surface-nav);
+}
+
+.conflict-side .button {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
+.conflict-side p {
+  margin: 0;
+}
+
+.conflict-name {
+  color: var(--cw-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.curation-panel {
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--cw-border);
+}
+
+/* ---- Settings: passkey list (UX §5, FR-USR-006) ---- */
+
+.passkey-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--cw-border);
+  border-radius: var(--cw-r-poster-title);
+  background: var(--cw-surface-nav);
+}
+
+.passkey-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--cw-border-row);
+}
+
+.passkey-row:last-child {
+  border-bottom: 0;
+}
+
+.passkey-row p {
+  margin: 0;
+}
+
+.passkey-name {
+  color: var(--cw-text-2);
+  font-weight: 600;
+}

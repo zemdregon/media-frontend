@@ -1,0 +1,28 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Videos/5bd7c114c62f47e8cd0dbaceb156ff8e/stream.mp4?static=true&MediaSourceId=5bd7c114c62f47e8cd0dbaceb156ff8e&ApiKey=<SESSION_TOKEN_PLAY>",
+    "headers": {
+      "Accept": "application/json",
+      "Origin": "https://cinewren.example",
+      "Range": "bytes=100-299"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 206,
+    "headers": {
+      "Content-Length": "200",
+      "Content-Type": "video/mp4",
+      "Accept-Ranges": "bytes",
+      "Access-Control-Allow-Origin": "*",
+      "Content-Range": "bytes 100-299/209804"
+    },
+    "body": "\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000@\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0003\u0000\u0000\u000bRtrak\u0000\u0000\u0000\\tkhd\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000.�\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000@\u0000\u0000\u0000\u0005\u0000\u0000\u0000\u0002�\u0000\u0000\u0000\u0000\u0000$edts\u0000\u0000\u0000\u001celst\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000.�\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\n�mdia\u0000\u0000\u0000 mdhd"
+  }
+}

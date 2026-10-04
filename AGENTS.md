@@ -23,6 +23,7 @@ Operating instructions for AI coding agents working in this repository. Humans a
 | Schema, API contracts, algorithms, error handling (LLD-*) | [docs/design/LLD.md](docs/design/LLD.md) |
 | Visual identity, design tokens (dark and light), screens, components, copy | [docs/design/UX.md](docs/design/UX.md), with the owner's [design canvas](https://claude.ai/artifact/LUvVfjGfMr3J4cEmRL44z8) as visual reference |
 | Architectural decisions | [docs/adr/](docs/adr/README.md) |
+| Self-hosting: deploy, first run, upgrade, rollback | [docs/operations/self-host.md](docs/operations/self-host.md) (maintainer staging: [setup.md](docs/operations/setup.md)) |
 
 Reference requirements and rules **by ID**. Never paraphrase them into a second copy.
 
@@ -55,7 +56,6 @@ Reference requirements and rules **by ID**. Never paraphrase them into a second 
 - Provider-specific code lives only in provider adapters ([ADR-0004](docs/adr/0004-provider-adapter-abstraction.md)).
 - Permission filtering (BR-1) is enforced server-side in the catalog query layer.
 - Don't change production infrastructure or secrets unless a task explicitly calls for it.
-- Authentication is passkeys only, and accounts are created only through operator invite links ([ADR-0014](docs/adr/0014-passkey-auth-with-invite-links.md)). Never add another sign-up path.
 - Authentication is passkeys only, and accounts are created only through operator invite links ([ADR-0014](docs/adr/0014-passkey-auth-with-invite-links.md)). Never add another sign-up path.
 
 ## 6. Subagent routing and orchestration
@@ -99,6 +99,14 @@ These are agent additions that put the policy above into practice.
 
 ## 7. Repository conventions
 
-- Layout: `docs/` holds specifications, `scripts/` holds repository tooling, and the application layout is defined in [SDD](docs/design/SDD.md). No application code exists yet; the next milestone is M0 in the ROADMAP.
+- Layout: `docs/` holds specifications and `scripts/` holds repository tooling. The pnpm workspace has `apps/web` (Vite + React SPA), `apps/worker` (Hono Worker, `wrangler.jsonc`, serves the SPA via Static Assets and the API under `/api/v1`) and `packages/shared` (shared API types and error codes). The module layout is defined in [SDD](docs/design/SDD.md).
 - Commits: small and focused, with an imperative subject line. Reference task and requirement IDs in the body, for example `T0.5: passkey login and sessions (FR-USR-001)`.
-- Tooling commands (build, test, lint) will be listed here once T0.1 creates them. Until then, the only check is `node scripts/check-docs.mjs`.
+- Tooling commands (run from the repository root; CI runs the same ones, see `.github/workflows/ci.yml`):
+  - `pnpm install`: install dependencies (CI uses `--frozen-lockfile`).
+  - `pnpm build`: build the SPA, then dry-run bundle the Worker.
+  - `pnpm typecheck`: `tsc --noEmit` in every package.
+  - `pnpm lint`: ESLint (flat config). `pnpm format:check` checks Prettier; `pnpm format` fixes it.
+  - `pnpm test`: Vitest in every package. The Worker tests run in the Workers runtime through `@cloudflare/vitest-pool-workers`.
+  - `pnpm check:docs`: `node scripts/check-docs.mjs`; run it before committing doc changes.
+  - `pnpm recover:operator -- --config <wrangler config> (--remote|--local) --origin <APP_ORIGIN> [--user <name|id>] [--env <name>]`: issues a last-operator recovery link (FR-USR-007).
+  - Local server: `pnpm --filter @cinewren/worker dev` (wrangler) serves the built SPA and the API on port 8787; build the SPA first. Copy `.dev.vars.example` to `apps/worker/.dev.vars` for secrets.

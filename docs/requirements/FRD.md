@@ -36,8 +36,9 @@ Common conventions. Actors: **Operator** (P-1), **Viewer** (P-2), **System** (sc
 
 **Failure paths**
 - Any check in step 2 fails: nothing is saved, and the error names the failed check (FR-SRV-002).
+- The credential belongs to an administrator account (Jellyfin and Emby: `IsAdministrator` is true in the authentication response; Plex: an owner token): the credential check fails and the account is refused (ADR-0008).
 - Server identity already registered: rejected with a "duplicate server" error naming the existing entry.
-- Version below the supported minimum: rejected as "unsupported version" (minimums set by M1 spike, Q-6).
+- Version below the supported minimum: rejected as "unsupported version" (minimums fixed by the T1.1 spike: IR-003 to IR-005, Q-6).
 - Library discovery fails after the save: the server stays `pending_validation` and the operator can retry. The server stays hidden from viewers meanwhile.
 
 **Postconditions**: the credentials are stored encrypted and never returned to the browser. The server and its libraries exist, and a sync is queued. An audit entry is written (FR-OPS-005).
@@ -87,7 +88,7 @@ sequenceDiagram
 
 **Alternate paths**
 - On-demand request while a run is `queued` or `running`: the system refuses with "sync already in progress" and shows the current run (FR-SYNC-002).
-- Incremental sync: only items changed since the last successful run are fetched. How each provider reports changes is **(to verify in M1 spike)**. Where it cannot be done reliably, the run falls back to a full listing and the run record says so.
+- Incremental sync: only items changed since the last successful run are fetched. Jellyfin and Emby filter with `MinDateLastSaved` (verified T1.1), but Jellyfin re-saves every item on each library scan, so an incremental run after a scan can return nearly everything. Plex filters with `updatedAt>=` (verified T1.1). Where it cannot be done reliably, the run falls back to a full listing and the run record says so.
 
 **Failure paths**
 - Transient origin errors: retried with backoff and jitter up to the proposed limit (NFR-REL-002). Persistent failure of some pages or libraries ends the run `partial`.
@@ -157,7 +158,7 @@ sequenceDiagram
 **Main flow**
 1. Browser sends the item (or episode), its capabilities and optionally an override (FR-PLAY-005) and an exclusion list.
 2. The system filters and ranks candidate sources with BR-5.
-3. The system negotiates with the selected source's origin and obtains a stream URL and a credential scoped to one playback session (FR-PLAY-007, ADR-0013). How each provider issues such credentials is **(to verify in M1 spike)**.
+3. The system negotiates with the selected source's origin and obtains a stream URL and a credential scoped to one playback session (FR-PLAY-007, ADR-0013). Jellyfin and Emby mint a token by re-authenticating the service account; Plex uses a restricted managed user's tokens, pending verification (ADR-0013). Jellyfin always uses token-gated HLS (remux where possible), never a `static=true` direct URL, so for Jellyfin the mode is `direct_stream` or `transcode`, never `direct_play`.
 4. The system records a playback session in `authorized` (BR-9) and returns the descriptor (FR-PLAY-001). The descriptor carries machine-readable reason codes for the selection, such as `direct_play`, `hdr_unsupported` or `server_unreachable`, which the UI renders as a one-sentence explanation (FR-PLAY-010).
 5. The browser streams directly from the origin. The system never proxies media bytes (FR-PLAY-008).
 6. On first progress report the session becomes `started` (WF-6). The system reports start, progress and stop to the origin where supported (FR-PLAY-009).
@@ -183,7 +184,7 @@ sequenceDiagram
     V->>W: POST play (item, device capabilities, exclusions)
     W->>D: Visible sources for this user (BR-1)
     W->>W: Filter and rank (BR-5)
-    W->>O: Negotiate playback and obtain session-scoped credential (pending ADR-0013 / M1 spike)
+    W->>O: Negotiate playback and obtain session-scoped credential (ADR-0013; Plex pending managed-user spike)
     alt negotiation fails
         O-->>W: error
         W->>W: Exclude source, try next candidate
@@ -575,7 +576,7 @@ stateDiagram-v2
 | Server type | One of `jellyfin`, `emby`, `plex` (FR-SRV-001). |
 | Display name | Required. Trimmed. Length limit in the LLD. Unique among servers, because it appears when a viewer chooses a source. |
 | Base URL | Must parse as an absolute URL with host. Scheme must be `https://` (FR-SRV-007). `http://` is rejected unless `ALLOW_INSECURE_ORIGINS` is set, which only local development may do. No credentials in the URL. Stored without trailing path ambiguity. Outbound calls are limited to this host, and redirects to other hosts are refused (NFR-SEC-005). |
-| Credentials | Required per type; format per provider **(to verify in M1 spike)**. Never echoed in responses, logs or errors (NFR-SEC-001). |
+| Credentials | Required per type; a username and password for a non-admin user on Jellyfin and Emby (verified T1.1); the Plex format is **(to verify in Plex managed-user spike)**. Never echoed in responses, logs or errors (NFR-SEC-001). |
 | Identity | The server's unique ID, read at validation, must not match an existing registration. On re-validation and WF-11 it must match the stored one. |
 | Library choice | Only libraries returned by discovery can be enabled. |
 | Priority | Integer (FR-SRV-006). Range in the LLD. |

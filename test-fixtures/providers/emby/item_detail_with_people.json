@@ -1,0 +1,275 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Users/5c84ecbdbf494494a7fa03913ea2e020/Items/11?Fields=People,ProviderIds",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SERVICE_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Length": "4807",
+      "Content-Type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": {
+      "Name": "Night of the Living Dead",
+      "ServerId": "66831b99153e41cb824035fd4f81aa23",
+      "Id": "11",
+      "Etag": "321697e6ec24824754c56dd87e91362f",
+      "DateCreated": "2026-10-04T06:45:18.0000000Z",
+      "DateModified": "2026-10-04T06:45:18.0000000Z",
+      "CanDelete": false,
+      "CanDownload": true,
+      "PresentationUniqueKey": "p-tmdb-Movie-10331-c1dafd8291f64359a2467eb9511f1029",
+      "SupportsSync": true,
+      "Container": "mkv",
+      "SortName": "Night of the Living Dead",
+      "ForcedSortName": "Night of the Living Dead",
+      "ExternalUrls": [
+        {
+          "Name": "IMDb",
+          "Url": "https://www.imdb.com/title/tt0063350"
+        },
+        {
+          "Name": "TheMovieDb",
+          "Url": "https://www.themoviedb.org/movie/10331"
+        },
+        {
+          "Name": "Trakt",
+          "Url": "https://trakt.tv/search/tmdb/10331?id_type=movie"
+        }
+      ],
+      "MediaSources": [
+        {
+          "Chapters": [],
+          "Protocol": "File",
+          "Id": "mediasource_11",
+          "Path": "/data/movies/Night of the Living Dead (1968)/Night of the Living Dead (1968).mkv",
+          "Type": "Default",
+          "Container": "mkv",
+          "Size": 9729927,
+          "Name": "Night of the Living Dead (1968)",
+          "IsRemote": false,
+          "HasMixedProtocols": false,
+          "RunTimeTicks": 120230000,
+          "SupportsTranscoding": true,
+          "SupportsDirectStream": true,
+          "SupportsDirectPlay": true,
+          "IsInfiniteStream": false,
+          "RequiresOpening": false,
+          "RequiresClosing": false,
+          "RequiresLooping": false,
+          "SupportsProbing": true,
+          "MediaStreams": [
+            {
+              "Codec": "h264",
+              "TimeBase": "1/1000",
+              "VideoRange": "SDR",
+              "DisplayTitle": "720p H264",
+              "NalLengthSize": "4",
+              "IsInterlaced": false,
+              "BitRate": 6474209,
+              "BitDepth": 8,
+              "RefFrames": 1,
+              "IsDefault": false,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "Height": 720,
+              "Width": 1280,
+              "AverageFrameRate": 24,
+              "RealFrameRate": 24,
+              "Profile": "Constrained Baseline",
+              "Type": "Video",
+              "AspectRatio": "16:9",
+              "Index": 0,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false,
+              "Protocol": "File",
+              "PixelFormat": "yuv420p",
+              "Level": 31,
+              "IsAnamorphic": false,
+              "ExtendedVideoType": "None",
+              "ExtendedVideoSubType": "None",
+              "ExtendedVideoSubTypeDescription": "None",
+              "AttachmentSize": 0
+            },
+            {
+              "Codec": "aac",
+              "TimeBase": "1/1000",
+              "DisplayTitle": "AAC mono",
+              "IsInterlaced": false,
+              "ChannelLayout": "mono",
+              "BitRate": 192000,
+              "Channels": 1,
+              "SampleRate": 44100,
+              "IsDefault": false,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "Profile": "LC",
+              "Type": "Audio",
+              "Index": 1,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false,
+              "Protocol": "File",
+              "ExtendedVideoType": "None",
+              "ExtendedVideoSubType": "None",
+              "ExtendedVideoSubTypeDescription": "None",
+              "AttachmentSize": 0
+            }
+          ],
+          "Formats": [],
+          "Bitrate": 6474209,
+          "RequiredHttpHeaders": {},
+          "AddApiKeyToDirectStreamUrl": false,
+          "ReadAtNativeFramerate": false,
+          "DefaultAudioStreamIndex": 1,
+          "ItemId": "11",
+          "MimeType": "video/x-matroska"
+        }
+      ],
+      "ProductionLocations": [],
+      "Path": "/data/movies/Night of the Living Dead (1968)/Night of the Living Dead (1968).mkv",
+      "Overview": "Synthetic spike fixture. A group of people barricade themselves in a farmhouse.",
+      "Taglines": [],
+      "Genres": [
+        "Horror"
+      ],
+      "RunTimeTicks": 120230000,
+      "Size": 9729927,
+      "FileName": "Night of the Living Dead (1968).mkv",
+      "Bitrate": 6474209,
+      "ProductionYear": 1968,
+      "RemoteTrailers": [],
+      "ProviderIds": {
+        "Tmdb": "10331",
+        "Imdb": "tt0063350"
+      },
+      "IsFolder": false,
+      "ParentId": "8",
+      "Type": "Movie",
+      "People": [
+        {
+          "Name": "George A. Romero",
+          "Id": "17",
+          "Type": "Director"
+        },
+        {
+          "Name": "John A. Russo",
+          "Id": "18",
+          "Type": "Writer"
+        },
+        {
+          "Name": "Duane Jones",
+          "Id": "19",
+          "Role": "Ben",
+          "Type": "Actor"
+        },
+        {
+          "Name": "Judith O'Dea",
+          "Id": "20",
+          "Role": "Barbara",
+          "Type": "Actor"
+        }
+      ],
+      "Studios": [],
+      "GenreItems": [
+        {
+          "Name": "Horror",
+          "Id": 21
+        }
+      ],
+      "TagItems": [],
+      "LocalTrailerCount": 0,
+      "UserData": {
+        "PlaybackPositionTicks": 0,
+        "PlayCount": 0,
+        "IsFavorite": false,
+        "Played": false
+      },
+      "DisplayPreferencesId": "dbf7709c41faaa746463d67978eb863d",
+      "MediaStreams": [
+        {
+          "Codec": "h264",
+          "TimeBase": "1/1000",
+          "VideoRange": "SDR",
+          "DisplayTitle": "720p H264",
+          "NalLengthSize": "4",
+          "IsInterlaced": false,
+          "BitRate": 6474209,
+          "BitDepth": 8,
+          "RefFrames": 1,
+          "IsDefault": false,
+          "IsForced": false,
+          "IsHearingImpaired": false,
+          "Height": 720,
+          "Width": 1280,
+          "AverageFrameRate": 24,
+          "RealFrameRate": 24,
+          "Profile": "Constrained Baseline",
+          "Type": "Video",
+          "AspectRatio": "16:9",
+          "Index": 0,
+          "IsExternal": false,
+          "IsTextSubtitleStream": false,
+          "SupportsExternalStream": false,
+          "Protocol": "File",
+          "PixelFormat": "yuv420p",
+          "Level": 31,
+          "IsAnamorphic": false,
+          "ExtendedVideoType": "None",
+          "ExtendedVideoSubType": "None",
+          "ExtendedVideoSubTypeDescription": "None",
+          "AttachmentSize": 0
+        },
+        {
+          "Codec": "aac",
+          "TimeBase": "1/1000",
+          "DisplayTitle": "AAC mono",
+          "IsInterlaced": false,
+          "ChannelLayout": "mono",
+          "BitRate": 192000,
+          "Channels": 1,
+          "SampleRate": 44100,
+          "IsDefault": false,
+          "IsForced": false,
+          "IsHearingImpaired": false,
+          "Profile": "LC",
+          "Type": "Audio",
+          "Index": 1,
+          "IsExternal": false,
+          "IsTextSubtitleStream": false,
+          "SupportsExternalStream": false,
+          "Protocol": "File",
+          "ExtendedVideoType": "None",
+          "ExtendedVideoSubType": "None",
+          "ExtendedVideoSubTypeDescription": "None",
+          "AttachmentSize": 0
+        }
+      ],
+      "PartCount": 1,
+      "ImageTags": {},
+      "BackdropImageTags": [],
+      "Chapters": [],
+      "MediaType": "Video",
+      "MimeType": "video/x-matroska",
+      "LockedFields": [],
+      "LockData": false,
+      "Width": 1280,
+      "Height": 720
+    }
+  }
+}

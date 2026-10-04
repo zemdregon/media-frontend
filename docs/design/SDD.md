@@ -329,9 +329,9 @@ Covers every Must and Should requirement in the [SRS](../requirements/SRS.md). T
 |---|---|---|---|
 | IR-001 | C-API | Hono under `/api/v1`, request-ID middleware, one error envelope | LLD-API, LLD-ERR |
 | IR-002 | C-PROV | `MediaProvider` interface and dependency rules (Section 2) | [ADR-0004](../adr/0004-provider-adapter-abstraction.md), LLD-PROV |
-| IR-003 | C-PROV | Jellyfin adapter, version minimum fixed by M1 spike | LLD-PROV |
-| IR-004 | C-PROV | Emby adapter, version minimum fixed by M1 spike | LLD-PROV |
-| IR-005 | C-PROV | Plex adapter, version minimum fixed by M1 spike | LLD-PROV |
+| IR-003 | C-PROV | Jellyfin adapter, version minimum 12.1 (T1.1) | LLD-PROV |
+| IR-004 | C-PROV | Emby adapter, version minimum 4.10 (T1.1) | LLD-PROV |
+| IR-005 | C-PROV | Plex adapter, version minimum 1.43 (T1.1) | LLD-PROV |
 | IR-006 | C-AUTH, C-WEB | Browser `navigator.credentials` calls; server verification by a vetted library in `auth/webauthn`; RP ID is the deployment hostname | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md), [TDD](TDD.md) |
 | IR-007 | C-WEB | `<video>` for direct play; native HLS or hls.js | [TDD](TDD.md) |
 | DR-001 | db | D1 as system of record; primary vs derived separation (INV-8) | [ADR-0006](../adr/0006-d1-system-of-record.md), LLD-SCHEMA |

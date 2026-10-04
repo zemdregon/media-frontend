@@ -1,0 +1,16 @@
+# Local dev: copy to apps/worker/.dev.vars (git-ignored) and fill in. Secret names per docs/design/TDD.md §4.
+# Deploy to Cloudflare button and self-hosting: the secrets below are the ones you are asked for
+# (see docs/operations/self-host.md §5). Never commit real values.
+
+# One-time bootstrap token for /setup (FR-USR-002): at least 32 random bytes, e.g.
+#   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+# Ignored once an operator exists; delete it after setup. Not in secrets.required (ADR-0014).
+SETUP_TOKEN=
+
+# JSON map of key version to base64 32-byte AES key, e.g. {"1":"..."} (DR-002). Required; back it up offline.
+CREDENTIAL_KEYS=
+
+# Optional overrides of wrangler.jsonc vars for local runs (TDD §4 defaults shown):
+# SESSION_IDLE_DAYS=14
+# SESSION_ABSOLUTE_DAYS=90
+# INVITE_TTL_DAYS=7

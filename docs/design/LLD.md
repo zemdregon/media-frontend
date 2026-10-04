@@ -55,7 +55,7 @@ erDiagram
 ```sql
 CREATE TABLE users (                        -- created only by setup or invite redemption (FR-USR-002)
   id TEXT PRIMARY KEY,
-  display_name TEXT NOT NULL UNIQUE COLLATE NOCASE,   -- the only personal label; no email is collected (NFR-PRIV-001)
+  display_name TEXT NOT NULL UNIQUE COLLATE NOCASE,   -- 1–64 chars after trimming, unique case-insensitively; the only personal label; no email is collected (NFR-PRIV-001)
   role TEXT NOT NULL CHECK (role IN ('operator','viewer')),
   status TEXT NOT NULL CHECK (status IN ('invited','active','disabled')),  -- 'deleted' = row removed
   theme_preference TEXT NOT NULL DEFAULT 'system' CHECK (theme_preference IN ('system','dark','light')),  -- NFR-UX-001; owner decision Q-8; the only stored preference
@@ -88,7 +88,8 @@ CREATE TABLE sessions (                     -- NFR-SEC-007
   passkey_id TEXT REFERENCES passkey_credentials(id) ON DELETE CASCADE,  -- removing a passkey ends its sessions
   created_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL,
   idle_expires_at INTEGER NOT NULL, absolute_expires_at INTEGER NOT NULL,
-  user_agent_hint TEXT);                     -- coarse "Firefox on macOS" label for the user's session list
+  user_agent_hint TEXT,                      -- coarse "Firefox on macOS" label for the user's session list
+  reauth_at INTEGER);                        -- migration 0005: last fresh passkey ceremony; NULL once spent (SR-04, LLD-TOKEN)
 CREATE INDEX sess_user ON sessions(user_id);
 CREATE INDEX sess_expiry ON sessions(idle_expires_at);
 
@@ -135,6 +136,7 @@ CREATE TABLE media_items (                  -- canonical, derived (DR-001)
 CREATE INDEX mi_browse ON media_items(type, sort_title, id);
 CREATE INDEX mi_added ON media_items(type, date_added DESC, id);
 CREATE INDEX mi_year ON media_items(type, year, id);
+CREATE INDEX mi_year0 ON media_items(type, COALESCE(year, 0), id);   -- migration 0004: year-sorted browse (T5.7)
 CREATE INDEX mi_children ON media_items(parent_id, season_number, episode_number);
 
 CREATE TABLE external_ids (
@@ -189,7 +191,7 @@ CREATE TABLE person_provider_links (        -- one row per (server, origin perso
   id TEXT PRIMARY KEY, person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
   server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
   provider_person_id TEXT NOT NULL, name TEXT NOT NULL,
-  tmdb_id TEXT, imdb_id TEXT,                -- person IDs, when the origin reports them (to verify in M1 spike); NULL otherwise
+  tmdb_id TEXT, imdb_id TEXT,                -- person IDs, when the origin reports them (Jellyfin and Plex: absent; Emby: only on the person detail item, lowercase keys; verified T1.1); NULL otherwise
   artwork TEXT NOT NULL DEFAULT '{}',        -- {poster:{tag}} portrait reference
   match_method TEXT NOT NULL CHECK (match_method IN ('external_id','name','new','manual')),
   updated_at INTEGER NOT NULL, UNIQUE (server_id, provider_person_id));
@@ -257,7 +259,7 @@ CREATE TABLE playback_sessions (
   source_id TEXT REFERENCES sources(id) ON DELETE SET NULL, server_id TEXT REFERENCES servers(id) ON DELETE SET NULL,
   version_id TEXT, mode TEXT NOT NULL CHECK (mode IN ('direct_play','direct_stream','transcode')),
   status TEXT NOT NULL CHECK (status IN ('authorized','started','ended','expired','failed')),
-  credential_envelope TEXT,                   -- session-scoped origin credential (LLD-TOKEN; pending ADR-0013 / M1 spike); NULL once revoked
+  credential_envelope TEXT,                   -- session-scoped origin credential (LLD-TOKEN; ADR-0013); NULL once revoked
   revoke_pending INTEGER NOT NULL DEFAULT 0, provider_session_ref TEXT,
   replaces_session_id TEXT, decision TEXT,    -- ranking keys snapshot (NFR-OBS-002)
   last_event_seq INTEGER NOT NULL DEFAULT 0,
@@ -353,7 +355,7 @@ Migrations follow TDD §3: forward-only, expand → migrate → contract. Every 
 
 Conventions (IR-001):
 - JSON over HTTPS. Every response has an `X-Request-Id` header, taken from `cf-ray` plus a ULID.
-- Every route requires a valid session cookie (FR-USR-001; TDD §5.1). The exceptions are the **public** routes marked *public* below: health, setup, invite redemption and login. Operator routes live under `/api/v1/admin/*`, and the role is checked on every request (FR-USR-003).
+- Every route requires a valid session cookie (FR-USR-001; TDD §5.1). The exceptions are the **public** routes marked *public* below: health, setup, invite redemption and login. Operator routes live under `/api/v1/admin/*`, and the role is checked on every request (FR-USR-003). Every unknown `/api/*` route returns 401 `AUTH_REQUIRED` when there is no session, and 404 `NOT_FOUND` with a session (agent decision 2026-10-04).
 - State-changing requests must carry `Origin: <APP_ORIGIN>` (CSRF, NFR-SEC-007), or they get 403 `CSRF_REJECTED`. Public auth routes are rate limited per IP (NFR-SEC-004).
 - A resource the caller may not see returns `404 NOT_FOUND`, never 403, so its existence is not disclosed (BR-1, NFR-SEC-002).
 - Mutating requests accept an `Idempotency-Key` header (LLD-ERR); it is required on `POST /play`.
@@ -366,7 +368,7 @@ Conventions (IR-001):
 | GET | `/api/v1/admin/status` | operator | — | `{db:"ok"\|"error", appVersion, schemaApplied, schemaRequired, queueBacklog?, serversByStatus, keyVersionsInUse}` | — | FR-OPS-007, TDD §9 |
 | GET | `/api/v1/setup` | *public* | — | `{available:boolean}` (false once any operator exists) | — | FR-USR-002 |
 | POST | `/api/v1/setup/options` | *public* | `{setupToken, displayName}` | `{challengeId, options}` (WebAuthn creation options) | 404 `NOT_FOUND` (setup disabled and invalid token are indistinguishable), 429 | FR-USR-002 |
-| POST | `/api/v1/setup/verify` | *public* | `{setupToken, challengeId, response}` | `201 {user}` + session cookie | 404 `NOT_FOUND` (same for disabled setup and invalid token), 400 `WEBAUTHN_VERIFICATION_FAILED`, 429 | FR-USR-002, IR-006 |
+| POST | `/api/v1/setup/verify` | *public* | `{setupToken, challengeId, response, displayName}` | `201 {user}` + session cookie | 404 `NOT_FOUND` (same for disabled setup and invalid token), 400 `WEBAUTHN_VERIFICATION_FAILED`, 429 | FR-USR-002, IR-006 |
 | POST | `/api/v1/invites/inspect` | *public* | `{token}` | `{kind, role, displayName, expiresAt}` | 404 `INVITE_INVALID` (unknown, expired, revoked or used: one code, no oracle), 429 | FR-USR-002 |
 | POST | `/api/v1/invites/redeem/options` | *public* | `{token}` | `{challengeId, options}` (WebAuthn `user.name` = the invited display name) | 404 `INVITE_INVALID`, 429 | FR-USR-002, FR-USR-007 |
 | POST | `/api/v1/invites/redeem/verify` | *public* | `{token, challengeId, response}` | `201 {user}` + session cookie. Signup: the user goes from `invited` to `active`; reenroll: a passkey is added. | 404, 400 `WEBAUTHN_VERIFICATION_FAILED`, 429 | FR-USR-002, FR-USR-005, FR-USR-007 |
@@ -376,7 +378,8 @@ Conventions (IR-001):
 | GET | `/api/v1/me` | user | — | `{id, displayName, role, preferences:{theme}}` | 401 | FR-USR-003, NFR-UX-001 |
 | PATCH | `/api/v1/me/preferences` | user | `{theme:"system"\|"dark"\|"light"}` | `{theme}`. Writes `users.theme_preference`; idempotent; not audited (it is not an operator mutation). | 400 `VALIDATION_FAILED`, 401 | NFR-UX-001 |
 | GET | `/api/v1/me/passkeys` | user | — | `[{id, label, createdAt, lastUsedAt, backedUp}]` | — | FR-USR-006 |
-| POST | `/api/v1/me/passkeys/options` · `/verify` | user | `{label?}` · `{challengeId, response}` | `{challengeId, options}` · `201 {passkey}` | 400 | FR-USR-006 |
+| POST | `/api/v1/me/reauth/options` · `/verify` | user | — · `{challengeId, response}` | `{challengeId, options}` (an assertion challenge whose `allowCredentials` are the caller's own passkeys) · `{freshUntil}`. Verify requires a user-verified assertion from one of the caller's own passkeys for a challenge issued to the caller, then sets `sessions.reauth_at = now` on the current session. | 400 `WEBAUTHN_VERIFICATION_FAILED` (another user's passkey, another user's or a sign-in challenge, bad signature; the session is kept) | FR-USR-006 (SR-04) |
+| POST | `/api/v1/me/passkeys/options` · `/verify` | user | `{label?}` · `{challengeId, response, label?}` | `{challengeId, options}` · `201 {passkey}`. Both need `now − sessions.reauth_at ≤ 5 min` *(proposed)*; a successful verify clears `reauth_at` (single use). Sessions start fresh, because setup, invite redemption and login are all user-verified passkey ceremonies. | 400, 401 `REAUTH_REQUIRED` | FR-USR-006 |
 | PATCH / DELETE | `/api/v1/me/passkeys/{id}` | user | `{label}` / — | `{passkey}` / `204` (its sessions end) | 404, 409 `LAST_PASSKEY` | FR-USR-006 |
 | GET / DELETE | `/api/v1/me/sessions` · `/{id}` | user | — | list / `204` | 404 | FR-USR-006 |
 | GET | `/api/v1/home` | user | — | `{recentlyAdded:[ItemCard], continueWatching:[ItemCard+progress]}` | — | FR-CAT-008 |
@@ -408,7 +411,7 @@ Conventions (IR-001):
 | GET | `/api/v1/admin/metrics` | operator | `window=24h\|7d` | sync durations/errors per server, play outcomes, mode distribution | — | NFR-OBS-002 |
 | GET | `/api/v1/admin/users` | operator | `cursor` | `Page<User>` with passkey count and last sign-in | — | FR-USR-008 |
 | POST | `/api/v1/admin/invites` | operator | `{displayName, role, libraryIds?}` (`libraryIds` omitted = all enabled; ignored for operators) | `201 {id, userId, link:"https://<host>/invite#t=<token>", expiresAt}`. In one batch this creates the user in state `invited`, their grants and the invite. The token is returned **once** and only its hash is stored. The operator delivers the link; Cinewren sends no email. | 400, 409 `DISPLAY_NAME_TAKEN` | FR-USR-002, FR-USR-004, FR-USR-005 |
-| GET | `/api/v1/admin/invites` | operator | `status=open\|redeemed\|expired\|revoked` | `Page<Invite>` (never the token) | — | FR-USR-004 |
+| GET | `/api/v1/admin/invites` | operator | `status=open\|redeemed\|expired\|revoked` | `Page<Invite>` (never the token). Revoked signup invites are deleted with their users, so `status=revoked` lists only re-enrollment invites (agent decision 2026-10-04). | — | FR-USR-004 |
 | DELETE | `/api/v1/admin/invites/{id}` | operator | — | `204`. Sets `revoked_at`; for a signup invite it also deletes the still-`invited` user (FRD rule). | 404, 409 `INVITE_ALREADY_REDEEMED` | FR-USR-004 |
 | POST | `/api/v1/admin/users/{id}/reenroll` | operator | — | `201 {link, expiresAt}` (24 h, proposed) | 404 | FR-USR-007 |
 | PATCH | `/api/v1/admin/users/{id}` | operator | `{role?, status?:"active"\|"disabled", displayName?}` (disable also deletes the user's sessions) | `User` | 409 `LAST_OPERATOR` | FR-USR-008, BR-8 |
@@ -420,6 +423,8 @@ Conventions (IR-001):
 | DELETE | `/api/v1/admin/curation/overrides/{id}` | operator | — | `204` (item rematched on next sync of that source) | 404 | FR-CAT-007, BR-3 |
 | GET | `/api/v1/admin/curation/conflicts` | operator | `status=open\|resolved\|dismissed`, `entityKind?`, `cursor` | `Page<{id, entityKind, source:{id,title,year,serverName,externalIds}, candidates:[{itemId,title,year,externalIds}], reason, detectedAt}>`. For a person or collection, `source` is the provider link `{linkId, name, serverName, externalIds}` and `candidates` are `{id, name, externalIds}`. | — | FR-CAT-010 |
 | POST | `/api/v1/admin/curation/conflicts/{id}/resolve` | operator | `{action:"merge", intoId}` \| `{action:"keep_separate"}` \| `{action:"dismiss"}` | `{itemId}` | 404, 409 | FR-CAT-010, FR-CAT-007 |
+| GET | `/api/v1/admin/vault/status` | operator | — | `{currentKeyVersion, configuredKeyVersions, rowsByKeyVersion:[{keyVersion, rows, keyConfigured}], pendingRows, complete, missingKeyVersions, removableKeyVersions}` (versions and counts only, never key material) | 500 `CREDENTIAL_KEY_MISSING` (keys misconfigured) | DR-002, SR-07 |
+| POST | `/api/v1/admin/vault/rotate` | operator | — | `202 {currentKeyVersion, pendingRows, enqueued}`; queues a `reencrypt` job when `pendingRows > 0`; audit `vault.rotate` | 500 `CREDENTIAL_KEY_MISSING` (`CREDENTIAL_KEY_CURRENT` not in `CREDENTIAL_KEYS`) | DR-002, SR-07 |
 | GET | `/api/v1/admin/audit-log` | operator | `cursor`, `action?`, `from?`, `to?` | `Page<AuditEntry>` | — | FR-OPS-005 |
 | GET | `/api/v1/admin/export` | operator | — | `application/json` attachment: `{schemaVersion, exportedAt, users, grants, progress, curationOverrides, servers:[{id,type,name,baseUrl,priority,libraries}]}`, with no credentials (NFR-SEC-001) | — | FR-OPS-006 |
 
@@ -459,13 +464,14 @@ Pagination uses cursors. `Page<T> = { items: T[], nextCursor: string | null }`. 
 `ItemDetail.copies` has one row per visible `(source, version)` of a movie or episode, and is `[]` for series and seasons (their copies are those of their episodes):
 
 ```json
-{ "sourceId": "01J9…src", "versionId": "01J9…ver", "serverName": "Server B", "serverStatus": "active",
+{ "sourceId": "01J9…src", "versionId": "01J9…ver", "serverName": "Server B", "serverType": "jellyfin", "serverStatus": "active",
   "resolution": { "width": 1920, "height": 1080, "label": "1080p" }, "hdr": "none", "videoCodec": "h264", "container": "mp4",
   "audio": [{ "codec": "aac", "channels": 6, "language": "en" }],
   "sizeBytes": 6400000000,
   "expectedPlayability": "direct_play", "reasons": ["direct_play"], "selected": true }
 ```
 
+- `serverType` is `jellyfin`, `emby` or `plex`; the UI shows it in the copy's "TYPE · network" line.
 - `sizeBytes` is `media_versions.size_bytes`, or `null`.
 - `expectedPlayability` is `direct_play`, `transcode` or `unavailable`. It is a prediction from `predictMode` (LLD-SEL) against the capabilities in `X-Device-Caps`; `direct_stream` is reported as `direct_play` here because both avoid a video transcode. The origin's negotiation at play time stays authoritative. Without the header it is `null` and `reasons` is `[]`.
 - `unavailable` means the copy is visible but cannot be played now (`reasons` contains `server_unreachable`). Copies on `disabled`, `removing` or `pending_validation` servers are not visible at all (BR-1), so they never appear.
@@ -489,7 +495,7 @@ Pagination uses cursors. `Page<T> = { items: T[], nextCursor: string | null }`. 
   "alternatives": 2 }
 ```
 
-`streamUrl` and subtitle URLs always point at the selected server's own host (FR-PLAY-008). The query string carries only the session-scoped credential (FR-PLAY-007; pending ADR-0013 / M1 spike). `alternatives` is the number of other candidates the user may see; it is used to decide whether to offer a replacement (FR-PLAY-004).
+`streamUrl` and subtitle URLs always point at the selected server's own host (FR-PLAY-008). The query string carries only the session-scoped credential (FR-PLAY-007; ADR-0013). `alternatives` is the number of other candidates the user may see; it is used to decide whether to offer a replacement (FR-PLAY-004).
 
 `reasons: string[]` (FR-PLAY-010) explains the selection. The first entry is the primary reason; the order is stable. It is never empty on a successful play. Clients map each code to a one-sentence explanation and ignore codes they do not know, so codes can be added without a breaking change. The same vocabulary is used for the per-copy `reasons` in `ItemDetail.copies`.
 
@@ -497,6 +503,7 @@ Pagination uses cursors. `Page<T> = { items: T[], nextCursor: string | null }`. 
 |---|---|---|
 | `direct_play` | Container, video and audio codecs play as stored | selected, copy |
 | `direct_stream_container` | Container is unsupported; the origin repackages without re-encoding video | selected, copy |
+| `remux_for_token_auth` | The file would play as stored, but the origin's static stream cannot be revoked (Jellyfin, ADR-0013), so it is repackaged into token-gated HLS with the codecs copied | selected, copy |
 | `audio_transcoded` | Only the audio is re-encoded (unsupported codec) | selected, copy |
 | `transcode_video_codec` | The video codec, profile or level is unsupported, so video is re-encoded | selected, copy |
 | `subtitle_burn_in` | An image-based subtitle was chosen, so it is burned in (FR-PLAY-006) | selected, copy |
@@ -536,7 +543,8 @@ export interface MediaProvider {
   getItem(ctx: ProviderContext, providerItemId: string): Promise<NormalizedItem | null>;
   getArtworkRequest(ctx: ProviderContext, ref: ArtworkRef, kind: ArtworkKind): Request;  // FR-CAT-009
   probe(ctx: ProviderContext): Promise<{ ok: boolean; latencyMs: number; errorCode?: string }>; // FR-OPS-001
-  createSessionCredential(ctx: ProviderContext, sessionId: string): Promise<SessionCredential>; // FR-PLAY-007
+  readonly streamDevices?: 'per_session' | 'pooled';                    // M3: how stream credentials get a DeviceId
+  createSessionCredential(ctx: ProviderContext, sessionId: string, lease?: { slot: number }): Promise<SessionCredential>; // FR-PLAY-007
   revokeSessionCredential(ctx: ProviderContext, cred: SessionCredential): Promise<void>;
   negotiatePlayback(ctx: ProviderContext, req: {
     providerItemId: string; providerVersionId: string; caps: DeviceCapabilities;
@@ -544,7 +552,7 @@ export interface MediaProvider {
     startPositionMs?: number; cred: SessionCredential;
   }): Promise<NegotiatedStream>;                                       // FR-PLAY-001, FR-PLAY-006
   reportPlayback(ctx: ProviderContext, cred: SessionCredential,
-    ev: { type: 'start' | 'progress' | 'stop'; positionMs: number; stream: NegotiatedStream }): Promise<void>; // FR-PLAY-009: telemetry only
+    ev: { type: 'start' | 'progress' | 'stop'; positionMs: number; stream: NegotiatedStream; paused?: boolean }): Promise<void>; // FR-PLAY-009: telemetry only
 }
 
 export type NormalizedItem = {
@@ -558,7 +566,7 @@ export type NormalizedItem = {
 };
 export type NormalizedPerson = {           // FR-SYNC-008
   providerPersonId: string; name: string;
-  externalIds: { tmdb?: string; imdb?: string };   // only if the origin reports them (to verify in M1 spike); never guessed
+  externalIds: { tmdb?: string; imdb?: string };   // only if the origin reports them (Jellyfin and Plex do not; Emby only on person detail; verified T1.1); never guessed
   artwork?: ArtworkRef;
 };
 export type NormalizedCredit = {
@@ -583,7 +591,8 @@ export type NegotiatedStream = {
   url: string;                              // MUST be on ctx.server.baseUrl host (asserted by caller)
   subtitleUrls: Record<number, string>; providerSessionRef?: string;
 };
-export type SessionCredential = { kind: 'session_token' | 'delegated_token' | 'shared_restricted'; token: string; ref?: string; expiresAt?: number };
+export type SessionCredential = { kind: 'session_token' | 'delegated_token' | 'shared_restricted'; token: string; ref?: string; expiresAt?: number;
+  deviceId?: string; accountId?: string };   // M3: the DeviceId the token was minted under, and the origin account it belongs to
 ```
 
 Adapters throw `ProviderError { code: 'AUTH' | 'NOT_FOUND' | 'UNAVAILABLE' | 'TIMEOUT' | 'PROTOCOL' | 'UNSUPPORTED', retryable: boolean }`. No provider-specific type crosses the interface (IR-002; lint-enforced, TDD §1).
@@ -606,28 +615,40 @@ The checks run in order, and the first failure is reported with its check name:
 3. `identity`: the origin's unique server ID is returned. On re-validation it must equal the stored `origin_server_id`.
 4. `version`: the version is at least the IR-003 to IR-005 minimum.
 
-### Per-provider notes (all to verify in M1 spike)
+### Per-provider notes (verified in the T1.1 spike unless marked; Plex managed-user items are open)
+
+Source: [docs/spikes/2026-provider-spike.md](../spikes/2026-provider-spike.md). All IDs are opaque strings (Jellyfin 32-hex GUIDs, Emby short numerics with `MediaSourceId=mediasource_<n>`, Plex numeric `ratingKey`).
 
 | Concern | Jellyfin (IR-003) | Emby (IR-004) | Plex (IR-005, Q-3) |
 |---|---|---|---|
-| Identity & version | `GET /System/Info/Public` → `Id`, `Version` | Same lineage; path may need `/emby` prefix | `GET /identity` → `machineIdentifier`, `version` |
-| Service auth | `POST /Users/AuthenticateByName` with `Authorization: MediaBrowser Client="Cinewren", Device=…, DeviceId=…, Version=…` → `AccessToken`, `User.Id`, `User.Policy.IsAdministrator` | Similar; header `X-Emby-Authorization` / `X-Emby-Token` | Account token from plex.tv sign-in vs. server-local token: unclear for a non-admin "managed/shared" user; Q-3 |
-| Libraries | `GET /UserViews?userId=` (CollectionType `movies`/`tvshows`) | `GET /Users/{id}/Views` | `GET /library/sections` (type `movie`/`show`) |
-| Paged items | `GET /Items?ParentId=&Recursive=true&IncludeItemTypes=Movie,Series,Season,Episode&Fields=ProviderIds,MediaSources,MediaStreams,Overview,Genres,DateCreated&StartIndex=&Limit=`; incremental filter by last-modified date (parameter name to verify) | Similar | `GET /library/sections/{id}/all?type=…&includeGuids=1` with `X-Plex-Container-Start/Size`; incremental via `updatedAt>=` filter (to verify) |
-| External IDs | `ProviderIds.{Tmdb,Imdb,Tvdb}` | Same | `Guid[]` entries `tmdb://…`, `imdb://…`, `tvdb://…` |
+| Identity & version | `GET /System/Info/Public` → `Id`, `Version` (`12.1.0`) (verified T1.1) | Same path, `Version` is four-part (`4.10.1.0`); the `/emby` prefix is optional (verified T1.1) | `GET /identity` → `machineIdentifier`, `version` (`1.43.4.10903-…`) (verified T1.1) |
+| Service auth | `POST /Users/AuthenticateByName` with `Authorization: MediaBrowser Client="Cinewren", Device=…, DeviceId=…, Version=…[, Token=…]` and body `{Username, Pw}` → `AccessToken`, `User.Id`, `User.Policy.IsAdministrator`. `X-Emby-Authorization` returns 400, and `X-Emby-Token` returns 401 (verified T1.1). The credential is a username and password for a non-admin user | Same `Authorization: MediaBrowser …` header (`X-Emby-Authorization` and `X-Emby-Token` also work but are not needed) (verified T1.1) | A restricted Plex Home or managed user created by the owner for Cinewren, with that user's tokens, never owner tokens (owner decision 2026-10-04). Header or query `X-Plex-Token`. Server-access token retrieval and non-admin status **(to verify in Plex managed-user spike)** |
+| Libraries | `GET /UserViews?userId=` (CollectionType `movies`/`tvshows`) (verified T1.1) | `GET /Users/{id}/Views`; `/UserViews` returns 404 (verified T1.1) | `GET /library/sections` (type `movie`/`show`) (verified T1.1) |
+| Paged items | `GET /Items?ParentId=&Recursive=true&IncludeItemTypes=Movie,Series,Season,Episode&Fields=ProviderIds,MediaSources,MediaStreams,Overview,Genres,DateCreated&StartIndex=&Limit=` with `TotalRecordCount`. Incremental: `MinDateLastSaved=<ISO-8601 Z>` works, but Jellyfin re-saves items on each scan, so incremental sync can be heavy (verified T1.1) | Same; `MinDateLastSaved` is precise (a no-change rescan returns 0) (verified T1.1) | `GET /library/sections/{id}/all?type=…&includeGuids=1` with `X-Plex-Container-Start/Size` (`offset`, `totalSize` in the response). Incremental: `updatedAt>=<unix>` (and `addedAt>=`) (verified T1.1) |
+| External IDs | `ProviderIds.{Tmdb,Imdb,Tvdb}`; movies in a set also carry `ProviderIds.TmdbCollection` (verified T1.1) | `ProviderIds.{Tmdb,Imdb,Tvdb}` on items; person keys are lowercase, so parse case-insensitively (verified T1.1) | `Guid[]` entries `tmdb://…`, `imdb://…`, `tvdb://…` (verified T1.1) |
 | Versions/tracks | `MediaSources[]` → `Container`, `Size` (bytes), `MediaStreams[]` (Type Video/Audio/Subtitle, `Codec`, `VideoRangeType`, `IsTextSubtitleStream`) | Same | `Media[]` → `Part[]` (`size` bytes) → `Stream[]` (`streamType` 1/2/3) |
-| People and credits (FR-SYNC-008) | Add `People` to `Fields`: `People[]` → `Id`, `Name`, `Role` (character), `Type` (Actor, Director, Writer, Producer, others), `PrimaryImageTag`. List order is billing order. Whether entries carry person `ProviderIds` (TMDB or IMDb) is unknown, and a separate `GET /Persons/{id}` per person would be too many calls: if absent, people merge by name only (ADR-0015) | Same lineage; person `ProviderIds` availability unknown | Item metadata carries `Role[]` (cast: `tag`, `role` character, `id`, `thumb`), `Director[]` and `Writer[]` (`tag`, `id`). Tag IDs are server-local and their stability across rescans is unknown; person TMDB or IMDb IDs are probably absent, so name-only merging is the expected path |
-| Collections (FR-SYNC-008) | Box sets: `GET /Items?IncludeItemTypes=BoxSet&Recursive=true&Fields=ProviderIds,Overview`, members via `GET /Items?ParentId=<boxSetId>`. `ProviderIds.Tmdb` on a box set is the TMDB collection ID if the metadata plugin sets it | Same (`BoxSet`) | `GET /library/sections/{id}/collections` and `GET /library/collections/{ratingKey}/children`. Collection `Guid` or TMDB IDs are probably not exposed; unmerged collections then show separately per server (ADR-0015). Smart collections may need a different members call |
-| Negotiation | `POST /Items/{id}/PlaybackInfo` with a DeviceProfile built from capabilities → `SupportsDirectPlay`/`SupportsDirectStream`/`TranscodingUrl` | Same | `GET /video/:/transcode/universal/decision` then `start.m3u8`; direct play via part URL |
-| Stream URL | Direct: `/Videos/{id}/stream?static=true&MediaSourceId=…&api_key=<session token>`; HLS: `/Videos/{id}/master.m3u8?…` | Similar | Part URL or `start.m3u8` with `X-Plex-Token` query |
-| Text subtitles | `/Videos/{id}/{msId}/Subtitles/{idx}/Stream.vtt` | Similar | Transcoder subtitle option or stream URL with `format=vtt` (to verify) |
-| Session credential (ADR-0013, pending ADR-0013 / M1 spike) | Re-authenticate service account with `DeviceId=cinewren-ps-<sessionId>` → per-session token; revoke with `POST /Sessions/Logout` using that token | Same approach | Transient/delegation token (e.g. `/security/token?type=delegation`) — unknown; fallback per ADR-0013 |
-| Telemetry (FR-PLAY-009) | `POST /Sessions/Playing`, `/Sessions/Playing/Progress`, `/Sessions/Playing/Stopped` | Same | `GET /:/timeline?state=playing\|stopped&time=…` |
-| Artwork | `/Items/{id}/Images/Primary?tag=…` (may not need auth) | Similar | `/library/metadata/{key}/thumb/{ts}` with token |
+| People and credits (FR-SYNC-008) | `Fields=People` works inline in `/Items` list queries, so no per-item call is needed: `People[]` → `Id`, `Name`, `Role` (character), `Type`, `PrimaryImageTag`, in billing order. Person `ProviderIds` are absent (even when the NFO has `<tmdbid>`), so people merge by name only (ADR-0015). Online-metadata behaviour is untested (verified T1.1, offline) | Inline `People[]` in list queries without `ProviderIds`. Person detail (`GET /Users/{id}/Items/{personId}`) has `ProviderIds` with lowercase keys (`tmdb`, `imdb`), but fetching it per person is too many calls (verified T1.1) | `Role[]` (`id`, `tag`, `role`, `tagKey`, `thumb`), `Director[]`, `Writer[]`, `Producer[]`. `id` is server-local. `tagKey` is a plex.tv global person key and a candidate cross-server merge key (ADR-0015). No TMDB or IMDb person IDs (verified T1.1) |
+| Collections (FR-SYNC-008) | BoxSets: `GET /Items?IncludeItemTypes=BoxSet&Recursive=true&Fields=ProviderIds,Overview`, members via `ParentId=<boxSetId>`. With default library options an NFO `<set>` does **not** create a BoxSet, and an API-created BoxSet has empty `ProviderIds`. Movies carry `ProviderIds.TmdbCollection`, a fallback merge key (verified T1.1) | A BoxSet is auto-created from the NFO `<set>` with `ProviderIds.Tmdb` (verified T1.1). Members via `ParentId=` | `GET /library/sections/{id}/collections` and `GET /library/collections/{ratingKey}/children`. A collection has `guid: collection://<uuid>` and no external ID, so collections stay separate per server (ADR-0015) (verified T1.1) |
+| Negotiation | `POST /Items/{id}/PlaybackInfo?UserId=` with a DeviceProfile built from capabilities. The MP4 gets `SupportsDirectPlay=true` but no `DirectStreamUrl`; Jellyfin sources are always served through HLS (see Stream URL), so the adapter requests `EnableDirectPlay=false` with `AllowVideoStreamCopy` and `AllowAudioStreamCopy`, and the result is `TranscodingUrl` with `TranscodingSubProtocol=hls` (verified T1.1) | Same call. Returns `DirectStreamUrl` (`/videos/{id}/original.{ext}?…&api_key=<token>`) for direct play and `TranscodingUrl` (`master.m3u8`) otherwise (verified T1.1) | `GET /video/:/transcode/universal/decision?path=/library/metadata/{key}&protocol=hls&…` (decision codes such as 1001), then `start.m3u8`; the direct part URL is `/library/parts/{id}/{ts}/file.ext` (verified T1.1) |
+| Stream URL | HLS only: `/Videos/{id}/master.m3u8?…&ApiKey=<session token>`. The token carrier is `ApiKey=` (`api_key=` returns 401 on Jellyfin 12.1) or the `Authorization: MediaBrowser Token=` header. The child playlist and segment URLs carry `ApiKey=`, so revocation stops them. **Never** `/Videos/{id}/stream?static=true`: Jellyfin 12.1 serves it without authentication, so it cannot be revoked (owner decision 2026-10-04; verified T1.1) | Direct: `DirectStreamUrl` with `api_key=<session token>` (`ApiKey=` returns 401 on Emby). HLS: `master.m3u8` with `api_key`; segment URLs carry only `PlaySessionId` and stay fetchable after revocation until the stop is reported (verified T1.1) | Part URL or `start.m3u8` with `X-Plex-Token` query. HLS child playlists and segments (`session/<id>/base/…`) carry no token and are anonymous until the transcode is stopped (verified T1.1) |
+| Text subtitles | Use the `DeliveryUrl` from PlaybackInfo with `SubtitleProfiles: [{Format:"vtt",Method:"External"}]`: `/Videos/{id}/{msId}/Subtitles/{idx}/0/Stream.vtt` (the path includes the `/0/` segment). Returns `text/vtt`, served without auth, for embedded and sidecar tracks (verified T1.1) | Same path with `/0/` and `api_key`; `text/vtt`, served without auth (verified T1.1) | A sidecar via `/library/streams/{id}` arrives as raw SRT (`Content-Type: text/html`); embedded tracks return 501. Use Worker-side SRT to VTT conversion (TDD §11.3), or **(to verify in Plex managed-user spike)** WebVTT over HLS |
+| Session credential (ADR-0013) | Re-authenticate the service account with `DeviceId=cinewren-ps-<sessionId>` → per-session token (about 190 ms per mint). Re-auth on the same DeviceId invalidates the previous token, so the DeviceId is unique per session. Revoke with `POST /Sessions/Logout` using that token (204; also removes the device entry and stops issued HLS URLs) (verified T1.1) | Re-authenticate with a DeviceId leased from a bounded pool `cinewren-ps-00…NN` (at least peak concurrent sessions); the same DeviceId returns the same token. Logout revokes the token but leaves the device entry. Report stop before revoking (verified T1.1) | The managed user's token (owner decision 2026-10-04). `/security/token?type=delegation&scope=all` exists but inherits the minting account's rights (admin writes succeeded with an owner-derived token), and no other scope is accepted. **(to verify in Plex managed-user spike)**; `shared_restricted` fallback per ADR-0013 if it fails |
+| Telemetry (FR-PLAY-009) | `POST /Sessions/Playing`, `/Sessions/Playing/Progress`, `/Sessions/Playing/Stopped` (204 with the session token; `Stopped` ends the transcode) (verified T1.1) | Same; `Stopped` ends the transcode (verified T1.1) | `GET /:/timeline?ratingKey=&key=&state=playing\|stopped&time=&duration=`; `/video/:/transcode/universal/stop?session=` ends the transcode (verified T1.1) |
+| Artwork | `/Items/{id}/Images/Primary?tag=…` is served without auth (verified T1.1) | Similar (inconclusive in T1.1: the test item had no image) | `/library/metadata/{key}/thumb/{ts}` with token |
 | Probe | `GET /System/Info/Public` (unauthenticated) | Same | `GET /identity` |
-| CORS for HLS/VTT | Default headers unknown | Unknown | Unknown — see TDD §11.3 |
+| CORS for HLS/VTT | `Access-Control-Allow-Origin: *` on API, stream, HLS, segment, VTT and images; preflight 204 (verified T1.1) | Reflects the origin with `Allow-Credentials: true`; preflight 200 (verified T1.1) | Reflects the origin; preflight 200 with `Allow-Headers: x-plex-token` (verified T1.1) |
 
-Mapping capabilities to a device profile is a pure function per adapter, unit-tested against fixtures. The spike must also confirm whether direct-play progressive URLs honour HTTP range requests with the session token passed in the query string.
+Mapping capabilities to a device profile is a pure function per adapter, unit-tested against fixtures. Direct-play progressive URLs honour HTTP range requests (206 with `Content-Range`) with the session token in the query string on all three providers (verified T1.1).
+
+**Telemetry side effect (FR-PLAY-009, verified T1.1).** Reporting playback marks the item played on the origin for the service user (`Played` and `PlayCount` on Jellyfin and Emby). This is an accepted side effect. It is not a write-back of the user's watched state (DEF-4), and Cinewren does not read it back.
+
+### M1 implementation notes (agent decisions, 2026-10-04)
+
+- Outbound origin errors use `ProviderError` code `REDIRECT_REFUSED`, which maps to API error `ORIGIN_REDIRECT_REFUSED` (LLD-ERR). Same-origin redirects are followed at most 3 times.
+- The URL policy also blocks single-label hostnames (e.g. `https://nas`) outside local mode. This is a conservative extension of the IP-literal and internal-hostname block.
+- Registration checks server identity (`/System/Info/Public`) **before** sending credentials, so a password is never sent to a host that does not identify as the declared provider type.
+- Jellyfin `listItems` does not request `Fields=People`; credits come from `getItem`. Inline people in paged sync needs a new fixture recording (M2, T2.9).
+
 
 ## LLD-SYNC — Sync, health probing & retention jobs
 
@@ -717,7 +738,7 @@ UPDATE libraries SET last_full_sync_id=:run WHERE id=:lib;
 
 The mass-missing guard protects against an origin that returns an empty listing because of a permission or mount problem. Without it, such a listing would hide the library. An operator can override the guard by running a manual full sync with `{force:true}`.
 
-Incremental runs never mark sources missing. Their `since` is the previous successful run's `started_at` minus 10 min of skew *(proposed)*. If a provider cannot filter by modification time (to verify in M1 spike), incremental falls back to a full listing without missing marking.
+Incremental runs never mark sources missing. Their `since` is the previous successful run's `started_at` minus 10 min of skew *(proposed)*. Jellyfin and Emby filter with `MinDateLastSaved` and Plex with `updatedAt>=` (verified T1.1); unknown query parameters are silently ignored, so contract tests must prove the filter applies (a future date returns 0). Jellyfin re-saves every item on each library scan, so an incremental run after a scan can be as heavy as a full run. If a provider cannot filter by modification time, incremental falls back to a full listing without missing marking.
 
 ### Health probing and status derivation (FR-OPS-001, FR-OPS-002)
 
@@ -867,9 +888,11 @@ select(user, item, caps, prefs, exclude):
 
 predictMode(v, caps, prefs):                                # returns (mode, reason codes)
   a = chosen audio track (prefs.audioLanguage, else default); sub = chosen subtitle
+  # Jellyfin never yields direct_play (static streams are unauthenticated, ADR-0013): provider == 'jellyfin' skips the direct_play rule below
   videoOk = v.video_codec ∈ caps.video (respecting maxLevel/maxHeight per codec)
   if sub.kind == 'image' → (transcode, ['subtitle_burn_in'])                          # burn-in, FR-PLAY-006
-  if videoOk and v.container ∈ caps.containers and a.codec ∈ caps.audio → (direct_play, ['direct_play'])
+  if videoOk and v.container ∈ caps.containers and a.codec ∈ caps.audio:
+      → provider == 'jellyfin' ? (direct_stream, []) : (direct_play, ['direct_play'])   # Jellyfin: token-gated HLS remux, copy codecs
   if videoOk and (caps.nativeHls or caps.mse):                                        # remux; audio may be transcoded
       → (direct_stream, [container ∉ caps.containers ? 'direct_stream_container' : null,
                          a.codec ∉ caps.audio ? 'audio_transcoded' : null].compact())
@@ -947,8 +970,11 @@ AAD = "cinewren|" + purpose + "|" + rowId      # purpose ∈ {server_secret, ser
 
 **Rotation (WF-11; FR-SRV-005 covers origin credentials, this covers the master key):**
 1. Generate a new key locally and keep an offline copy (DR-002). Add it to `CREDENTIAL_KEYS` under version `n+1`, set `CREDENTIAL_KEY_CURRENT=n+1`, and deploy.
-2. The scheduler sees rows with `key_version < current` and enqueues `reencrypt`. That job decrypts with the old key and re-encrypts with the new one, 100 rows per batch, using a conditional `WHERE key_version = :old`.
-3. Once no rows reference version `n`, the operator removes it from the secret. `GET /admin/servers` shows a per-server key version, so the operator can check this first.
+2. The operator calls `POST /admin/vault/rotate`. It loads the keyring (so `CREDENTIAL_KEY_CURRENT` must name a key present in `CREDENTIAL_KEYS`, else `CREDENTIAL_KEY_MISSING`), counts rows not on the current version, enqueues `{kind:'reencrypt'}` when there are any, and writes one `vault.rotate` audit row (details: current version and row count only). No scheduler step is involved: rotation runs only when the operator asks.
+3. The queue consumer handles `reencrypt` as bounded slices. Each message runs up to 10 batches of 100 rows and, if work remains, enqueues `{kind:'reencrypt', table, after}` as its continuation (`after` is a rowid cursor). It walks three tables in order: `server_credentials` (both envelopes, compare-and-set `WHERE server_id=? AND key_version=:old`), `playback_sessions.credential_envelope` and `idempotency_keys.response` (the latter two have no version column, so the version is read from the envelope and the compare-and-set is `WHERE <pk>=? AND <column>=:oldEnvelope`; an unsealed idempotency response is not an envelope and is skipped). The cursor only moves forward, so a row that cannot be decrypted (its key was removed) is counted as failed once and skipped. A crashed or retried message repeats at most one batch and the compare-and-set makes that harmless; calling rotate again is always safe.
+4. `GET /admin/vault/status` returns `{currentKeyVersion, configuredKeyVersions, rowsByKeyVersion:[{keyVersion, rows, keyConfigured}], pendingRows, complete, missingKeyVersions, removableKeyVersions}` over all three tables. The operator removes the old key only when `complete` is true and the version is in `removableKeyVersions`. If an old key is removed early, status lists it in `missingKeyVersions` and the affected servers show "credentials unavailable" until the key is restored or credentials are re-entered (FR-SRV-005).
+
+Catalog cursors (`cursor` purpose) are sealed with the vault but are not re-encrypted: they live minutes and hold no secret, and a cursor under a removed key just fails to open and the client restarts the listing.
 
 **Key loss:** decryption fails for every server. Servers are shown as "credentials unavailable"; the catalog, users and progress are untouched. The operator re-enters each server's credentials (FR-SRV-005).
 
@@ -959,17 +985,20 @@ These are *not* envelope-encrypted. They are random secrets that are **hashed** 
 | Artefact | Created | Validated | Ends |
 |---|---|---|---|
 | Session | On successful setup, invite redemption or login verify: 32 random bytes go into the cookie, the hash into `sessions`. Idle expiry = now + 14 d, absolute = now + 90 d *(proposed)*. | Each request hashes the cookie and looks up `id_hash`, joining `users.status='active'`. It requires `now < idle_expires_at AND now < absolute_expires_at`, and slides `idle_expires_at` at most hourly. | On logout, passkey removal, user disable or delete (FR-USR-008), or expiry. The sweep deletes expired rows. |
-| Invite (signup) | The operator creates it. One batch inserts `users(status='invited', role)`, `library_grants` and `invites(token_hash, expires_at=now+7d)`. | Redeem: `token_hash` matches, `redeemed_at IS NULL AND revoked_at IS NULL AND expires_at > now`. | **Redeem**, one batch: CAS `UPDATE invites SET redeemed_at=now WHERE id=? AND redeemed_at IS NULL AND revoked_at IS NULL AND expires_at>now`, insert the passkey, set the user `active`, create the session. If the CAS changes 0 rows, the whole batch aborts (a guard statement raises a constraint error). **Revoke or expire:** the invited user is deleted (FRD rule), which cascades to grants and the invite. |
+| Invite (signup) | The operator creates it. One batch inserts `users(status='invited', role)`, `library_grants` and `invites(token_hash, expires_at=now+7d)`. | Redeem: `token_hash` matches, `redeemed_at IS NULL AND revoked_at IS NULL AND expires_at > now`. | **Redeem**, one batch: CAS `UPDATE invites SET redeemed_at=now WHERE id=? AND redeemed_at IS NULL AND revoked_at IS NULL AND expires_at>now`, insert the passkey, set the user `active`, create the session. The redeem guard (agent decision 2026-10-04): if the CAS changes 0 rows, the batch inserts NULL into a NOT NULL column, aborting and rolling back atomically. **Revoke or expire:** the invited user is deleted (FRD rule), which cascades to grants and the invite. |
 | Invite (reenroll / CLI recovery) | `POST …/reenroll` or the recovery command (TDD §5.1); 24 h *(proposed)*. | As above. | Redeem adds a passkey to the existing user and creates a session; existing passkeys are kept. Expiry or revocation affects only the invite. |
 | Setup | — (token is the `SETUP_TOKEN` secret) | Constant-time compare **and** no operator exists. | Inserting the first operator uses `INSERT … SELECT … WHERE NOT EXISTS (SELECT 1 FROM users WHERE role='operator')`, so two concurrent setups cannot both succeed. |
-| WebAuthn challenge | On `*/options`, with a 5 min TTL *(proposed)* and a purpose binding (and, where relevant, the invite or user). | On `*/verify`, the row is deleted **first** (`DELETE … RETURNING`), then checked for expiry and purpose. That makes it single-use even when verification fails. | Deleted on use; the sweep removes expired rows. |
+| Fresh authentication (SR-04) | `sessions.reauth_at` is set to `created_at` when setup, invite redemption or login creates the session, and to `now` by `POST /me/reauth/verify`. | Adding a passkey (`/me/passkeys/options` and `/verify`) requires `now − reauth_at ≤ 5 min` *(proposed)*, otherwise 401 `REAUTH_REQUIRED`. | A successful add-passkey verify clears it with a compare-and-set (`UPDATE … SET reauth_at = NULL WHERE id_hash = ? AND reauth_at >= now − 5 min`), so each fresh authentication adds at most one passkey, even under concurrent requests. A failed registration does not spend it. Removing a passkey is not gated: it only reduces access, and the last passkey cannot be removed. |
+| WebAuthn challenge | On `*/options`, with a 5 min TTL *(proposed)* and a purpose binding (and, where relevant, the invite or user). Re-authentication challenges use purpose `login` bound to the user (`user_id` set), so the purpose CHECK needs no table rebuild; login verify refuses a user-bound challenge and re-auth verify refuses an unbound one. | On `*/verify`, the row is deleted **first** (`DELETE … RETURNING`), then checked for expiry and purpose. That makes it single-use even when verification fails. | Deleted on use; the sweep removes expired rows. |
 | Passkey sign count | Stored at registration. | On login, if both the stored and the new count are non-zero and the new count is ≤ the stored one, the login is rejected and logged as `auth.passkey.counter_regression` (a possible cloned authenticator). Many synced passkeys always report 0, which is accepted. | — |
 
 `sweepAuth()` runs on the 5-minute tick. It deletes expired challenges and sessions, and for each signup invite past `expires_at` and not redeemed it deletes the invited user (cascade). It runs in chunks of 500 *(proposed)*.
 
 ### Playback session lifecycle (FR-PLAY-001, FR-PLAY-007, FR-PLAY-009, BR-9)
 
-This lifecycle assumes per-session origin stream credentials (pending ADR-0013 / M1 spike). ADR-0013 is Proposed, and the spike decides per provider whether this model or the shared-restricted fallback applies.
+This lifecycle assumes per-session origin stream credentials (ADR-0013). ADR-0013 is Accepted for Jellyfin and Emby (verified T1.1) and Proposed for Plex, where the managed-user spike decides whether this model or the shared-restricted fallback applies.
+
+Provider specifics (verified T1.1): Jellyfin mints with a unique DeviceId per session, at about 190 ms per play (counted in NFR-PERF-002), and logout removes the device entry. Emby leases a DeviceId from a bounded pool (`cinewren-ps-00…NN`, at least the peak concurrent sessions) for the life of the session and releases it after revoke; re-auth on a logged-out DeviceId mints a new token, and logout leaves the device entry. **Revocation does not stop Emby or Plex HLS segments of a live transcode until the stop is reported, so `reportPlayback(stop)` runs before the revoke, never after it or concurrently.** The session token keeps the service account's non-admin scope (not stream-only), and origins do not enforce library grants on stream endpoints, so BR-1 is enforced before any descriptor is issued.
 
 ```mermaid
 sequenceDiagram
@@ -980,7 +1009,7 @@ sequenceDiagram
   B->>W: POST /api/v1/play (Idempotency-Key, caps)
   W->>D: visible candidates (BR-1) + ranking inputs
   W->>W: select (LLD-SEL), decrypt service secret
-  W->>O: createSessionCredential(sessionId)  [pending ADR-0013 / M1 spike; e.g. auth with DeviceId=cinewren-ps-<id>]
+  W->>O: createSessionCredential(sessionId)  [ADR-0013; Jellyfin: auth with DeviceId=cinewren-ps-<id>; Emby: pooled DeviceId]
   O-->>W: session token
   W->>O: negotiatePlayback(caps, tracks, session token)
   O-->>W: mode + stream URL (origin host)
@@ -995,7 +1024,7 @@ sequenceDiagram
   end
   B->>W: events {type:stop}
   W->>D: started→ended, revoke_pending=1
-  W->>O: reportPlayback(stop) + revokeSessionCredential (waitUntil)
+  W->>O: reportPlayback(stop), then revokeSessionCredential (sequential, waitUntil)
   W->>D: credential_envelope=NULL, revoke_pending=0
 ```
 
@@ -1014,7 +1043,86 @@ Events for a session that has reached a terminal status return `410 SESSION_EXPI
 
 **Progress → watched (BR-7, FR-PROG-003).** The rule is applied server-side on every progress upsert: `watched = position ≥ 0.9 × runtime OR (runtime > 45 min AND runtime − position < 5 min)` *(proposed)*. Setting `watched` resets the position to 0. Manual `PUT /progress` overrides the rule.
 
-**Fallback (ADR-0013).** If a provider cannot issue per-session credentials (M1 spike), its adapter returns `kind:'shared_restricted'` with a per-server restricted playback account token. `revokeSessionCredential` becomes a no-op, the token is rotated on a schedule, and the risk is documented. This choice is per provider, and the descriptor format does not change.
+**Fallback (ADR-0013).** If a provider cannot issue per-session credentials (expected for Plex only if the managed-user spike fails), its adapter returns `kind:'shared_restricted'` with a per-server restricted playback account token. `revokeSessionCredential` becomes a no-op, the token is rotated on a schedule, and the risk is documented. This choice is per provider, and the descriptor format does not change.
+
+### Service-token caching (agent decision, 2026-10-04; resolves an M1 spec conflict)
+
+The service account's **API token** (used for sync, health and negotiation) is cached encrypted in `server_credentials.service_token_envelope`, under a **fixed DeviceId per server**. It is renewed only when the origin returns 401. Per-playback **stream** credentials always use their own DeviceIds (unique per session on Jellyfin, pooled on Emby). This avoids a ~190 ms sign-in on every request, and avoids isolates invalidating each other's tokens (Jellyfin kills the previous token when the same DeviceId signs in again). Implemented in T2.1. Until then, M1 code signs in per request context.
+
+### M2 implementation notes (agent decisions, 2026-10-04)
+
+**LLD-API:**
+- `ItemCard` is `{id, type, title, year, artworkUrl, seasonNumber?, episodeNumber?}`.
+- `GET /admin/users` accepts `limit`.
+- Role demotion that would leave no active operator returns `LAST_OPERATOR` (BR-8).
+- Pagination cursors are sealed with the vault's reserved `cursor` AEAD purpose, bound to the user and the query.
+- Search applies BR-1 visibility inside the FTS query, so there is no over-fetch.
+
+**LLD-SCHEMA:**
+- Migration `0002_sources_meta.sql` adds `sources.meta`. It holds per-source overview, genres and original title, so an item can fall back when its displayed source goes missing.
+- `search_fts` rows use explicit rowids: item `rowid*3`, person `*3+1`, collection `*3+2`.
+- BR-1 visibility reads `item_availability`, which sync keeps current on source upsert, missing, restore and purge, together with `libraries.enabled` and `servers.status`.
+
+**LLD-SYNC:**
+- Collections are listed once per run, after the libraries, not per library (Jellyfin and Emby box sets live outside libraries).
+- A failing server is retried at the incremental interval.
+- An incremental run with no prior success becomes full, and a library never fully synced is listed in full.
+- A mass-missing guard exists, and an operator `force` overrides it.
+- An open conflict flag is closed automatically when its subject later matches cleanly.
+- Run counters may under-report `added` after a mid-page kill. Counts commit with the page checkpoint, items per item. This is accepted.
+- `Retry-After` is not honoured yet.
+
+### M3 implementation notes (agent decisions, 2026-10-04)
+
+**LLD-SEL, Viewer 2 under forced Jellyfin HLS.** The worked example above ranks A (Server A, Jellyfin) first for Viewer 2 as `direct_play`. Jellyfin never yields `direct_play` (ADR-0013 Jellyfin amendment: its static streams are not token-gated), so A's mode is `direct_stream`, a copy-codec HLS remux with reason `remux_for_token_auth`. Rule 1 (mode) then ranks B (Plex, `direct_play`, 1080p SDR) first and A second; the 2160p HDR copy wins only if the viewer asks for it (FR-PLAY-005) or B is unavailable. C stays third. The example table was written before the amendment and is kept as the rule illustration; the implementation follows the ranking in this paragraph.
+
+**LLD-API, reason codes.** `remux_for_token_auth` is new (see the reasons table). It is emitted instead of `direct_play` when the file would play as stored but the origin is Jellyfin. The UI renders it in plain language ("repackaged without re-encoding because the server ties the stream to your viewing session"). Clients ignore unknown codes, so older clients are unaffected. `ItemDetail.copies[].serverType` (`jellyfin`, `emby`, `plex`) was added for the copy list's "TYPE · network" line.
+
+**LLD-API, progress and idempotency.**
+- `PUT /progress/{itemId}` with `{positionMs}` sets the position and leaves the `watched` flag as it was (it neither sets it at the 90 % mark nor clears it). Only `{watched}` changes the flag, and it resets the position to 0. Positions reported by session events still apply BR-7's threshold.
+- A `POST /play` whose `Idempotency-Key` is still being processed by an earlier request returns `429 RATE_LIMITED` with `retryAfterS: 1`, not a second descriptor. A claim older than 30 s with no response is treated as dead and retaken.
+
+**LLD-SCHEMA, Emby DeviceId leases (migration `0003_stream_device_leases.sql`).** Emby returns the same token when the same DeviceId signs in again and keeps device entries after logout, so a unique DeviceId per session would grow Emby's device list without bound. Emby stream credentials therefore use a bounded pool of DeviceIds per server (`cinewren-ps-00` to `NN`). Table `stream_device_leases(server_id, slot, session_id, leased_at)`, primary key `(server_id, slot)`, leases a slot to one playback session from before the token is minted until the token has been revoked; the key makes a double lease impossible, and the sweep releases leases of ended sessions. Jellyfin uses one DeviceId per session and never leases. The migration is expand-only.
+
+**LLD-TOKEN, accepted residual risk.** If the Worker dies after a Jellyfin token has been minted at the origin but before the session row records it, Cinewren has no record of the token and cannot revoke it. It stays valid until Jellyfin's own token lifetime ends. It is scoped to the restricted, non-administrator service account and carries no ability to change anything, so the risk is accepted; the window is the few milliseconds between the origin's reply and the row update, and the unused session itself expires under BR-9. The mitigation is operational: keep the service account restricted (FR-SRV-002 refuses an administrator).
+
+**LLD-PROV, interface additions.**
+- `SessionCredential` gains `deviceId` (the DeviceId the token was minted under, needed to revoke it) and `accountId` (the origin account, which some negotiation calls name).
+- `PlaybackProvider` is split out of `MediaProvider` (the playback half: `createSessionCredential`, `revokeSessionCredential`, `negotiatePlayback`, `reportPlayback`), so Emby can ship playback before its catalog half. `MediaProvider extends PlaybackProvider`.
+- `PlaybackProvider.streamDevices` is `'per_session'` (default; Jellyfin) or `'pooled'` (Emby), and `createSessionCredential` takes an optional `lease: {slot}` for pooled adapters.
+- `reportPlayback`'s event carries `paused?` and `stream` of which only `mode`, `streamType` and `providerSessionRef` are read.
+
+**LLD-API, NFR-SEC-003.** The CSP is built from the `servers` table for HTML document responses (the SPA); JSON and image responses carry the `'self'`-only policy, so API responses never list origin hostnames. For documents: `media-src 'self' blob:` and `connect-src 'self'`, each followed by the `scheme://host[:port]` of every server whose status is `active`, `degraded` or `unreachable` (not `pending_validation`, `disabled` or `removing`). The list is cached per isolate for 15 s and dropped when that isolate handles a write to `/admin/servers`; other isolates catch up within the TTL. `script-src` stays `'self'`. The list cannot depend on the session because the SPA stays loaded across sign-in, so anyone who can load the app can read the hostnames (not secrets; the credentials are, NFR-SEC-001). If the lookup fails the policy falls back to `'self'` only. The `servers_version` counter in TDD §6.1 is not used: the short TTL covers it with no extra write path.
+
+### M4/M5 implementation notes (agent decisions, 2026-10-04)
+
+- **Emby (LLD-PROV):** the catalog code is shared in `providers/mediabrowser.ts` with per-server dialects. Emby uses `/Users/{id}/Views` and `/Users/{id}/Items/{id}`, with minimum version 4.10. Emby artwork auth is unverified (spike §5), so the cached service token is sent only as an `Authorization` header, never in a URL.
+- **Plex (LLD-PROV, LLD-SEL, LLD-TOKEN):**
+  - The registration credential is a token (the managed user's).
+  - Validation checks `/identity` before sending any token, then refuses any token that `GET /:/prefs` does not answer with 401 or 403 (codes `admin_account` and `admin_status_unknown`), then requires version ≥ 1.43.
+  - Providers expose `playbackVerified`. Plex is `false` until B-3 verifies the managed-user token, so selection excludes Plex copies with the new reason `provider_unverified`.
+  - Plex list responses carry only person names and no tracks. Provider person IDs are `tagKey` when known, else `name:<tag>`. BR-10's exact-name rule merges both into one canonical person. Plex WebVTT (SRT→VTT) is not provided.
+- **Health (LLD-SYNC):** each probe round uses a 5 s timeout, 3 attempts and concurrency 6. `HEALTH_PROBE_INTERVAL_MIN` defaults to 5. A play-time origin failure increments `consecutive_failures` immediately. Health-aware selection was already in place from M3, so the "(M5)" note is historical.
+- **Operations (LLD-API):** credential replacement audits as `server.credentials.replace`. The export is built from explicit column lists (no secrets). The metrics endpoint is `GET /admin/metrics?window=24h|7d`, computed from D1. Master-key rotation is `POST /admin/vault/rotate` plus `GET /admin/vault/status` (LLD-TOKEN "Rotation", SR-07).
+
+- **Curation (LLD-MATCH, LLD-API):**
+  - `GET /admin/curation/entities/{kind}/{id}` was added.
+  - Operator merges apply to movies and series only; a series merge or split carries its seasons and episodes.
+  - Resolving a conflict by merge folds the whole current item into the candidate.
+  - A stale or already-resolved conflict returns 404 `NOT_FOUND`.
+  - Each mutation writes one audit row (`curation.merge`, `curation.split`, `curation.conflict.resolve`, `curation.override.delete`).
+  - Name-derived person IDs (`name:<tag>`) do not block BR-10's same-server exclusion.
+- **BR-1 (LLD-SCHEMA):** credits and collection members are filtered by source visibility, so a merged item never exposes a hidden copy's cast or membership.
+
+### T5.8 security review notes (agent decisions, 2026-10-04)
+
+These come from the [security review](../reports/2026-security-review.md) and bring the code in line with the rules above.
+- **Revocation before removal (LLD-SCHEMA cascades, FR-PLAY-007).** Deleting a user, disabling a user and removing a server first end every live playback session of that user or server, then revoke every origin credential that is still held (stop, then logout). Only after that does the delete or removal batch run. A disabled user's sessions end with `end_reason = 'user_disabled'`. Revocations that fail are logged as `playback.revoke_abandoned` when the rows or credentials are about to go, and stay `revoke_pending` otherwise. Deleting the last operator is refused before any playback is touched.
+- **BR-1 for the whole session.** Every `POST /play/{id}/events` re-checks that the session's source is still visible to the caller. If the grant, the library or the server is gone, the session ends with `end_reason = 'access_revoked'`, its credential is revoked and the event gets `410 SESSION_EXPIRED`. Without this, progress events would keep a session, and its token, alive indefinitely.
+- **`sweepAuth` is implemented** (`db/auth.ts`) as its own task on the five-minute tick, in chunks of 500, at most 20 chunks per step per tick.
+- **Artwork cache key (ADR-0012).** The key is `entity/id/slot/server/tag`, and an image is stored only under the key of the source that supplied it, so equal tags on two servers never share an entry.
+- **Per-user limits (TDD-D5).** Writes under `/api/v1/me/` count against `RL_MUTATION`.
+- **Fresh authentication to add a passkey (SR-04; owner decision 2026-10-04).** See "Fresh authentication" in the table above and `/me/reauth/*` in LLD-API. Migration `0005_session_reauth.sql` adds the nullable `sessions.reauth_at` (expand-only), so sessions created before it must re-authenticate before adding a passkey.
 
 ## LLD-ERR — Error handling, retries, idempotency & concurrency
 
@@ -1027,6 +1135,7 @@ Events for a session that has reached a terminal status return `410 SESSION_EXPI
 | `CSRF_REJECTED` | 403 | State-changing request whose `Origin` is not `APP_ORIGIN` (NFR-SEC-007). |
 | `WEBAUTHN_VERIFICATION_FAILED` | 400 / 401 | Challenge missing, expired or reused; origin or RP ID mismatch; bad signature; unknown credential; disabled user. One generic message. |
 | `INVITE_INVALID` | 404 | Unknown, expired, revoked or redeemed invite. These are indistinguishable on purpose. |
+| `REAUTH_REQUIRED` | 401 | Adding a passkey without a fresh authentication on this session: no `reauth_at`, older than 5 min *(proposed)*, or already spent on another passkey (FR-USR-006, SR-04). The session stays valid; the SPA runs `POST /me/reauth/*` ("Confirm it's you") and retries. It does not redirect to `/login`. |
 | `LAST_PASSKEY` | 409 | FR-USR-006. |
 | `INVITE_ALREADY_REDEEMED` | 409 | Revoking a used invite. |
 | `MIGRATIONS_PENDING` | 503 | Worker newer than the applied schema (TDD §9.3). |

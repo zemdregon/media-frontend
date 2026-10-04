@@ -74,7 +74,7 @@ Non-secret settings are Wrangler `vars`, defined per environment. Secrets are se
 | `RP_NAME` | var | `Cinewren` | Name shown by authenticators. |
 | `SETUP_TOKEN` | **secret** | — | One-time bootstrap token for `/setup` (FR-USR-002). It is ignored once any operator exists, so it can be left set; the guide recommends deleting it after setup. For that reason it is **not** listed in `secrets.required`; only `CREDENTIAL_KEYS` is. At least 32 random bytes; compared in constant time. |
 | `CREDENTIAL_KEYS` | **secret** | — | JSON object mapping key version to a base64-encoded 32-byte AES key, for example `{"1":"…","2":"…"}` (DR-002, [LLD-TOKEN](LLD.md#lld-token--credential-vault--playback-credentials)). The operator generates the key locally and keeps an offline copy, such as in a password manager, before running `wrangler secret put`. Secrets cannot be read back from Cloudflare. If the key is lost, server credentials must be re-entered; the catalog and other primary data are not affected. |
-| `CREDENTIAL_KEY_CURRENT` | var | — | Key version used for new encryptions. It must exist in `CREDENTIAL_KEYS`; the Worker checks this on the first request and fails closed. |
+| `CREDENTIAL_KEY_CURRENT` | var | — | Key version used for new encryptions. It must exist in `CREDENTIAL_KEYS`; the Worker checks this on the first request and fails closed. Rotation procedure: [self-host guide](../operations/self-host.md#rotate-the-master-key-dr-002-wf-11). |
 | `ALLOW_INSECURE_ORIGINS` | var | `false` | Allows `http://` base URLs (FR-SRV-007). It is ignored, and an error is logged, unless `ENVIRONMENT=local`. |
 | `SYNC_INCREMENTAL_INTERVAL_MIN` | var | `60` *(proposed)* | FR-SYNC-001. |
 | `SYNC_FULL_INTERVAL_H` | var | `24` *(proposed)* | FR-SYNC-001. |
@@ -109,7 +109,7 @@ Schemas and endpoint contracts are in [LLD-SCHEMA](LLD.md#lld-schema--d1-schema-
 | Registration and login | WebAuthn ceremonies via `@simplewebauthn`. `userVerification: "required"`, `residentKey: "required"` (discoverable credentials, so login needs no username), attestation `none`. Expected origin = `APP_ORIGIN`, RP ID = `RP_ID`. |
 | Challenges | 32 random bytes, stored in `webauthn_challenges` with a 5 min TTL *(proposed)* and bound to a purpose (`setup`, `signup`, `reenroll`, `login`, `add_passkey`). Deleted on first use, whether or not verification succeeds (NFR-SEC-007). |
 | Sessions | The session ID is 32 random bytes (≥ 128 bits), sent as cookie `__Host-cw_session` with `HttpOnly; Secure; SameSite=Lax; Path=/`, and stored only as a SHA-256 hash. Idle expiry is 14 days and absolute expiry 90 days *(proposed)*. `last_seen_at` is refreshed at most once per hour so reads do not cost a write each time. |
-| CSRF | Every non-GET/HEAD request must carry an `Origin` header equal to `APP_ORIGIN`, or it gets 403 `CSRF_REJECTED`. Combined with `SameSite=Lax`, this is the CSRF control. The API accepts only `application/json` bodies (415 otherwise), which rules out cross-site form posts. |
+| CSRF | Every non-GET/HEAD request must carry an `Origin` header equal to `APP_ORIGIN`, or it gets 403 `CSRF_REJECTED`. Combined with `SameSite=Lax`, this is the CSRF control. The API accepts only `application/json` bodies (400 `VALIDATION_FAILED` otherwise, agent decision 2026-10-04), which rules out cross-site form posts. |
 | Invite, re-enrollment and setup tokens | 32 random bytes, base64url-encoded in the link fragment (`/invite#t=…`) so they do not appear in server logs or `Referer` headers. The SPA posts the token in the request body. The database stores only SHA-256 hashes. Tokens are single-use; consumption is a compare-and-set in the same `batch` that creates the user or passkey. |
 | First-operator bootstrap | `/setup` is enabled only while `SELECT COUNT(*) FROM users WHERE role='operator'` is 0 **and** the posted token matches `SETUP_TOKEN` in constant time. A guarded insert closes the race between two concurrent setups. Afterwards every `/setup` endpoint returns 404 `NOT_FOUND`, and so does a request with an invalid token while setup is enabled, so a disabled setup and a wrong token are indistinguishable. |
 | Recovery of the last operator | `pnpm cinewren:recovery-link --user <id> --env production` runs locally with the operator's Cloudflare credentials. It generates a token, inserts its hash as a `reenroll` invite through `wrangler d1 execute --remote`, and prints the link. Access to the Cloudflare account is the proof of authority (FR-USR-007). The command writes an `audit_log` row. |
@@ -156,7 +156,7 @@ frame-ancestors 'none'; base-uri 'none'; form-action 'self'
 
 ### 6.3 Rate limiting (NFR-SEC-004, NFR-SEC-008)
 
-**Decision TDD-D5 (resolves SDD OD-1):** use the Workers rate limiting binding. The per-user limits (NFR-SEC-008, M5) are keyed by `user_id`; the per-IP auth limit (NFR-SEC-004, M0) is described below. `RL_PLAY` allows 60 requests per 60 s for `POST /api/v1/play`. `RL_MUTATION` allows 600 per 60 s for progress events and operator mutations (both proposed). Verified behaviour: the period must be 10 or 60 seconds; limits apply per Cloudflare location; counting is permissive and eventually consistent (https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/). That is good enough for abuse protection by a small invited group. It is not a quota system. `RL_AUTH` allows 10 requests per 60 s per client IP (`CF-Connecting-IP`) on the setup, invite-redemption (which includes re-enrollment) and login endpoints only *(proposed; NFR-SEC-004)*, as a brake on token guessing. Tokens carry 256 bits, so the limiter is defence in depth, not the main control. A request over the limit gets 429 `RATE_LIMITED` with `Retry-After: 60` ([LLD-ERR](LLD.md#lld-err--error-handling-retries-idempotency--concurrency)).
+**Decision TDD-D5 (resolves SDD OD-1):** use the Workers rate limiting binding. The per-user limits (NFR-SEC-008, M5) are keyed by `user_id`; the per-IP auth limit (NFR-SEC-004, M0) is described below. `RL_PLAY` allows 60 requests per 60 s for `POST /api/v1/play`. `RL_MUTATION` allows 600 per 60 s for progress events, operator mutations and the caller's own account writes under `/api/v1/me/` (both proposed; the last added by the T5.8 review). Verified behaviour: the period must be 10 or 60 seconds; limits apply per Cloudflare location; counting is permissive and eventually consistent (https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/). That is good enough for abuse protection by a small invited group. It is not a quota system. `RL_AUTH` allows 10 requests per 60 s per client IP (`CF-Connecting-IP`) on the setup, invite-redemption (which includes re-enrollment) and login endpoints only *(proposed; NFR-SEC-004)*, as a brake on token guessing. Tokens carry 256 bits, so the limiter is defence in depth, not the main control. A request over the limit gets 429 `RATE_LIMITED` with `Retry-After: 60` ([LLD-ERR](LLD.md#lld-err--error-handling-retries-idempotency--concurrency)).
 
 ### 6.4 Outbound origin requests (NFR-SEC-005, FR-SRV-007)
 
@@ -221,8 +221,8 @@ flowchart LR
 ```
 
 - These are the project's own pipelines. Self-hosters do not need GitHub Actions (§9.2).
-- GitHub Actions. The Cloudflare API token is stored as a GitHub environment secret, scoped to Workers and D1 edits on the one account. Production uses a separate token behind a protected environment with required reviewers (the operator).
-- Production deploys are manual (`workflow_dispatch`, or promotion from the staging run) and need approval. Staging deploys automatically on every merge to `main`.
+- **Deploys use Cloudflare Workers Builds** (owner decision 2026-10-04): each environment's Worker is connected to the GitHub repo, with root `/`, build `pnpm install --frozen-lockfile && pnpm build`, and a deploy command that applies D1 migrations, then runs `wrangler deploy --env <env>`. The build token is managed by Cloudflare, so no GitHub secret is needed. GitHub Actions runs CI checks only. Production is connected the same way with its own branch or tag rule; a manual-approval gate is configured when production is created (M5).
+- Production deploys are manual (`workflow_dispatch`, or promotion from the staging run) and need approval. Staging deploys automatically on every merge to `main` via Workers Builds.
 - Each pipeline step's commands live in `package.json` scripts, so a developer can run CI locally.
 
 ## 9. Releases, self-hosting, upgrades and rollback
@@ -254,7 +254,7 @@ Both paths share these steps:
 2. The operator brings the new tag into their repository: merge the upstream tag into their fork (the button path) or check out the tag (the manual path).
 3. The deploy runs `migrations apply`, then `wrangler deploy`. Migrations apply in order, so skipping minor versions within one major is safe: every pending expand migration is compatible with the still-running old Worker (§3).
 4. **Crossing a major** (contract migrations): the release notes require upgrading first to the latest minor of the previous major. A contract migration starts with a guard statement that fails the migration if the database has not reached the required earlier migration number. Nothing is half-applied, because D1 applies each migration file as a unit (to verify in M0).
-5. **Schema-skew guard:** if the deployed Worker sees an applied migration number below `SCHEMA_VERSION_REQUIRED` (migrations were skipped), the API returns 503 `MIGRATIONS_PENDING` on every route except health, setup and status. The SPA explains how to run `pnpm run migrate`. This avoids running new code against an old schema.
+5. **Schema-skew guard:** if the deployed Worker sees an applied migration number below `SCHEMA_VERSION_REQUIRED` (migrations were skipped), the API returns 503 `MIGRATIONS_PENDING` on every `/api` route except health (setup is blocked too, because it would fail on a missing schema), and health reports `degraded`. Implemented in `apps/worker/src/platform/schema-version.ts`; the fix is `pnpm run migrate`. `pnpm check:upgrade` rehearses the in-order upgrade. This avoids running new code against an old schema.
 6. If the upgrade misbehaves: `wrangler rollback` for code (§9.4). Restore from the bookmark is the last resort.
 
 ### 9.4 Rollback
@@ -299,7 +299,7 @@ The origin makes the final mode decision. Cinewren sends the capabilities, trans
 
 - Progressive `<video>` without the `crossorigin` attribute needs no CORS.
 - hls.js loads playlists and segments with `fetch`/XHR, so the origin must return `Access-Control-Allow-Origin` for the Cinewren hostname on HLS endpoints. Cross-origin WebVTT `<track>` elements need CORS and `crossorigin="anonymous"` on the `<video>` element, which in turn makes progressive media requests CORS requests too.
-- Whether each provider sends these headers by default or can be configured to, is **to verify in M1 spike**. If an origin cannot be configured, WebVTT can be fetched through the Worker. Subtitles are small text and are not video or audio bytes, so FR-PLAY-008 still holds. The origin hostname must be grey-cloud or non-Cloudflare (A-3, NFR-COMP-001); the setup guide covers reverse-proxy CORS headers.
+- Verified T1.1: all three providers send suitable CORS headers by default (Jellyfin `*`; Emby and Plex echo the origin), so no reverse-proxy change is needed unless the operator narrowed Jellyfin's `CorsHosts`. Range requests work on all three. If an origin cannot be configured, WebVTT can be fetched through the Worker. Subtitles are small text and are not video or audio bytes, so FR-PLAY-008 still holds. The origin hostname must be grey-cloud or non-Cloudflare (A-3, NFR-COMP-001); the setup guide covers reverse-proxy CORS headers.
 - Mixed content: the app runs over HTTPS, so origins must use HTTPS (FR-SRV-007).
 
 ### 11.4 Player behaviour
@@ -312,7 +312,7 @@ Resume offers follow BR-7 (FR-PROG-002). Progress is reported every 15 s *(propo
 |---|---|---|---|
 | Catalog API p95 server time | ≤ 300 ms *(proposed)* | NFR-PERF-001 | Load script against staging seeded at the envelope (200k sources) |
 | D1 queries per catalog request | ≤ 3 *(proposed)* | NFR-PERF-001 | Integration test counts statements through a wrapped binding |
-| Play descriptor p95 | ≤ 2 s *(proposed)* | NFR-PERF-002 | Origin calls on the play path ≤ 3 (session credential (pending ADR-0013 / M1 spike), negotiation, optional subtitle info), each with a 5 s timeout and at most one retry |
+| Play descriptor p95 | ≤ 2 s *(proposed)* | NFR-PERF-002 | Origin calls on the play path ≤ 3 (session credential (ADR-0013; Jellyfin mint about 190 ms), negotiation, optional subtitle info), each with a 5 s timeout and at most one retry |
 | Initial route JS | ≤ 250 KB gzip *(proposed)* | NFR-PERF-003 | CI bundle check; hls.js and admin routes lazy-loaded |
 | Sync throughput | Full sync of 200k sources inside the 24 h interval with margin | FR-SYNC-001, NFR-SCALE-001 | Analysis in M5. Each consumer invocation is bounded at 15 min (https://developers.cloudflare.com/workers/platform/limits/ (checked 2026-10-04)), and the run continues across invocations (LLD-SYNC). |
 | D1 writes | Full sync rewrites `last_seen_sync_id` for each source: about 200k rows/day, about 6M/month, within the 50M rows included in Workers Paid | NFR-COST-001 | Cost worksheet. If this ever matters, only touch rows that were not already seen in this run. |
@@ -341,7 +341,7 @@ There is no legacy system to migrate from. The design keeps these future changes
 | — | Credential encryption | Yes: [ADR-0008](../adr/0008-origin-service-accounts-and-credential-encryption.md) |
 | — | Cron + Queues sync | Yes: [ADR-0009](../adr/0009-pull-based-sync-cron-and-queues.md) |
 | — | Artwork proxy + cache | Yes: [ADR-0012](../adr/0012-artwork-proxy-with-edge-cache.md). It stands now that Access is not used. A custom domain is required for edge caching (§6.5). |
-| — | Session-scoped stream credentials | Yes: [ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md) (Proposed; pending ADR-0013 / M1 spike) |
+| — | Session-scoped stream credentials | Yes: [ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md) (Accepted for Jellyfin and Emby, Proposed for Plex; spike T1.1) |
 | TDD-D1 | Raw SQL with typed helpers, no ORM | No: reversible within the `db/` module |
 | TDD-D2 | Wrangler built-in D1 migrations, forward-only, expand/contract | No: implements DR-004 |
 | TDD-D3 | One 5-minute scheduler cron plus a daily retention cron | No |

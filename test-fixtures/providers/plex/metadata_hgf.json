@@ -1,0 +1,575 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/library/metadata/1?includeGuids=1",
+    "headers": {
+      "Accept": "application/json",
+      "X-Plex-Client-Identifier": "cinewren-spike",
+      "X-Plex-Product": "Cinewren",
+      "X-Plex-Version": "0.0.1",
+      "X-Plex-Platform": "Web",
+      "X-Plex-Device": "Spike",
+      "X-Plex-Token": "<PLEX_TRANSIENT_TOKEN>"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Content-Length": "11758"
+    },
+    "body": {
+      "MediaContainer": {
+        "size": 1,
+        "allowSync": true,
+        "identifier": "com.plexapp.plugins.library",
+        "librarySectionID": 1,
+        "librarySectionTitle": "Movies",
+        "librarySectionUUID": "46c5cf5a-867c-4793-a534-564be2d8e10f",
+        "mediaTagPrefix": "/system/bundle/media/flags/",
+        "mediaTagVersion": 1786914632,
+        "Metadata": [
+          {
+            "ratingKey": "1",
+            "key": "/library/metadata/1",
+            "guid": "plex://movie/5d77682cf54112001f5bc78d",
+            "slug": "his-girl-friday",
+            "studio": "Columbia Pictures",
+            "type": "movie",
+            "title": "His Girl Friday",
+            "librarySectionTitle": "Movies",
+            "librarySectionID": 1,
+            "librarySectionKey": "/library/sections/1",
+            "contentRating": "Passed",
+            "contentRatingAge": 12,
+            "summary": "Walter Burns is an irresistibly conniving newspaper publisher desperate to woo back his paper’s star reporter, who also happens to be his estranged wife. She’s threatening to quit and settle down with a new beau, but, as Walter knows, she has a weakness: she can’t resist a juicy scoop.",
+            "rating": 9.9,
+            "audienceRating": 9.0,
+            "year": 1940,
+            "tagline": "They're at each other's throats when they're not in each other's arms!",
+            "thumb": "/library/metadata/1/thumb/1791097146",
+            "art": "/library/metadata/1/art/1791097146",
+            "duration": 12000,
+            "originallyAvailableAt": "1940-01-18",
+            "addedAt": 1791096320,
+            "updatedAt": 1791097146,
+            "audienceRatingImage": "rottentomatoes://image.rating.upright",
+            "primaryExtraKey": "/library/metadata/10",
+            "ratingImage": "rottentomatoes://image.rating.ripe",
+            "Media": [
+              {
+                "id": 1,
+                "duration": 12000,
+                "bitrate": 140,
+                "width": 1280,
+                "height": 720,
+                "aspectRatio": 1.78,
+                "audioChannels": 1,
+                "audioCodec": "aac",
+                "videoCodec": "h264",
+                "videoResolution": "720",
+                "container": "mp4",
+                "videoFrameRate": "24p",
+                "optimizedForStreaming": 1,
+                "has64bitOffsets": false,
+                "videoProfile": "constrained baseline",
+                "hasVoiceActivity": false,
+                "Part": [
+                  {
+                    "id": 1,
+                    "key": "/library/parts/1/1791096320/file.mp4",
+                    "duration": 12000,
+                    "file": "/data/movies/His Girl Friday (1940)/His Girl Friday (1940).mp4",
+                    "size": 209804,
+                    "container": "mp4",
+                    "has64bitOffsets": false,
+                    "optimizedForStreaming": true,
+                    "videoProfile": "constrained baseline",
+                    "Stream": [
+                      {
+                        "id": 1,
+                        "streamType": 1,
+                        "default": true,
+                        "codec": "h264",
+                        "index": 0,
+                        "bitrate": 38,
+                        "bitDepth": 8,
+                        "chromaLocation": "left",
+                        "chromaSubsampling": "4:2:0",
+                        "codedHeight": 720,
+                        "codedWidth": 1280,
+                        "colorRange": "tv",
+                        "colorSpace": "bt470bg",
+                        "frameRate": 24.0,
+                        "hasScalingMatrix": false,
+                        "height": 720,
+                        "level": 31,
+                        "profile": "constrained baseline",
+                        "refFrames": 1,
+                        "scanType": "progressive",
+                        "streamIdentifier": "1",
+                        "width": 1280,
+                        "displayTitle": "720p",
+                        "extendedDisplayTitle": "720p (H.264 Constrained Baseline)"
+                      },
+                      {
+                        "id": 2,
+                        "streamType": 2,
+                        "canNormalizeLoudness": false,
+                        "selected": true,
+                        "default": true,
+                        "codec": "aac",
+                        "index": 1,
+                        "channels": 1,
+                        "bitrate": 96,
+                        "samplingRate": 44100,
+                        "streamIdentifier": "2",
+                        "displayTitle": "Unknown (AAC Mono)",
+                        "extendedDisplayTitle": "Unknown (AAC Mono)"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "Image": [
+              {
+                "alt": "His Girl Friday",
+                "type": "coverPoster",
+                "url": "/library/metadata/1/thumb/1791097146"
+              },
+              {
+                "alt": "His Girl Friday",
+                "type": "background",
+                "url": "/library/metadata/1/art/1791097146"
+              },
+              {
+                "alt": "His Girl Friday",
+                "type": "clearLogo",
+                "url": "/library/metadata/1/clearLogo/1791097146"
+              },
+              {
+                "alt": "His Girl Friday",
+                "type": "backgroundSquare",
+                "url": "/library/metadata/1/squareArt/1791097146"
+              }
+            ],
+            "UltraBlurColors": {
+              "topLeft": "442511",
+              "topRight": "96401e",
+              "bottomRight": "8e4726",
+              "bottomLeft": "313540"
+            },
+            "Genre": [
+              {
+                "id": 9,
+                "filter": "genre=9",
+                "tag": "Comedy"
+              },
+              {
+                "id": 10,
+                "filter": "genre=10",
+                "tag": "Drama"
+              },
+              {
+                "id": 11,
+                "filter": "genre=11",
+                "tag": "Romance"
+              },
+              {
+                "id": 12,
+                "filter": "genre=12",
+                "tag": "Crime"
+              }
+            ],
+            "Country": [
+              {
+                "id": 96,
+                "filter": "country=96",
+                "tag": "United States of America"
+              }
+            ],
+            "Guid": [
+              {
+                "id": "imdb://tt0032599"
+              },
+              {
+                "id": "tmdb://3085"
+              },
+              {
+                "id": "tvdb://8213"
+              }
+            ],
+            "Rating": [
+              {
+                "image": "imdb://image.rating",
+                "value": 7.8,
+                "type": "audience"
+              },
+              {
+                "image": "rottentomatoes://image.rating.ripe",
+                "value": 9.9,
+                "type": "critic"
+              },
+              {
+                "image": "rottentomatoes://image.rating.upright",
+                "value": 9.0,
+                "type": "audience"
+              },
+              {
+                "image": "themoviedb://image.rating",
+                "value": 7.4,
+                "type": "audience"
+              }
+            ],
+            "Director": [
+              {
+                "id": 13,
+                "filter": "director=13",
+                "tag": "Howard Hawks",
+                "tagKey": "5d776826151a60001f24a77e",
+                "thumb": "https://metadata-static.plex.tv/3/people/3b809c4ab3d92cfa0e25706490859dc8.jpg"
+              }
+            ],
+            "Writer": [
+              {
+                "id": 56,
+                "filter": "writer=56",
+                "tag": "Charles MacArthur",
+                "tagKey": "5d77682c999c64001ec2d8c3"
+              },
+              {
+                "id": 57,
+                "filter": "writer=57",
+                "tag": "Charles Lederer",
+                "tagKey": "5d776828eb5d26001f1ddb6a",
+                "thumb": "https://image.tmdb.org/t/p/original/h8OpLegI7NkkfpbF7WFsQ3uYaW3.jpg"
+              },
+              {
+                "id": 58,
+                "filter": "writer=58",
+                "tag": "Ben Hecht",
+                "tagKey": "5d7768254de0ee001fcc84ee",
+                "thumb": "https://metadata-static.plex.tv/d/people/da29e35d2ddc169757c3f735ec5e8b09.jpg"
+              }
+            ],
+            "Role": [
+              {
+                "id": 59,
+                "filter": "actor=59",
+                "tag": "Cary Grant",
+                "tagKey": "5d7768254de0ee001fcc84ba",
+                "role": "Walter Burns",
+                "thumb": "https://metadata-static.plex.tv/6/people/6313b2eb34feeb55f2f127b0bba25056.jpg"
+              },
+              {
+                "id": 60,
+                "filter": "actor=60",
+                "tag": "Rosalind Russell",
+                "tagKey": "5d77682cf54112001f5bc809",
+                "role": "Hildy Johnson",
+                "thumb": "https://metadata-static.plex.tv/2/people/2583b0e03eaefb35ab0a9023746efc13.jpg"
+              },
+              {
+                "id": 61,
+                "filter": "actor=61",
+                "tag": "Ralph Bellamy",
+                "tagKey": "5d7768267228e5001f1dcda6",
+                "role": "Bruce Baldwin",
+                "thumb": "https://metadata-static.plex.tv/3/people/3559fbe48cad8a670ebc7ab7bf0206ac.jpg"
+              },
+              {
+                "id": 62,
+                "filter": "actor=62",
+                "tag": "Gene Lockhart",
+                "tagKey": "5d77682cf54112001f5bc80a",
+                "role": "Sheriff Hartwell",
+                "thumb": "https://metadata-static.plex.tv/7/people/7878236ac284e6f31ef7523f4057e458.jpg"
+              },
+              {
+                "id": 63,
+                "filter": "actor=63",
+                "tag": "Porter Hall",
+                "tagKey": "5d7768296f4521001ea99761",
+                "role": "Murphy",
+                "thumb": "https://metadata-static.plex.tv/6/people/6b6a8663b9ceae8d2c83699a0e4c25fd.jpg"
+              },
+              {
+                "id": 64,
+                "filter": "actor=64",
+                "tag": "Ernest Truex",
+                "tagKey": "5d77682cf54112001f5bc80c",
+                "role": "Bensinger",
+                "thumb": "https://metadata-static.plex.tv/e/people/e4e03bfbe29a749d2b33d85a2ad382c8.jpg"
+              },
+              {
+                "id": 65,
+                "filter": "actor=65",
+                "tag": "Cliff Edwards",
+                "tagKey": "5d776828eb5d26001f1ddbee",
+                "role": "Endicott",
+                "thumb": "https://metadata-static.plex.tv/4/people/4617615ec07b0b7eab03cf9b30cd2275.jpg"
+              },
+              {
+                "id": 66,
+                "filter": "actor=66",
+                "tag": "Clarence Kolb",
+                "tagKey": "5d77682cf54112001f5bc80d",
+                "role": "Mayor",
+                "thumb": "https://metadata-static.plex.tv/d/people/dbb66dced5452cce3cfe441f304189bc.jpg"
+              },
+              {
+                "id": 67,
+                "filter": "actor=67",
+                "tag": "Roscoe Karns",
+                "tagKey": "5d77682954f42c001f8c2e0e",
+                "role": "McCue",
+                "thumb": "https://metadata-static.plex.tv/6/people/6c9da506b4dcf10695366edb378b7910.jpg"
+              },
+              {
+                "id": 68,
+                "filter": "actor=68",
+                "tag": "Frank Jenks",
+                "tagKey": "5d77682cf54112001f5bc80e",
+                "role": "Wilson",
+                "thumb": "https://metadata-static.plex.tv/4/people/4da99835f6aad3decfa23729df2353b8.jpg"
+              },
+              {
+                "id": 69,
+                "filter": "actor=69",
+                "tag": "Regis Toomey",
+                "tagKey": "5d7768285af944001f1f7192",
+                "role": "Sanders",
+                "thumb": "https://metadata-static.plex.tv/f/people/f9ed1c53620914049b8e7c1dcb91526b.jpg"
+              },
+              {
+                "id": 70,
+                "filter": "actor=70",
+                "tag": "Abner Biberman",
+                "tagKey": "5d77682cf54112001f5bc80f",
+                "role": "Louie",
+                "thumb": "https://metadata-static.plex.tv/8/people/8eab94ca4a741ab36de038519267c43d.jpg"
+              },
+              {
+                "id": 71,
+                "filter": "actor=71",
+                "tag": "Frank Orth",
+                "tagKey": "5d7768296f4521001ea99794",
+                "role": "Duffy",
+                "thumb": "https://metadata-static.plex.tv/a/people/ae1e3a72b9fa98126a1a46842c954c44.jpg"
+              },
+              {
+                "id": 72,
+                "filter": "actor=72",
+                "tag": "John Qualen",
+                "tagKey": "5d776825103a2d001f563b4a",
+                "role": "Earl Williams",
+                "thumb": "https://metadata-static.plex.tv/c/people/ce017f044894af29dcc544a91f09f7b8.jpg"
+              },
+              {
+                "id": 73,
+                "filter": "actor=73",
+                "tag": "Helen Mack",
+                "tagKey": "5d77682cf54112001f5bc80b",
+                "role": "Mollie Malloy",
+                "thumb": "https://metadata-static.plex.tv/3/people/32374c8c73556555acb30de3c5064d51.jpg"
+              },
+              {
+                "id": 74,
+                "filter": "actor=74",
+                "tag": "Alma Kruger",
+                "tagKey": "5d77682cf54112001f5bc810",
+                "role": "Mrs. Baldwin",
+                "thumb": "https://metadata-static.plex.tv/d/people/d4222cf711b501d04184717b994dbb65.jpg"
+              },
+              {
+                "id": 75,
+                "filter": "actor=75",
+                "tag": "Billy Gilbert",
+                "tagKey": "5d776826eb5d26001f1dd55e",
+                "role": "Joe Pettibone",
+                "thumb": "https://metadata-static.plex.tv/1/people/1bb0c21b2b3ba65ad70354894ad77173.jpg"
+              },
+              {
+                "id": 76,
+                "filter": "actor=76",
+                "tag": "Pat West",
+                "tagKey": "5d7768284de0ee001fcc9036",
+                "role": "Warden Cooley",
+                "thumb": "https://metadata-static.plex.tv/0/people/0ed0ba97f89c44c9ec16dab7027aad7c.jpg"
+              },
+              {
+                "id": 77,
+                "filter": "actor=77",
+                "tag": "Edwin Maxwell",
+                "tagKey": "5d7768284de0ee001fcc90b0",
+                "role": "Dr. Egelhoffer",
+                "thumb": "https://metadata-static.plex.tv/f/people/f96363b783a728eb9c52bae1e14e0b3a.jpg"
+              },
+              {
+                "id": 78,
+                "filter": "actor=78",
+                "tag": "Irving Bacon",
+                "tagKey": "5d7768274de0ee001fcc88ec",
+                "role": "Gus (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/f/people/f21271ed9025ca67f049c9f346a02577.jpg"
+              },
+              {
+                "id": 79,
+                "filter": "actor=79",
+                "tag": "Wade Boteler",
+                "tagKey": "5d77682cf54112001f5bc811",
+                "role": "Mike (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/2/people/21838a608dd69d60e0371ee3a1c0637e.jpg"
+              },
+              {
+                "id": 80,
+                "filter": "actor=80",
+                "tag": "Harry C. Bradley",
+                "tagKey": "5d77682a880197001ec915e9",
+                "role": "Insurance Doctor (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/0/people/055dec906a4a390ad65bfcca4743225a.jpg"
+              },
+              {
+                "id": 81,
+                "filter": "actor=81",
+                "tag": "Wheaton Chambers",
+                "tagKey": "5d7768277228e5001f1dd070",
+                "role": "Elevator Passenger (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/3/people/3aef5331393504d4b5ad4b4dfafde60a.jpg"
+              },
+              {
+                "id": 82,
+                "filter": "actor=82",
+                "tag": "Edmund Cobb",
+                "tagKey": "5d7768296f4521001ea99768",
+                "role": "Cop (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/a/people/ad5bfd52f3a566c5a75658ef4482b5d2.jpg"
+              },
+              {
+                "id": 83,
+                "filter": "actor=83",
+                "tag": "Ann Doran",
+                "tagKey": "5d77682654c0f0001f301b3b",
+                "role": "Newspaper Office Worker (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/7/people/70c00ca70354d5cd3c865b82bd8e690a.jpg"
+              },
+              {
+                "id": 84,
+                "filter": "actor=84",
+                "tag": "Ralph Dunn",
+                "tagKey": "5d7768274de0ee001fcc8911",
+                "role": "Plainclothesman (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/4/people/45588f58345db24ecc2f6a0daed2e82a.jpg"
+              },
+              {
+                "id": 85,
+                "filter": "actor=85",
+                "tag": "Earl Dwire",
+                "tagKey": "5d77682cf54112001f5bc813",
+                "role": "Pete Davis (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/4/people/45291bed7bf8662954d09149e6f8d479.jpg"
+              },
+              {
+                "id": 86,
+                "filter": "actor=86",
+                "tag": "Pat Flaherty",
+                "tagKey": "5d7768274de0ee001fcc88ee",
+                "role": "Frank the Policeman (uncredited)"
+              },
+              {
+                "id": 87,
+                "filter": "actor=87",
+                "tag": "Jack Gardner",
+                "tagKey": "5d77682cf54112001f5bc814",
+                "role": "Elevator Passenger (uncredited)"
+              },
+              {
+                "id": 88,
+                "filter": "actor=88",
+                "tag": "Eddie Hart",
+                "tagKey": "5d77682a7228e5001f1dd2bb",
+                "role": "Carl the Plainclothesman (uncredited)"
+              },
+              {
+                "id": 89,
+                "filter": "actor=89",
+                "tag": "Marion Martin",
+                "tagKey": "5d77682cf54112001f5bc815",
+                "role": "Evangeline (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/8/people/8144646c23e1f0663de3d7d4c51e7306.jpg"
+              },
+              {
+                "id": 90,
+                "filter": "actor=90",
+                "tag": "Frank McLure",
+                "tagKey": "5d776825eb5d26001f1dd11d",
+                "role": "Newsman (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/people/5d776825eb5d26001f1dd11d.jpg"
+              },
+              {
+                "id": 91,
+                "filter": "actor=91",
+                "tag": "James Millican",
+                "tagKey": "5d776826151a60001f24a76f",
+                "role": "Tim (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/c/people/c76bd3e20d0a0b186695a89b5f027cc7.jpg"
+              },
+              {
+                "id": 92,
+                "filter": "actor=92",
+                "tag": "Gene Morgan",
+                "tagKey": "5d77682cf54112001f5bc816",
+                "role": "Gene (uncredited)",
+                "thumb": "https://image.tmdb.org/t/p/original/wtrHqTGeno7LczG8UWOUit0Egoc.jpg"
+              },
+              {
+                "id": 93,
+                "filter": "actor=93",
+                "tag": "Delmar Watson",
+                "tagKey": "5d77682cf54112001f5bc817",
+                "role": "Skinny (uncredited)",
+                "thumb": "https://metadata-static.plex.tv/c/people/cff29d0ba84b97a48f6bf6c7201b973c.jpg"
+              },
+              {
+                "id": 94,
+                "filter": "actor=94",
+                "tag": "Katherine Yorke",
+                "tagKey": "5f3fb8f4fea1a1003f958029",
+                "role": "Newspaper Office Worker (uncredited)"
+              }
+            ],
+            "Producer": [
+              {
+                "id": 95,
+                "filter": "producer=95",
+                "tag": "Howard Hawks",
+                "tagKey": "5d776826151a60001f24a77e",
+                "thumb": "https://metadata-static.plex.tv/3/people/3b809c4ab3d92cfa0e25706490859dc8.jpg"
+              }
+            ],
+            "CommonSenseMedia": [
+              {
+                "id": 147,
+                "oneLiner": "Sassy screwball classic with a feminist twist.",
+                "AgeRating": [
+                  {
+                    "type": "official",
+                    "rating": 5,
+                    "age": 12
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

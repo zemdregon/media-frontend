@@ -1,0 +1,73 @@
+{
+  "_capture": {
+    "server": "Jellyfin 12.1.0 (jellyfin/jellyfin:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Devices",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<ADMIN_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "Items": [
+        {
+          "Name": "Cinewren Playback",
+          "Id": "cinewren-ps-sessionB",
+          "LastUserName": "cinewren-svc",
+          "AppName": "Cinewren",
+          "AppVersion": "0.0.1",
+          "LastUserId": "148dded263c74cb885d9819605d68044",
+          "DateLastActivity": "2026-10-04T07:01:01.7029673Z",
+          "Capabilities": {
+            "PlayableMediaTypes": [],
+            "SupportedCommands": [],
+            "SupportsMediaControl": false,
+            "SupportsPersistentIdentifier": true
+          }
+        },
+        {
+          "Name": "Cinewren Playback",
+          "Id": "cinewren-svc-main",
+          "LastUserName": "cinewren-svc",
+          "AppName": "Cinewren",
+          "AppVersion": "0.0.1",
+          "LastUserId": "148dded263c74cb885d9819605d68044",
+          "DateLastActivity": "2026-10-04T07:01:01.0858535Z",
+          "Capabilities": {
+            "PlayableMediaTypes": [],
+            "SupportedCommands": [],
+            "SupportsMediaControl": false,
+            "SupportsPersistentIdentifier": true
+          }
+        },
+        {
+          "Name": "SpikeDevice",
+          "Id": "spike-admin-dev",
+          "LastUserName": "spikeadmin",
+          "AppName": "Cinewren",
+          "AppVersion": "0.0.1",
+          "LastUserId": "6ac9703400e64d24b2787aeb7d083bfb",
+          "DateLastActivity": "2026-10-04T06:58:54.9311475Z",
+          "Capabilities": {
+            "PlayableMediaTypes": [],
+            "SupportedCommands": [],
+            "SupportsMediaControl": false,
+            "SupportsPersistentIdentifier": true
+          }
+        }
+      ],
+      "TotalRecordCount": 3,
+      "StartIndex": 0
+    }
+  }
+}

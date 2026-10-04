@@ -14,13 +14,13 @@ Agent under delegation (2026-10-04); owner review pending.
 
 ## Context
 
-Cinewren calls origins from the Worker for validation, sync, playback negotiation and progress reporting (TB-3). That needs stored origin credentials. Compromise of Cinewren's database must not hand over origin admin control (NFR-SEC-001, BR-6). The operator controls each origin enough to create a dedicated account (A-2). Exact token mechanics per provider are not verified (to verify in M1 spike).
+Cinewren calls origins from the Worker for validation, sync, playback negotiation and progress reporting (TB-3). That needs stored origin credentials. Compromise of Cinewren's database must not hand over origin admin control (NFR-SEC-001, BR-6). The operator controls each origin enough to create a dedicated account (A-2). Token mechanics were verified for Jellyfin and Emby in the T1.1 spike (see Notes); Plex is pending.
 
 Workers secrets are encrypted bindings set with `wrangler secret put`; `secrets.required` in config validates presence on deploy; secrets must never be placed in `vars` (Cloudflare docs, checked 2026-10-04).
 
 ## Decision
 
-- Each registered origin uses a **dedicated, non-admin service account** with access limited to the libraries the operator wants shared (FR-SRV-003). Admin credentials are rejected where detectable (to verify in M1 spike); the setup guide forbids them.
+- Each registered origin uses a **dedicated, non-admin service account** with access limited to the libraries the operator wants shared (FR-SRV-003). Admin credentials are rejected where detectable (Jellyfin and Emby via `IsAdministrator`; verified T1.1); the setup guide forbids them.
 - Credentials are stored in D1 encrypted with AES-256-GCM. The key is a Worker secret, never in `vars`, repo or logs. Each ciphertext records a key version so keys can be rotated (DR-002). A fresh random nonce is used per encryption.
 - Decrypted credentials exist only in Worker memory for the duration of an outbound call. They never reach browsers, logs, errors or exports (NFR-SEC-001, BR-6). Exports omit secrets (FR-OPS-006).
 - Credential replacement does not lose catalog data (FR-SRV-005). Key rotation re-encrypts rows with the new version.
@@ -42,6 +42,16 @@ Workers secrets are encrypted bindings set with `wrangler secret put`; `secrets.
 - Negative: the master key becomes critical. Loss of it makes stored credentials unrecoverable (operator must re-enter them); the key must be backed up outside Cloudflare, and the setup guide must say so.
 - Negative: rotation needs a re-encryption job and careful ordering (expand, migrate, contract).
 - Obligation: log scrubbing and tests asserting that credentials never appear in responses or logs (NFR-SEC-001).
+
+## Notes
+
+### 2026-10-04: T1.1 provider spike
+
+From [docs/spikes/2026-provider-spike.md](../spikes/2026-provider-spike.md). The Decision is unchanged; these notes settle its open points.
+
+- For Jellyfin and Emby the stored service credential is a **username and password** for a non-admin user, not an API key, because tokens are minted by re-authentication (see [ADR-0013](0013-session-scoped-origin-stream-credentials.md)).
+- Admin accounts are detectable on Jellyfin and Emby: `User.Policy.IsAdministrator` in the `POST /Users/AuthenticateByName` response. Validation must refuse admin accounts.
+- Plex: Cinewren uses a restricted Plex Home or managed user created by the owner for Cinewren (owner decision 2026-10-04), never owner tokens. Admin detection and the credential format for Plex are to be verified in the Plex managed-user spike.
 
 ## Revisit when
 

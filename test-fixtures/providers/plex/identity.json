@@ -1,0 +1,31 @@
+{
+  "_capture": {
+    "server": "Plex Media Server 1.43.4.10903 (plexinc/pms-docker:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/identity",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Content-Length": "163"
+    },
+    "body": {
+      "MediaContainer": {
+        "size": 0,
+        "apiVersion": "1.2.3",
+        "claimed": true,
+        "machineIdentifier": "<PLEX_MACHINE_ID>",
+        "version": "1.43.4.10903-e5521bd8c"
+      }
+    }
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "POST",
+    "path": "/Items/11/PlaybackInfo?UserId=5c84ecbdbf494494a7fa03913ea2e020",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SESSION_TOKEN_PLAY>\"",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "UserId": "5c84ecbdbf494494a7fa03913ea2e020",
+      "DeviceProfile": {
+        "Name": "Cinewren browser (spike)",
+        "MaxStreamingBitrate": 20000000,
+        "MaxStaticBitrate": 100000000,
+        "MusicStreamingTranscodingBitrate": 192000,
+        "DirectPlayProfiles": [
+          {
+            "Container": "mp4,m4v",
+            "Type": "Video",
+            "VideoCodec": "h264",
+            "AudioCodec": "aac,mp3"
+          },
+          {
+            "Container": "webm",
+            "Type": "Video",
+            "VideoCodec": "vp9,av1",
+            "AudioCodec": "opus"
+          }
+        ],
+        "TranscodingProfiles": [
+          {
+            "Container": "ts",
+            "Type": "Video",
+            "VideoCodec": "h264",
+            "AudioCodec": "aac",
+            "Context": "Streaming",
+            "Protocol": "hls",
+            "MaxAudioChannels": "2",
+            "MinSegments": 1,
+            "BreakOnNonKeyFrames": true
+          }
+        ],
+        "ContainerProfiles": [],
+        "CodecProfiles": [],
+        "SubtitleProfiles": [
+          {
+            "Format": "vtt",
+            "Method": "External"
+          },
+          {
+            "Format": "vtt",
+            "Method": "Hls"
+          }
+        ]
+      },
+      "MaxStreamingBitrate": 20000000,
+      "StartTimeTicks": 0,
+      "EnableDirectPlay": true,
+      "EnableDirectStream": true,
+      "EnableTranscoding": true,
+      "AutoOpenLiveStream": false,
+      "AllowVideoStreamCopy": true,
+      "AllowAudioStreamCopy": true
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Length": "2810",
+      "Content-Type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": {
+      "MediaSources": [
+        {
+          "Chapters": [],
+          "Protocol": "File",
+          "Id": "mediasource_11",
+          "Path": "/data/movies/Night of the Living Dead (1968)/Night of the Living Dead (1968).mkv",
+          "Type": "Default",
+          "Container": "mkv",
+          "Size": 9729927,
+          "Name": "Night of the Living Dead (1968)",
+          "IsRemote": false,
+          "HasMixedProtocols": false,
+          "RunTimeTicks": 120230000,
+          "SupportsTranscoding": true,
+          "SupportsDirectStream": false,
+          "SupportsDirectPlay": false,
+          "IsInfiniteStream": false,
+          "RequiresOpening": false,
+          "RequiresClosing": false,
+          "RequiresLooping": false,
+          "SupportsProbing": true,
+          "MediaStreams": [
+            {
+              "Codec": "h264",
+              "TimeBase": "1/1000",
+              "VideoRange": "SDR",
+              "DisplayTitle": "720p H264",
+              "NalLengthSize": "4",
+              "IsInterlaced": false,
+              "BitRate": 6474209,
+              "BitDepth": 8,
+              "RefFrames": 1,
+              "IsDefault": false,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "Height": 720,
+              "Width": 1280,
+              "AverageFrameRate": 24,
+              "RealFrameRate": 24,
+              "Profile": "Constrained Baseline",
+              "Type": "Video",
+              "AspectRatio": "16:9",
+              "Index": 0,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false,
+              "Protocol": "File",
+              "PixelFormat": "yuv420p",
+              "Level": 31,
+              "IsAnamorphic": false,
+              "ExtendedVideoType": "None",
+              "ExtendedVideoSubType": "None",
+              "ExtendedVideoSubTypeDescription": "None",
+              "AttachmentSize": 0
+            },
+            {
+              "Codec": "aac",
+              "TimeBase": "1/1000",
+              "DisplayTitle": "AAC mono",
+              "IsInterlaced": false,
+              "ChannelLayout": "mono",
+              "BitRate": 192000,
+              "Channels": 1,
+              "SampleRate": 44100,
+              "IsDefault": false,
+              "IsForced": false,
+              "IsHearingImpaired": false,
+              "Profile": "LC",
+              "Type": "Audio",
+              "Index": 1,
+              "IsExternal": false,
+              "IsTextSubtitleStream": false,
+              "SupportsExternalStream": false,
+              "Protocol": "File",
+              "ExtendedVideoType": "None",
+              "ExtendedVideoSubType": "None",
+              "ExtendedVideoSubTypeDescription": "None",
+              "AttachmentSize": 0
+            }
+          ],
+          "Formats": [],
+          "Bitrate": 6474209,
+          "RequiredHttpHeaders": {},
+          "DirectStreamUrl": "/videos/11/master.m3u8?DeviceId=cinewren-ps-play1&MediaSourceId=mediasource_11&PlaySessionId=f74b5e28edce4ad58c290f1baa923bfc&api_key=<SESSION_TOKEN_PLAY>&VideoCodec=h264&AudioCodec=aac&VideoBitrate=19808000&AudioBitrate=192000&AudioStreamIndex=1&TranscodingMaxAudioChannels=2&SegmentContainer=ts&MinSegments=1&BreakOnNonKeyFrames=True&TranscodeReasons=ContainerNotSupported",
+          "AddApiKeyToDirectStreamUrl": false,
+          "TranscodingUrl": "/videos/11/master.m3u8?DeviceId=cinewren-ps-play1&MediaSourceId=mediasource_11&PlaySessionId=f74b5e28edce4ad58c290f1baa923bfc&api_key=<SESSION_TOKEN_PLAY>&VideoCodec=h264&AudioCodec=aac&VideoBitrate=19808000&AudioBitrate=192000&AudioStreamIndex=1&TranscodingMaxAudioChannels=2&SegmentContainer=ts&MinSegments=1&BreakOnNonKeyFrames=True&TranscodeReasons=ContainerNotSupported",
+          "TranscodingSubProtocol": "hls",
+          "TranscodingContainer": "ts",
+          "ReadAtNativeFramerate": false,
+          "DefaultAudioStreamIndex": 1,
+          "ItemId": "11",
+          "MimeType": "video/x-matroska",
+          "TranscodingMimeType": "video/mp2t"
+        }
+      ],
+      "PlaySessionId": "f74b5e28edce4ad58c290f1baa923bfc"
+    }
+  }
+}

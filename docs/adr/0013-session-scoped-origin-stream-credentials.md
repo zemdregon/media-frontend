@@ -2,7 +2,7 @@
 
 ## Status
 
-**Proposed** (pending M1 provider spike; see Exit criteria)
+**Accepted for Jellyfin (forced HLS) and Emby (DeviceId pool); Proposed for Plex (managed-user tokens, pending verification).** Evidence: [provider spike T1.1](../spikes/2026-provider-spike.md) (§3). See Notes and amendments (2026-10-04).
 
 ## Date
 
@@ -59,8 +59,31 @@ Recording the result: amend this ADR's status to Accepted with a per-provider re
 
 ## Revisit when
 
-- The M1 spike completes (mandatory; this ADR must leave Proposed).
+- The Plex managed-user spike completes (this ADR stays Proposed for Plex until then). The M1 spike (T1.1) is done for Jellyfin and Emby.
 - A provider changes its token model in a new version.
+
+## Notes and amendments
+
+### 2026-10-04: T1.1 spike verdicts and owner decisions
+
+Source: [docs/spikes/2026-provider-spike.md](../spikes/2026-provider-spike.md) (Jellyfin 12.1.0, Emby 4.10.1.0, Plex 1.43.4). The Decision text above is unchanged. The amendments below apply to it.
+
+**Jellyfin: accepted, with forced HLS (owner decision 2026-10-04).**
+- Per-session tokens work as written: `POST /Users/AuthenticateByName` with a per-session DeviceId mints a distinct token; `POST /Sessions/Logout` revokes it immediately and removes the device entry. Revoked tokens fail on the API, new playlists and already-issued HLS playlist and segment URLs.
+- Re-authenticating with the same DeviceId invalidates the previous token, so the DeviceId must be unique per session.
+- Jellyfin 12.1 serves `static=true` direct streams (and VTT subtitles and images) without any authentication, so a direct-play URL cannot be revoked. Amendment: Cinewren always uses token-gated HLS for Jellyfin and never builds `static=true` URLs. Remux or copy codecs are used where possible so no re-encode happens. The selection mode `direct_play` never occurs for Jellyfin; it becomes `direct_stream` (remux) or `transcode`.
+- Each mint costs about 190 ms (password hashing).
+
+**Emby: accepted, with a DeviceId pool.**
+- Re-authenticating with the same DeviceId returns the same token. Logout revokes the token (direct stream, API, playlists all return 401) but leaves the device entry, and the service account cannot delete devices (403). Amendment: use a bounded, reusable DeviceId pool (`cinewren-ps-00` to `NN`, at least the peak number of concurrent sessions), leased per session. Re-auth on a logged-out DeviceId mints a new token.
+- HLS segment URLs carry only `PlaySessionId` and stay fetchable after revocation until the transcode stops. Amendment: report playback stopped (`/Sessions/Playing/Stopped`) before or with the revoke.
+
+**Plex: remains Proposed (owner decision 2026-10-04).**
+- Result with the owner token: `GET /security/token?type=delegation&scope=all` mints a transient token, but it inherits the owner's full rights (admin writes such as `PUT /:/prefs` succeeded), cannot be revoked individually (only a server restart invalidated tokens), and HLS child playlists and segments are anonymous by session path. Exit criteria 2 and 3 are not met.
+- Decision: owner-token transient or delegation tokens are rejected for Cinewren. Cinewren uses a restricted Plex Home or managed user that the owner creates just for Cinewren, with access only to the needed libraries, and uses that user's tokens, never owner tokens.
+- Still to verify in a follow-up spike once the owner creates the user (token scope, whether it is non-admin, transient token minted from it, revocation, lifetime). Q-3 (Plex API terms) is also unexamined. If the managed user fails, the fallback order in the Decision applies.
+
+**Correction to the Consequences ("bounded leak").** The line "leak of a stream URL exposes only one session's stream, for a bounded time" is not accurate. A session token carries the service account's full non-admin user scope (browsing, user-data writes such as favourites; on Emby also library paths), so it is not stream-only. It cannot perform admin actions on Jellyfin and Emby (verified with 19 admin probes). Also, origins do not enforce library grants on stream or PlaybackInfo endpoints, so Cinewren must enforce BR-1 before issuing any descriptor. Residual exposure for Emby is HLS segments until the stop is reported.
 
 ## Related
 

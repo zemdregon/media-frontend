@@ -1,0 +1,65 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/System/Info",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<SERVICE_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Length": "882",
+      "Content-Type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": {
+      "SystemUpdateLevel": "Release",
+      "OperatingSystemDisplayName": "Unix",
+      "HasPendingRestart": false,
+      "IsShuttingDown": false,
+      "HasImageEnhancers": false,
+      "OperatingSystem": "Linux",
+      "SupportsLibraryMonitor": true,
+      "SupportsLocalPortConfiguration": true,
+      "SupportsWakeServer": false,
+      "WebSocketPortNumber": 8096,
+      "CompletedInstallations": [],
+      "CanSelfRestart": true,
+      "CanSelfUpdate": false,
+      "CanLaunchWebBrowser": false,
+      "HttpServerPortNumber": 8096,
+      "SupportsHttps": false,
+      "HttpsPortNumber": 8920,
+      "HasUpdateAvailable": false,
+      "SupportsAutoRunAtStartup": false,
+      "HardwareAccelerationRequiresPremiere": true,
+      "WakeOnLanInfo": [
+        {
+          "MacAddress": "DE10EF7DB078",
+          "BroadcastAddress": "172.17.255.255",
+          "Port": 9
+        }
+      ],
+      "IsInMaintenanceMode": false,
+      "LocalAddress": "http://172.17.0.5:8096",
+      "LocalAddresses": [
+        "http://172.17.0.5:8096"
+      ],
+      "RemoteAddresses": [],
+      "ServerName": "7d9ecc8583c4",
+      "Version": "4.10.1.0",
+      "Id": "66831b99153e41cb824035fd4f81aa23"
+    }
+  }
+}

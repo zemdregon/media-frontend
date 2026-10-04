@@ -36,9 +36,9 @@ All colours are tokens on `:root`. Components never use raw hex values. Dark val
 
 ### 3.1 Colour tokens
 
-Dark values: **canvas**. Light values: *(proposed — agent-derived; no light artboards exist yet)*.
+Dark values: **canvas**. Light values: agent-derived, shown as light artboards in the canvas, and **accepted by the owner on 2026-10-04**.
 
-| Token | Role | Dark (canvas) | Light (proposed) |
+| Token | Role | Dark (canvas) | Light (owner-accepted) |
 |---|---|---|---|
 | `--cw-bg` | Page background | `#0E0D0B` | `#FAF6EE` |
 | `--cw-surface-nav` | Sidebar, add-server panel, copies table | `#14120E` | `#F2ECDF` |
@@ -105,7 +105,7 @@ Fonts: Bricolage Grotesque (opsz 12..96, wght 400..800), Instrument Sans (400 to
 
 Targets: body text at least 4.5:1; large text (24 px, or 19 px bold) and UI components at least 3:1.
 
-| Pair | Dark | Light (proposed) | Needs | Result |
+| Pair | Dark | Light (owner-accepted) | Needs | Result |
 |---|---|---|---|---|
 | `text` on `bg` | 16.65 | 15.90 | 4.5 | Pass both |
 | `text` on `surface-1` | 15.64 | 16.86 | 4.5 | Pass both |
@@ -225,7 +225,7 @@ Shared rules: shell from section 4, tokens from section 3, components from secti
 | Movies / Shows browse | h1; filter bar (selects for genre, year range, resolution; sort select title, year, date added) as 44 px controls; poster grid; "Load more" button or infinite scroll with a visible button fallback. Active filters shown as removable chips. | Loading; no matches ("No titles match these filters." + "Clear filters" secondary button); error. |
 | Series detail | Title header as Title screen. Below: season tabs (segmented selector), episode list rows (number mono, title, runtime, watched tick, progress bar, "N copies" chip). Play button label: "Resume S2 E4" or "Play S1 E1". Copies picker per episode in an expandable row. | Loading; no episodes; episode all copies offline (row muted, "Offline since 03:14"); watched (check + label, not colour only). |
 | Player overlay | Full-viewport black, controls auto-hide after 3 s of inactivity and reappear on any key or pointer. Top bar: back, title (and S/E). Bottom: seek bar, play/pause, skip 10 s, volume, tracks button (audio and subtitles, including Off), "Copy" button (version switch, opens the copies radiogroup), captions, fullscreen. All controls are native-keyboard operable (Space, K, arrows, F, M, C). | Buffering (spinner with text "Buffering"); resume prompt ("Resume from 1:12:04" / "Start over"); copy failed to start (panel: "This copy did not start. Trying Dad's Plex..." with Cancel; see below); no copy left (error panel with Retry and "Back to title"); subtitles loading; ended (next-episode card, 10 s countdown with Cancel). Failover and error copy follow FR-PLAY-004 and FR-PLAY-010. |
-| Settings | Sections: Appearance (segmented System / Dark / Light), Passkeys (list with name, added date, "Remove" disabled on the last one with reason), Account (display name, role as read-only mono label, "Sign out"). | Add passkey (browser prompt, loading, error); remove confirm dialog; saved toast. |
+| Settings | Sections: Appearance (segmented System / Dark / Light), Passkeys (list with name, added date, "Remove" disabled on the last one with reason), Account (display name, role as read-only mono label, "Sign out"). | Add passkey: first "Confirm it's you" with an existing passkey (SR-04), then the browser prompt for the new one (loading, cancelled as a neutral note, error); remove confirm; saved toast. |
 | Operator: users and invites | Tabs: People, Invites. People table: display name, role tag, library access summary, status, actions (Edit access, Re-enrol link, Disable, Delete). Invites: "New invite" opens a dialog (display name, role segmented, library checklist) then shows the single-use link with Copy button and expiry; list of open invites with Revoke. | Empty invites; link copied toast; delete confirm naming the person; last operator (Delete and Disable disabled with reason). |
 | Operator: sync status | Server selector row, then per server: last run outcome (status dot + text), next run, counts, recent errors list, "Sync now" and "Full re-index" buttons. | Running (progress bar); partial (warn); failed (bad, error text); never run. |
 | Operator: health | Server rows with current status and a 24 h strip of probe results (each cell labelled with a title and text alternative); latency is the Worker-measured value. | No probes yet; degraded; unreachable since. |
@@ -281,12 +281,17 @@ Operator-facing copy may name server types, status codes and counts. Viewer-faci
 | (b) | Source rows show "LAN · 3 ms" and "Remote · 41 ms" | Latency is measured from the Worker, not the viewer's network | Show Worker-measured health latency ("41 ms from Cinewren"). Viewer-side LAN detection is out of v1 scope unless a browser probe is added later. Drop the LAN/Remote wording; "directly over your home network" claims are not made |
 | (c) | "Playing on: This browser, 1080p display" button with a chevron looks like a device picker | v1 plays only in this browser (DEF-2) | Render as a non-interactive capability summary ("This browser · up to 1080p · HDR not supported"), derived from reported capabilities (FR-PLAY-002). No chevron, not a button |
 | (d) | Search placeholder names people and collections, Collections nav exists, but no screens | Now in scope per owner decision 2026-10-04 (FR-CAT-011, FR-CAT-012, FR-SYNC-008) | Specified in section 5; add artboards to the canvas |
-| (e) | Dark only | Light theme required at v1 (NFR-UX-001) | Light values in 3.1 are proposed. Follow-up: add light artboards to the canvas and reconcile |
+| (e) | Dark only | Light theme required at v1 (NFR-UX-001) | **Resolved 2026-10-04:** light artboards were added to the canvas and the owner accepted them ("looks good"). |
 | (f) | Account button shows "E" | No email is collected (NFR-PRIV-001, [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)) | Derive the initial from the display name (first letter, or first letters of the first two words). Accessible name stays "Account" plus the display name |
 | (g) | Server names and titles (Basement NAS, Dad's Plex, Seedbox, Metropolis...) | Illustrative only | Not content, not test fixtures. Real data comes from synced catalogs |
 | (h) | Servers list shows a "Sign-in: API key / Plex account" stat | Same credential question as (a) | Label follows (a); never display secrets |
 | (i) | Nav shows Servers to everyone | Operator only (FR-USR-003) | Hide for viewers (section 4) |
-| (j) | Unselected radio ring, search and input borders under 3:1 | Section 3.4 | Use `--cw-border-control`; ask the owner to accept the change |
+| (j) | Unselected radio ring, search and input borders under 3:1 | Section 3.4 | Use `--cw-border-control`; ask the owner to accept the change **Owner accepted 2026-10-04**, together with the light artboards. |
+| (k) | Library-home sidebar "Sources" list | No viewer-facing server endpoint (operators see servers on the Servers page) | Omitted | agent decision 2026-10-04 |
+| (l) | Poster cards show copy count or best-copy line | Card responses carry no copy data | Show neither; detail page shows copies from `GET /items/{id}/versions` | agent decision 2026-10-04. Copies now come from `ItemDetail.copies` (M3, T3.7), with `/versions` as a fallback for an API without it |
+| (m) | Continue watching shows progress | No progress data until M3 | Show a quiet placeholder | agent decision 2026-10-04. Superseded in M3 (T3.5): hero cards with progress; the section is not rendered when empty |
+| (n) | Genre filter | Input with dropdown menu | Text input with suggestions | agent decision 2026-10-04 |
+| (o) | Copies table with play actions | No actions until M3 (FR-CAT-013, FR-PLAY-005) | Plain table without play actions | agent decision 2026-10-04. Superseded in M3 (T3.7): radiogroup, Play and manual choice |
 
 Identity of people and collections follows [ADR-0015](../adr/0015-people-and-collection-identity.md): the UI shows one person or collection even when several servers supply it, with no server label on person or collection pages.
 

@@ -1,0 +1,87 @@
+{
+  "_capture": {
+    "server": "Emby Server 4.10.1.0 (emby/embyserver:latest)",
+    "date": "2026-10-04",
+    "spike": "docs/spikes/2026-provider-spike.md"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/Devices",
+    "headers": {
+      "Accept": "application/json",
+      "Authorization": "MediaBrowser Token=\"<ADMIN_TOKEN>\""
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Length": "1372",
+      "Content-Type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Content-Length, Content-MD5, Content-Range, Content-Type, Date, Host, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Origin, OriginToken, Pragma, Range, Slug, Transfer-Encoding, Want-Digest, X-MediaBrowser-Token, X-Emby-Token, X-Emby-Client, X-Emby-Client-Version, X-Emby-Device-Id, X-Emby-Device-Name, X-Emby-Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Private-Network": "true"
+    },
+    "body": {
+      "Items": [
+        {
+          "Name": "Cinewren Playback",
+          "Id": "4",
+          "ReportedDeviceId": "cinewren-svc-main",
+          "LastUserName": "cinewren-svc",
+          "AppName": "Cinewren",
+          "AppVersion": "0.0.1",
+          "LastUserId": "5c84ecbdbf494494a7fa03913ea2e020",
+          "DateLastActivity": "2026-10-04T07:01:27.0000000Z",
+          "IpAddress": "172.17.0.1"
+        },
+        {
+          "Name": "Cinewren Playback",
+          "Id": "5",
+          "ReportedDeviceId": "cinewren-ps-sessionA",
+          "LastUserName": "cinewren-svc",
+          "AppName": "Cinewren",
+          "AppVersion": "0.0.1",
+          "LastUserId": "5c84ecbdbf494494a7fa03913ea2e020",
+          "DateLastActivity": "2026-10-04T07:01:27.0000000Z",
+          "IpAddress": "172.17.0.1"
+        },
+        {
+          "Name": "Cinewren Playback",
+          "Id": "6",
+          "ReportedDeviceId": "cinewren-ps-sessionB",
+          "LastUserName": "cinewren-svc",
+          "AppName": "Cinewren",
+          "AppVersion": "0.0.1",
+          "LastUserId": "5c84ecbdbf494494a7fa03913ea2e020",
+          "DateLastActivity": "2026-10-04T07:01:27.0000000Z",
+          "IpAddress": "172.17.0.1"
+        },
+        {
+          "Name": "SpikeDevice",
+          "Id": "3",
+          "ReportedDeviceId": "spike-hdr",
+          "LastUserName": "spikeadmin",
+          "AppName": "Cinewren",
+          "AppVersion": "0.0.1",
+          "LastUserId": "59d55de3ae3b48d390b90603f95df3b3",
+          "DateLastActivity": "2026-10-04T06:59:37.0000000Z",
+          "IpAddress": "172.17.0.1"
+        },
+        {
+          "Name": "SpikeDevice",
+          "Id": "2",
+          "ReportedDeviceId": "spike-admin-dev",
+          "LastUserName": "spikeadmin",
+          "AppName": "Cinewren",
+          "AppVersion": "0.0.1",
+          "LastUserId": "59d55de3ae3b48d390b90603f95df3b3",
+          "DateLastActivity": "2026-10-04T06:58:36.0000000Z",
+          "IpAddress": "172.17.0.1"
+        }
+      ],
+      "TotalRecordCount": 0
+    }
+  }
+}

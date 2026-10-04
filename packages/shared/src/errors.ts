@@ -1,0 +1,48 @@
+/** Error codes and their HTTP status, per LLD-ERR (error taxonomy). */
+export const ERROR_STATUS = {
+  AUTH_REQUIRED: 401,
+  REAUTH_REQUIRED: 401,
+  FORBIDDEN: 403,
+  CSRF_REJECTED: 403,
+  WEBAUTHN_VERIFICATION_FAILED: 400,
+  INVITE_INVALID: 404,
+  LAST_PASSKEY: 409,
+  INVITE_ALREADY_REDEEMED: 409,
+  MIGRATIONS_PENDING: 503,
+  NOT_FOUND: 404,
+  VALIDATION_FAILED: 400,
+  INSECURE_ORIGIN_URL: 400,
+  BLOCKED_ORIGIN_URL: 400,
+  SERVER_VALIDATION_FAILED: 422,
+  SERVER_ALREADY_REGISTERED: 409,
+  DISPLAY_NAME_TAKEN: 409,
+  SYNC_IN_PROGRESS: 409,
+  SERVER_DISABLED: 409,
+  LAST_OPERATOR: 409,
+  TYPE_MISMATCH: 409,
+  LAST_SOURCE: 409,
+  GRANTS_NOT_APPLICABLE: 409,
+  NO_PLAYABLE_SOURCE: 409,
+  IDEMPOTENCY_KEY_REUSED: 422,
+  SESSION_EXPIRED: 410,
+  RATE_LIMITED: 429,
+  ORIGIN_UNAVAILABLE: 502,
+  ORIGIN_TIMEOUT: 504,
+  ORIGIN_REDIRECT_REFUSED: 502,
+  ORIGIN_PROTOCOL: 502,
+  CREDENTIAL_KEY_MISSING: 500,
+  INTERNAL: 500,
+} as const;
+
+export type ErrorCode = keyof typeof ERROR_STATUS;
+export type ErrorStatus = (typeof ERROR_STATUS)[ErrorCode];
+
+/** The single JSON error envelope (LLD-API, "Error envelope"). */
+export interface ErrorEnvelope {
+  error: {
+    code: ErrorCode;
+    message: string;
+    requestId: string;
+    details?: Record<string, unknown>;
+  };
+}
