@@ -224,6 +224,8 @@ describe('browse (FR-CAT-002, FR-CAT-003)', () => {
     expect(page.items[0]).toEqual({
       id: 'm-amelie',
       type: 'movie',
+      seasonNumber: null,
+      episodeNumber: null,
       title: 'Amélie',
       year: 2001,
       artworkUrl: '/api/v1/artwork/m-amelie/poster?v=tagA',
