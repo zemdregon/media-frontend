@@ -15,8 +15,10 @@ export function appWith(overrides: Partial<Env> = {}) {
   const env = {
     DB: fakeDb(),
     ASSETS: {
-      fetch: async () =>
-        new Response('<html></html>', { headers: { 'content-type': 'text/html' } }),
+      fetch: () =>
+        Promise.resolve(
+          new Response('<html></html>', { headers: { 'content-type': 'text/html' } }),
+        ),
     },
     ENVIRONMENT: 'local',
     APP_ORIGIN: 'http://localhost:8787',

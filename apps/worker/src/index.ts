@@ -9,10 +9,10 @@ export default {
 
   // Placeholders so the cron and queue entries in wrangler.jsonc have handlers.
   // The scheduler (LLD-SYNC) and job consumers arrive in later milestones.
-  async scheduled(controller: ScheduledController): Promise<void> {
+  scheduled(controller: ScheduledController): void {
     createLogger().info('scheduled.tick', { cron: controller.cron });
   },
-  async queue(batch: MessageBatch): Promise<void> {
+  queue(batch: MessageBatch): void {
     createLogger().warn('queue.unhandled', { queue: batch.queue, size: batch.messages.length });
     batch.retryAll();
   },

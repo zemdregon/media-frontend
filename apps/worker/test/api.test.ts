@@ -23,7 +23,7 @@ describe('error envelope', () => {
     expect(Object.keys(body)).toEqual(['error']);
     expect(body.error).toEqual({
       code: 'NOT_FOUND',
-      message: expect.any(String),
+      message: expect.any(String) as string,
       requestId: res.headers.get('x-request-id'),
     });
   });
