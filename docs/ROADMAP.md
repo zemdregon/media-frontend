@@ -85,6 +85,9 @@
 | The concept lists Option A (direct) and Option B (gateway). | Option A was selected and Option B deferred ([ADR-0003](adr/0003-direct-to-origin-playback.md)). |
 | The concept puts the server token in the playback URL (`?token=...`). Passing the long-lived server token to browsers would violate BR-6. | Session-scoped credentials ([ADR-0013](adr/0013-session-scoped-origin-stream-credentials.md), Proposed). |
 | ADR-0007 chose Cloudflare Access. The owner then chose passkeys with invite links and asked why Access was used. | Owner decision wins. ADR-0014 supersedes ADR-0007, which is kept for history. |
+| The design canvas's add-server form asks for Jellyfin and Emby API keys, which are typically admin-level. | ADR-0008 (non-admin service account) wins. Form labels follow the T1.1 spike result (UX §8 a, h). |
+| The design canvas shows LAN / Remote latency per copy, and a "Playing on" device picker. | The spec wins: Worker-measured latency, and a capability summary instead of a picker (DEF-2) (UX §8 b, c). |
+| Some canvas control borders fall below 3:1 contrast. | NFR-A11Y-001 wins: the stronger `--cw-border-control` token is used. The visual change awaits owner acceptance (UX §8 j). |
 | The owner's routing text said `agents.md`. The task brief defaults to `AGENTS.md` when neither exists. | Neither file existed, so `AGENTS.md` was created, which is the conventional casing. No case-variant duplicate exists. |
 
 ## 4. Documentation map

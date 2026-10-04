@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1, 2026-10-04. Agent-authored under delegation; not owner-reviewed. Nothing here is implemented. |
+| **Status** | Draft v0.1, 2026-10-04. Agent-authored under delegation; not owner-reviewed. Nothing here is implemented. Updated 2026-10-04 for owner decisions Q-7/Q-8. |
 | **Owns** | Field-level D1 schema and migrations, `/api/v1` endpoint contracts, the `MediaProvider` interface, and the algorithms for sync, health, matching, source selection, credential handling and error handling. |
 | **Does not own** | Requirements ([SRS](../requirements/SRS.md)); workflows, business rules and state machines ([FRD](../requirements/FRD.md)); components and trust boundaries ([HLD](HLD.md)); module structure ([SDD](SDD.md)); tooling, CI, CSP, configuration, self-hosting ([TDD](TDD.md)); decisions ([ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md), [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) and other ADRs); sequencing ([ROADMAP](../ROADMAP.md)). |
 
-Provenance: everything here is an **Agent decision (delegated, 2026-10-04; not yet owner-reviewed)**. Numbers are *(proposed)*. Provider endpoints and behaviours are written from general knowledge of those APIs and are **(to verify in M1 spike)**; the spike may change the adapter details, but it should not change the interface. Conventions: IDs are ULIDs (`TEXT`); times are `INTEGER` Unix milliseconds; JSON columns are `TEXT` validated by zod at the `db/` boundary (TDD-D1, TDD-D9).
+Provenance: everything here is an **Agent decision (delegated, 2026-10-04; not yet owner-reviewed)**, except that people, collections, cross-entity search and dark/light themes exist because of **Owner decision Q-7/Q-8 (2026-10-04)**; the identity rules come from [ADR-0015](../adr/0015-people-and-collection-identity.md) (agent decision, owner review pending) and the table, column, endpoint and reason-code details below are agent decisions. Numbers are *(proposed)*. Provider endpoints and behaviours are written from general knowledge of those APIs and are **(to verify in M1 spike)**; the spike may change the adapter details, but it should not change the interface. Conventions: IDs are ULIDs (`TEXT`); times are `INTEGER` Unix milliseconds; JSON columns are `TEXT` validated by zod at the `db/` boundary (TDD-D1, TDD-D9).
 
 ## LLD-SCHEMA — D1 schema & migrations
 
@@ -35,6 +35,19 @@ erDiagram
   media_items ||--o{ curation_overrides : "curated by"
   media_items ||--o{ match_conflicts : "flagged on"
   users ||--o{ audit_log : "actor (nullable)"
+  people ||--o{ person_provider_links : "linked to"
+  servers ||--o{ person_provider_links : reports
+  people ||--o{ credits : has
+  media_items ||--o{ credits : "credited in"
+  sources ||--o{ credits : supplies
+  person_provider_links ||--o{ credits : "named by"
+  collections ||--o{ collection_provider_links : "linked to"
+  servers ||--o{ collection_provider_links : reports
+  collection_provider_links ||--o{ collection_members : lists
+  media_items ||--o{ collection_members : "member of"
+  sources ||--o{ collection_members : supplies
+  people ||--o{ curation_overrides : "curated by (person)"
+  collections ||--o{ curation_overrides : "curated by (collection)"
 ```
 
 ### DDL sketch (migration `0001_init.sql`)
@@ -45,6 +58,7 @@ CREATE TABLE users (                        -- created only by setup or invite r
   display_name TEXT NOT NULL UNIQUE COLLATE NOCASE,   -- the only personal label; no email is collected (NFR-PRIV-001)
   role TEXT NOT NULL CHECK (role IN ('operator','viewer')),
   status TEXT NOT NULL CHECK (status IN ('invited','active','disabled')),  -- 'deleted' = row removed
+  theme_preference TEXT NOT NULL DEFAULT 'system' CHECK (theme_preference IN ('system','dark','light')),  -- NFR-UX-001; owner decision Q-8; the only stored preference
   created_at INTEGER NOT NULL, last_seen_at INTEGER);
 
 CREATE TABLE passkey_credentials (          -- IR-006; a user may have several (FR-USR-006)
@@ -152,6 +166,7 @@ CREATE TABLE media_versions (
   width INTEGER, height INTEGER,
   hdr TEXT NOT NULL DEFAULT 'none' CHECK (hdr IN ('none','hdr10','hdr10plus','hlg','dolby_vision')),
   bitrate INTEGER, runtime_ms INTEGER,
+  size_bytes INTEGER,                          -- file size as reported by the origin; NULL if unknown (FR-CAT-013)
   audio_tracks TEXT NOT NULL DEFAULT '[]',     -- [{index,codec,channels,language,title,default}]
   subtitle_tracks TEXT NOT NULL DEFAULT '[]',  -- [{index,format,kind:'text'|'image',language,title,forced,default}]
   UNIQUE (source_id, provider_version_id));
@@ -161,6 +176,61 @@ CREATE TABLE item_availability (            -- denormalized BR-1 helper; maintai
   library_id TEXT NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
   PRIMARY KEY (media_item_id, library_id)) WITHOUT ROWID;
 CREATE INDEX ia_lib ON item_availability(library_id, media_item_id);
+
+CREATE TABLE people (                       -- canonical, derived (DR-001, ADR-0015)
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_name TEXT NOT NULL,
+  name_key TEXT NOT NULL,                    -- case- and diacritic-folded, whitespace-collapsed name: the name-merge key (LLD-MATCH)
+  metadata_link_id TEXT,                     -- link whose name and portrait are shown (highest server priority, as for items)
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE INDEX ppl_name ON people(name_key);
+CREATE INDEX ppl_sort ON people(sort_name, id);
+
+CREATE TABLE person_provider_links (        -- one row per (server, origin person); derived
+  id TEXT PRIMARY KEY, person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+  server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+  provider_person_id TEXT NOT NULL, name TEXT NOT NULL,
+  tmdb_id TEXT, imdb_id TEXT,                -- person IDs, when the origin reports them (to verify in M1 spike); NULL otherwise
+  artwork TEXT NOT NULL DEFAULT '{}',        -- {poster:{tag}} portrait reference
+  match_method TEXT NOT NULL CHECK (match_method IN ('external_id','name','new','manual')),
+  updated_at INTEGER NOT NULL, UNIQUE (server_id, provider_person_id));
+CREATE INDEX ppl_link_person ON person_provider_links(person_id);
+CREATE INDEX ppl_link_tmdb ON person_provider_links(tmdb_id) WHERE tmdb_id IS NOT NULL;
+CREATE INDEX ppl_link_imdb ON person_provider_links(imdb_id) WHERE imdb_id IS NOT NULL;
+
+CREATE TABLE credits (                      -- person <-> title; derived. Written per supplying source so a purge of one source removes only its credits
+  source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+  link_id TEXT NOT NULL REFERENCES person_provider_links(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('actor','director','writer','producer','other')),
+  person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,          -- denormalized from the link; re-keyed on person merge or split
+  media_item_id TEXT NOT NULL REFERENCES media_items(id) ON DELETE CASCADE, -- denormalized from the source; re-keyed on item merge or split
+  character TEXT, sort_order INTEGER NOT NULL,                             -- billing order as reported by the origin
+  PRIMARY KEY (source_id, link_id, role)) WITHOUT ROWID;
+CREATE INDEX cr_person ON credits(person_id, media_item_id);
+CREATE INDEX cr_item ON credits(media_item_id, role, sort_order);
+
+CREATE TABLE collections (                  -- canonical, derived (DR-001, ADR-0015)
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_name TEXT NOT NULL, overview TEXT,
+  metadata_link_id TEXT,                     -- link whose name, overview and artwork are shown
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE INDEX col_sort ON collections(sort_name, id);
+
+CREATE TABLE collection_provider_links (    -- one row per (server, origin collection); derived
+  id TEXT PRIMARY KEY, collection_id TEXT NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+  server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+  provider_collection_id TEXT NOT NULL, name TEXT NOT NULL, overview TEXT,
+  tmdb_collection_id TEXT,                   -- the only cross-server merge key (ADR-0015); NULL if the origin has none
+  artwork TEXT NOT NULL DEFAULT '{}',
+  match_method TEXT NOT NULL CHECK (match_method IN ('external_id','new','manual')),
+  last_seen_sync_id TEXT, updated_at INTEGER NOT NULL, UNIQUE (server_id, provider_collection_id));
+CREATE INDEX col_link_coll ON collection_provider_links(collection_id);
+CREATE INDEX col_link_tmdb ON collection_provider_links(tmdb_collection_id) WHERE tmdb_collection_id IS NOT NULL;
+
+CREATE TABLE collection_members (           -- membership as reported by each origin; the canonical collection's members are the union over its links
+  link_id TEXT NOT NULL REFERENCES collection_provider_links(id) ON DELETE CASCADE,
+  source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+  media_item_id TEXT NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,  -- denormalized from the source; re-keyed on item merge or split
+  PRIMARY KEY (link_id, source_id)) WITHOUT ROWID;
+CREATE INDEX cm_item ON collection_members(media_item_id);
 
 CREATE TABLE sync_runs (
   id TEXT PRIMARY KEY, server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
@@ -206,18 +276,33 @@ CREATE INDEX wp_continue ON watch_progress(user_id, watched, updated_at DESC);
 
 CREATE TABLE curation_overrides (            -- primary data; keyed by stable provider identity (BR-3)
   id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('pin','separate')),
-  media_item_id TEXT NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,  -- DR-005
-  server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE, provider_item_id TEXT NOT NULL,
+  entity_kind TEXT NOT NULL DEFAULT 'item' CHECK (entity_kind IN ('item','person','collection')),  -- ADR-0015, FR-CAT-007
+  media_item_id TEXT REFERENCES media_items(id) ON DELETE CASCADE,   -- DR-005; set iff entity_kind='item'
+  person_id TEXT REFERENCES people(id) ON DELETE CASCADE,            -- set iff 'person'
+  collection_id TEXT REFERENCES collections(id) ON DELETE CASCADE,   -- set iff 'collection'
+  server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+  provider_item_id TEXT NOT NULL,            -- the origin's ID for that entity: item, person or collection
   created_by TEXT REFERENCES users(id) ON DELETE SET NULL, created_at INTEGER NOT NULL,
-  UNIQUE (server_id, provider_item_id));
+  UNIQUE (entity_kind, server_id, provider_item_id),
+  CHECK ((entity_kind='item') = (media_item_id IS NOT NULL) AND (entity_kind='person') = (person_id IS NOT NULL)
+         AND (entity_kind='collection') = (collection_id IS NOT NULL)));
 
-CREATE TABLE match_conflicts (               -- FR-CAT-010
-  id TEXT PRIMARY KEY, source_id TEXT NOT NULL UNIQUE REFERENCES sources(id) ON DELETE CASCADE,
-  media_item_id TEXT REFERENCES media_items(id) ON DELETE CASCADE,  -- item it was kept apart from
-  reason TEXT NOT NULL CHECK (reason IN ('conflicting_ids','multiple_candidates','type_mismatch')),
-  details TEXT NOT NULL,                     -- {candidates:[{itemId, sharedIds, conflictingIds}]}
+CREATE TABLE match_conflicts (               -- FR-CAT-010; one open subject per row: a source, a person link or a collection link
+  id TEXT PRIMARY KEY,
+  entity_kind TEXT NOT NULL DEFAULT 'item' CHECK (entity_kind IN ('item','person','collection')),
+  source_id TEXT REFERENCES sources(id) ON DELETE CASCADE,                          -- set iff 'item'
+  person_link_id TEXT REFERENCES person_provider_links(id) ON DELETE CASCADE,       -- set iff 'person'
+  collection_link_id TEXT REFERENCES collection_provider_links(id) ON DELETE CASCADE, -- set iff 'collection'
+  media_item_id TEXT REFERENCES media_items(id) ON DELETE CASCADE,  -- item it was kept apart from (items only)
+  reason TEXT NOT NULL CHECK (reason IN ('conflicting_ids','multiple_candidates','type_mismatch','ambiguous_name')),  -- type_mismatch: items; ambiguous_name: people
+  details TEXT NOT NULL,                     -- {candidates:[{itemId|personId|collectionId, sharedIds, conflictingIds}]}
   status TEXT NOT NULL CHECK (status IN ('open','resolved','dismissed')),
-  detected_at INTEGER NOT NULL, resolved_at INTEGER, resolved_by TEXT REFERENCES users(id) ON DELETE SET NULL);
+  detected_at INTEGER NOT NULL, resolved_at INTEGER, resolved_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+  CHECK ((entity_kind='item') = (source_id IS NOT NULL) AND (entity_kind='person') = (person_link_id IS NOT NULL)
+         AND (entity_kind='collection') = (collection_link_id IS NOT NULL)));
+CREATE UNIQUE INDEX mc_source ON match_conflicts(source_id) WHERE source_id IS NOT NULL;
+CREATE UNIQUE INDEX mc_person ON match_conflicts(person_link_id) WHERE person_link_id IS NOT NULL;
+CREATE UNIQUE INDEX mc_collection ON match_conflicts(collection_link_id) WHERE collection_link_id IS NOT NULL;
 CREATE INDEX mc_open ON match_conflicts(status, detected_at);
 
 CREATE TABLE audit_log (                     -- append-only (FR-OPS-005)
@@ -231,13 +316,15 @@ CREATE TABLE idempotency_keys (              -- LLD-ERR
 
 CREATE TABLE meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);   -- e.g. servers_version for CSP cache (TDD §6.1)
 
-CREATE VIRTUAL TABLE media_items_fts USING fts5(
-  item_id UNINDEXED, title, original_title,
-  tokenize = 'unicode61 remove_diacritics 2', prefix = '2 3');  -- FR-CAT-004: case/diacritic-insensitive, prefix
+CREATE VIRTUAL TABLE search_fts USING fts5(     -- FR-CAT-004, FR-CAT-011, FR-CAT-012: one index, three kinds
+  kind,                                        -- 'title' | 'person' | 'collection' (indexed, so it can be a column filter)
+  entity_id UNINDEXED,                         -- media_items.id | people.id | collections.id
+  name, alt_name,                              -- title or name; original title or the other names of a merged person or collection
+  tokenize = 'unicode61 remove_diacritics 2', prefix = '2 3');  -- case/diacritic-insensitive, prefix
 ```
 
 Notes:
-- **FTS maintenance.** Only `movie` and `series` rows are indexed. The application writes `media_items_fts` in the same `batch()` as the `media_items` change, using delete-then-insert by `item_id`. Triggers are not used, so all writes stay explicit in one place. FTS5 support is verified (TDD §2). The table is derived and rebuildable (TDD §3). Query: `… WHERE media_items_fts MATCH ?` with user input tokenized and each token quoted with a trailing `*`.
+- **FTS maintenance.** `search_fts` holds `kind='title'` rows for `movie` and `series` items, `kind='person'` rows for people and `kind='collection'` rows for collections. The application writes it in the same `batch()` as the entity change, using delete-then-insert by `(kind, entity_id)`. Triggers are not used, so all writes stay explicit in one place. FTS5 support is verified (TDD §2). The table is derived and rebuildable (TDD §3). Query, once per requested kind: `… WHERE search_fts MATCH 'kind:person AND {name alt_name}:("chr"* "nol"*)'` with each user token quoted and given a trailing `*` (column-filter syntax to verify in the M2 benchmark). FTS knows nothing about BR-1, so each hit is joined with the visibility predicate below before it is returned: a title hit by its own predicate, a person hit by an `EXISTS` over its `credits` rows, a collection hit by an `EXISTS` over its `collection_members` rows, each against the BR-1 join. The query over-fetches (`limit × 4`, *proposed*) so that hidden hits do not leave a short page. Hits with no visible title are dropped, never counted.
 - **`item_availability`** holds one row per (item, library) where the item has at least one `present` source. Sync writes and deletes rows in the same batch as source status changes. It lets the BR-1 filter be a semi-join on two small indexes instead of an `EXISTS` scan over `sources`. The M2 benchmark (NFR-PERF-001) decides whether it is needed; if the plain `EXISTS` meets 300 ms, drop it in a contract migration.
 - **BR-1 visibility predicate** (used by every catalog query, FR-CAT-006):
   ```sql
@@ -247,15 +334,16 @@ Notes:
           WHERE a.media_item_id = i.id
             AND (:is_operator = 1 OR EXISTS (SELECT 1 FROM library_grants g WHERE g.user_id = :uid AND g.library_id = a.library_id)))
   ```
-  For seasons and episodes the predicate is applied to the row itself, because every provider item, including seasons and episodes, becomes a source. Source lists in responses use the same join per source. Only `active`, `degraded` and `unreachable` servers are exposed: `pending_validation`, `disabled` and `removing` servers are hidden. The FRD's `removed` state means the `servers` row is deleted, so it has no status value. `unreachable` servers stay visible for browsing (NFR-REL-001) and are filtered out only at selection (BR-5).
+  **People and collections** have no library of their own. A person is visible only through credits whose `media_item_id` passes this predicate; a collection only through its members that pass it. A person or collection with no visible title is treated as not existing (`404`, absent from search and browse), so no count or name of a hidden title is derivable (BR-1, BR-10, NFR-SEC-002). For seasons and episodes the predicate is applied to the row itself, because every provider item, including seasons and episodes, becomes a source. Source lists in responses use the same join per source. Only `active`, `degraded` and `unreachable` servers are exposed: `pending_validation`, `disabled` and `removing` servers are hidden. The FRD's `removed` state means the `servers` row is deleted, so it has no status value. `unreachable` servers stay visible for browsing (NFR-REL-001) and are filtered out only at selection (BR-5).
 
 ### Cascades and deletion (DR-005)
 
 | Action | Mechanism |
 |---|---|
 | Delete user | One `batch`: `UPDATE audit_log SET target_id = NULL WHERE target_type='user' AND target_id=?`, then `DELETE FROM users`. FK cascades remove `library_grants`, `watch_progress`, `playback_sessions`, `passkey_credentials`, `sessions` (so access ends immediately, FR-USR-008) and their invites. `idempotency_keys` are deleted explicitly, since that table has no FK. `invites.created_by` is set to NULL on invites the user issued. `audit_log.actor_user_id` is set to NULL. Audit `details` reference users by ID only, never by display name, so no rewrite is needed. Before the batch runs, any live sessions are revoked (LLD-TOKEN). BR-8: the delete fails with `LAST_OPERATOR` if it would leave no active operator, checked by a conditional statement in the same batch. |
-| Remove server | Set `status='removing'`, which hides its sources immediately, delete `server_credentials`, and enqueue `purge_server`. The job deletes `media_versions` and `sources` in chunks of 500 *(proposed)* to stay inside D1 query limits, then deletes the `servers` row (cascades: libraries, grants, sync_runs, health_probes, overrides). Orphaned items are then removed as below. Revoking open sessions comes first. This refines the FRD's "removed" state with a short transitional `removing` status. |
-| Orphan items | After any source purge, `DELETE FROM media_items WHERE id IN (… items of the affected set with no sources …)`, children first. Cascades remove `external_ids`, `curation_overrides`, `match_conflicts`, `item_availability` and `watch_progress`. |
+| Remove server | Set `status='removing'`, which hides its sources immediately, delete `server_credentials`, and enqueue `purge_server`. The job deletes `media_versions` and `sources` in chunks of 500 *(proposed)* to stay inside D1 query limits, then deletes the `servers` row (cascades: libraries, grants, sync_runs, health_probes, overrides, `person_provider_links` and `collection_provider_links`). Deleting a source cascades its `credits` and `collection_members`. Orphaned items are then removed as below. Revoking open sessions comes first. This refines the FRD's "removed" state with a short transitional `removing` status. |
+| Orphan people and collections | After credits or links are removed, delete `person_provider_links` that no `credits` row references and `collection_provider_links` that belong to a removed server or were not seen by the last completed full pass of their server (LLD-SYNC). Then delete `people` and `collections` that have no links left, together with their `search_fts` rows. Cascades remove their `credits`, `collection_members` and `curation_overrides` of kind person or collection and any `match_conflicts` on their links. A person who merely has no visible credits stays (it is hidden by BR-1, not deleted). |
+| Orphan items | After any source purge, `DELETE FROM media_items WHERE id IN (… items of the affected set with no sources …)`, children first. Cascades remove `external_ids`, `curation_overrides`, `match_conflicts`, `item_availability`, `watch_progress`, `credits` and `collection_members`. |
 
 ### Migration practice
 
