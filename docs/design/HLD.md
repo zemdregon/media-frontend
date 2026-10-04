@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1, 2026-10-04, agent-authored under delegation; not owner-reviewed. Nothing described here is implemented (the repository has no source code). |
+| **Status** | Draft v0.1, 2026-10-04, agent-authored under delegation; not owner-reviewed. Nothing described here is implemented (the repository has no source code). Updated 2026-10-04 for owner decisions (ADR-0014, self-hosting). |
 | **Owns** | System context and boundaries, major components (`C-*`), external dependencies, trust boundaries (`TB-*`), data flows (`DF-*`), deployment topology, origin reachability requirements, threat model, capacity and cost assumptions, availability posture. |
 | **Does not own** | Requirements ([SRS](../requirements/SRS.md)), business rationale ([BRD](../requirements/BRD.md)), capabilities ([PRD](../requirements/PRD.md)), workflow rules ([FRD](../requirements/FRD.md)), module-level collaboration and the requirement-to-design table ([SDD](SDD.md)), test and build practice ([TDD](TDD.md)), field-level contracts and algorithms ([LLD](LLD.md)), sequencing ([ROADMAP](../ROADMAP.md)). |
 
-Provenance labels used below: **Owner direction (2026-10-04)** means the owner supplied it (product name, the [concept document](../sources/2026-10-04-initial-architecture-concept.md), the agent-routing policy). The owner supplied the concept and asked for a plan; that is not approval of every detail here. **Agent decision (delegated, 2026-10-04; not yet owner-reviewed)** covers everything else. Assumptions are `A-n`, open questions `Q-n`.
+Provenance labels used below: **Owner direction (2026-10-04)** means the owner supplied it (product name, the [concept document](../sources/2026-10-04-initial-architecture-concept.md), the agent-routing policy). The owner supplied the concept and asked for a plan; that is not approval of every detail here. **Owner decision (2026-10-04)** marks the three decisions recorded in [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) and [ADR-0011](../adr/0011-single-operator-deployment-model.md): passkeys and invite links only, self-hosting by other operators, and origin hostnames visible to viewers ([ADR-0003](../adr/0003-direct-to-origin-playback.md)). **Agent decision (delegated)** covers everything else, including the ADR-0014 implementation details; it is not yet owner-reviewed. Assumptions are `A-n`, open questions `Q-n`.
 
 ## 1. Architecture in one paragraph
 
@@ -18,7 +18,6 @@ Cloudflare hosts the web app, the API, the catalog index and authentication (Wor
 flowchart LR
   viewer["Viewer browser<br/>(P-2, E-BROWSER)"]
   operator["Operator<br/>(P-1, browser + wrangler CLI)"]
-  access["Cloudflare Access<br/>(E-ACCESS)"]
   subgraph cf["Cloudflare account (operator-owned)"]
     worker["Cinewren Worker<br/>C-WEB assets, C-API, C-AUTH, C-CAT, C-MATCH,<br/>C-SYNC, C-HEALTH, C-PLAY, C-PROV, C-ART, C-CRYPTO"]
     d1[("D1 database")]
@@ -28,9 +27,8 @@ flowchart LR
   em["Emby origin(s)"]
   px["Plex origin(s)"]
 
-  viewer -->|"HTTPS app + API"| access
-  operator -->|"HTTPS app + API"| access
-  access -->|"JWT header"| worker
+  viewer -->|"HTTPS app + API, session cookie"| worker
+  operator -->|"HTTPS app + API, session cookie"| worker
   worker <-->|"binding"| d1
   worker -->|"enqueue / consume"| queues
   worker -->|"service credentials, HTTPS"| jf
@@ -53,11 +51,11 @@ The bold edges are the only path for media bytes. The operator additionally uses
 |---|---|---|
 | Hosting, storing or transcoding media | Origins do this. Constraints C-2, C-3; no media in R2 | [ADR-0002](../adr/0002-cloudflare-control-plane-origins-deliver-media.md) |
 | Proxying or caching stream bytes (including via Cloudflare Tunnel public hostnames) | Cloudflare video terms; FR-PLAY-008, NFR-COMP-001 | [ADR-0002](../adr/0002-cloudflare-control-plane-origins-deliver-media.md) |
-| Hiding origin hostnames from viewers (media gateway) | Deferred as DEF-1; revisit if Q-2 is answered "yes" | [ADR-0003](../adr/0003-direct-to-origin-playback.md) |
+| Hiding origin hostnames from viewers (media gateway) | Deferred as DEF-1; viewers seeing origin hostnames is acceptable (**Owner decision (2026-10-04)**) | [ADR-0003](../adr/0003-direct-to-origin-playback.md) |
 | Origins reachable only on private networks | Unsupported in v1 (A-4, Q-5, DEF-10) | [PRD](../requirements/PRD.md) |
 | Origin installation, TLS certificates, DNS, reverse proxies | Operator responsibility (A-2, A-3) | Section 9 |
 | Native/TV apps, multi-tenant hosting, writing watch state back to origins, own metadata enrichment | Deferred (DEF-2, DEF-3, DEF-4, DEF-9) | [PRD](../requirements/PRD.md) |
-| Identity provider for Access (email OTP, Google, etc.) | Configured by the operator inside Cloudflare Access | [ADR-0007](../adr/0007-cloudflare-access-identity.md) |
+| Passwords, OAuth or other external identity providers, email or SMS sign-in | Passkeys and invite links only (**Owner decision (2026-10-04)**) | [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md) |
 
 ## 4. Major components
 
@@ -67,7 +65,7 @@ All components live in one Worker deployable ([ADR-0005](../adr/0005-single-work
 |---|---|---|---|
 | C-WEB | Web client | React + TypeScript SPA (Vite), served as Workers Static Assets. Browse, search, detail, admin screens, player (`<video>` + hls.js), reports capabilities and progress. Talks only to the Cinewren API (C-5). | FR-PLAY-002, FR-PROG-002, IR-007, NFR-A11Y-001 |
 | C-API | API layer | Hono router under `/api/v1`; request ID, error envelope, CSP/HSTS headers, rate limiting, input validation. Thin: delegates to services. | IR-001, NFR-SEC-003, NFR-SEC-004 |
-| C-AUTH | Auth and authorization | Verifies Access JWT; resolves user record, role and library grants; exposes per-request permission context used by every service. | FR-USR-001..005, IR-006, NFR-SEC-002 |
+| C-AUTH | Auth and authorization | WebAuthn ceremonies, invites, sessions, roles and library grants; exposes the per-request permission context used by every service ([ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)). | FR-USR-001..007, IR-006, NFR-SEC-002, NFR-SEC-007 |
 | C-CAT | Catalog service | Browse, search (D1 FTS5, to verify in M0), detail, home rows, next-episode. Single place that applies BR-1 visibility filtering. | FR-CAT-001..009, FR-PROG-004 |
 | C-MATCH | Matching and dedup | External-ID matching (BR-2), manual merge/split (BR-3). Used by sync and curation. | FR-CAT-001, FR-CAT-007 |
 | C-SYNC | Sync orchestrator | Cron enqueues per-server jobs; queue consumer pages through providers and writes D1 idempotently; marks missing sources; retention purge. | FR-SYNC-001..007, NFR-REL-002 |
@@ -87,7 +85,6 @@ Collaboration between these components is in the [SDD](SDD.md). Field-level cont
 | Cloudflare D1 | System of record ([ADR-0006](../adr/0006-d1-system-of-record.md)) | FTS5 support and Time Travel retention: to verify in M0 / M1 spike |
 | Cloudflare Queues | Sync job fan-out ([ADR-0009](../adr/0009-pull-based-sync-cron-and-queues.md)) | Availability on the operator's plan: to verify in M0 |
 | Cloudflare Cache API | Artwork cache | Per-colo cache; best-effort, never required for correctness |
-| Cloudflare Access | Authentication ([ADR-0007](../adr/0007-cloudflare-access-identity.md)) | JWT signing keys fetched from the team domain; details beyond basics to verify in M0 |
 | Jellyfin, Emby, Plex servers | Media origins | Auth, token and CORS behaviour unverified; see Section 9 and Q-3, Q-6 |
 | Operator DNS and TLS for origins | Browser-reachable HTTPS origins | A-3; not provided by Cinewren |
 
@@ -96,27 +93,25 @@ Collaboration between these components is in the [SDD](SDD.md). Field-level cont
 ```mermaid
 flowchart LR
   net(["Internet (viewer / operator browsers)"])
-  subgraph edge["Cloudflare edge"]
-    access["Access"]
-  end
   subgraph acct["Operator's Cloudflare account"]
-    worker["Worker"]
+    worker["Worker public surface"]
+    app["App routes (session required)"]
     d1[("D1")]
   end
   origin["Origin server"]
-  net -- "TB-1" --> access
-  access -- "TB-2" --> worker
-  worker -- "TB-5" --> d1
-  worker -- "TB-3" --> origin
+  net -- "TB-1" --> worker
+  worker -- "TB-2" --> app
+  app -- "TB-5" --> d1
+  app -- "TB-3" --> origin
   net -. "TB-4 (media + subtitles, direct)" .-> origin
 ```
 
 | ID | Boundary | What crosses | How authenticated | Main threats |
 |---|---|---|---|---|
-| TB-1 | Internet and Cloudflare Access | All app and API requests from browsers | Access policy (identity provider login); Access service token for health checks | Access misconfiguration, unauthorized sign-in, session theft |
-| TB-2 | Access and Worker | Request plus `Cf-Access-Jwt-Assertion` | Worker verifies signature, audience, issuer, expiry (FR-USR-001, IR-006); then user record, role, grants | Request reaching the Worker without Access (e.g. `workers.dev` route left enabled), forged header, wrong audience |
+| TB-1 | Internet ↔ Worker public surface | Every request from a browser. The only unauthenticated routes are setup, redeem, login, health and static assets (FR-USR-001, FR-OPS-007). | Rate limits (NFR-SEC-004), single-use hashed tokens (NFR-SEC-007), WebAuthn (IR-006) | Brute force and enumeration, leaked invite or `SETUP_TOKEN`, phishing, cross-origin requests |
+| TB-2 | Authenticated session ↔ app routes | Every request to a route other than the public ones | Session cookie checked in one middleware, `Origin` check on state-changing requests (NFR-SEC-007); then user record, role, grants | Session cookie theft, CSRF, a route added outside the middleware |
 | TB-3 | Worker and origins | Library metadata, playback negotiation, session creation/revocation, artwork bytes, health probes | Dedicated non-admin service account per origin, credentials decrypted only for the call ([ADR-0008](../adr/0008-origin-service-accounts-and-credential-encryption.md)); HTTPS only (FR-SRV-007) | SSRF through server URL, credential leak, hostile origin metadata, redirect to another host |
-| TB-4 | Browser and origins (direct) | Media stream, subtitle files, HLS segments | Session-scoped stream credential in the URL ([ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md), proposed, pending M1 spike); HTTPS | Stolen or shared stream URL, mixed content, origin hostnames visible to viewers (accepted, Q-2) |
+| TB-4 | Browser and origins (direct) | Media stream, subtitle files, HLS segments | Session-scoped stream credential in the URL ([ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md), proposed, pending M1 spike); HTTPS | Stolen or shared stream URL, mixed content, origin hostnames visible to viewers (accepted; **Owner decision (2026-10-04)**) |
 | TB-5 | Worker and D1 | All reads and writes of primary and derived data | Worker binding (no network credential) | Data loss or corruption, cross-user data access through query bugs, secrets stored in plaintext |
 
 ## 7. Data flows
@@ -161,21 +156,23 @@ flowchart LR
 
 One Worker project (one `wrangler` configuration) exports three handlers: `fetch` (static assets fall through to the Hono API), `scheduled` (sync enqueue, health probe, retention purge) and `queue` (sync job consumer). ([ADR-0005](../adr/0005-single-worker-typescript-stack.md), [ADR-0009](../adr/0009-pull-based-sync-cron-and-queues.md)).
 
-| Environment | Worker + D1 | Access | Purpose |
+| Environment | Worker + D1 | Auth | Purpose |
 |---|---|---|---|
-| local | `wrangler dev`, local D1 | Mock JWT verifier or dev bypass behind an explicit flag (design in [TDD](TDD.md)) | Development, tests; `ALLOW_INSECURE_ORIGINS` may be set here only (FR-SRV-007) |
-| staging | Separate Worker, D1, Queue | Separate Access application | Pre-release checks, restore rehearsal (NFR-REL-003) |
-| production | Separate Worker, D1, Queue | Separate Access application | Live |
+| local | `wrangler dev`, local D1 | Real passkeys; WebAuthn works on `localhost`, so no bypass is needed | Development, tests; `ALLOW_INSECURE_ORIGINS` may be set here only (FR-SRV-007) |
+| staging | Separate Worker, D1, Queue, secrets | Own RP ID (the staging hostname) and own first-operator setup | Pre-release checks, restore rehearsal (NFR-REL-003) |
+| production | Separate Worker, D1, Queue, secrets | Own RP ID (the app hostname) | Live |
 
 | Binding / resource | Type | Used by | Notes |
 |---|---|---|---|
 | `DB` | D1 | all services via repository layer | Forward-only migrations (DR-004) |
 | Sync queue | Queue (producer and consumer on same Worker) | C-SYNC | One message = one bounded unit of work (a server's library page) |
 | Credential key (e.g. `CRED_KEY_V1`) | Worker secret | C-CRYPTO | Set via `wrangler secret put`; declared in `secrets.required`; never in `vars` |
-| Access team domain and audience tag | Configuration (not secret) | C-AUTH | Public values, per environment |
-| `BOOTSTRAP_OPERATOR_EMAILS`, `ALLOW_INSECURE_ORIGINS`, sync intervals | Configuration `vars` | C-AUTH, C-PROV, C-SYNC | FR-USR-002, FR-SRV-007, FR-SYNC-001 |
+| `SETUP_TOKEN` | Worker secret | C-AUTH | One-time first-operator setup (FR-USR-002); declared in `secrets.required`; rotate it if leaked; setup is disabled once an operator exists |
+| `ALLOW_INSECURE_ORIGINS`, sync intervals | Configuration `vars` | C-PROV, C-SYNC | FR-SRV-007, FR-SYNC-001 |
 | Static Assets | Assets binding | C-WEB | Free to serve; SPA fallback routing |
 | Cache API | Runtime API | C-ART | Cache keys must include the artwork identity, never user identity; permission check happens before cache lookup (Section 10) |
+
+**Self-hosting.** Other operators may run their own single-operator instance ([ADR-0011](../adr/0011-single-operator-deployment-model.md); **Owner decision (2026-10-04)**). Each operator deploys their own Worker, D1 database and secrets from a tagged release (FR-OPS-008, NFR-MAINT-003) and creates their first operator through `/setup` with their own `SETUP_TOKEN`. Instances share nothing; there is no hosted multi-tenancy. Upgrades apply the release's pending D1 migrations (DR-004).
 
 **DNS and proxying (NFR-COMP-001):**
 
@@ -194,7 +191,7 @@ One Worker project (one `wrangler` configuration) exports three handlers: `fetch
 | CSP | `media-src` and `connect-src` include only self plus registered origin hostnames, generated from server configuration. Adding a server changes the CSP. | NFR-SEC-003 |
 | CORS | `<video>` direct play of a cross-origin URL does not need CORS headers unless the element uses `crossorigin` or reads the response from script. hls.js fetches playlists and segments via XHR/fetch, and `<track>` WebVTT loads require CORS. Whether Jellyfin, Emby and Plex send suitable CORS headers by default, and which settings the operator must change, is **to verify in M1 spike**. | Browser platform behaviour; provider behaviour unverified |
 | Range requests | Origins must honour HTTP range requests for direct play seek (standard for all three; confirm in M1 spike). | Provider behaviour: to verify in M1 spike |
-| Origin visibility | Viewers can see origin hostnames in network traffic. Accepted for v1. | Q-2 assumed "no"; [ADR-0003](../adr/0003-direct-to-origin-playback.md) |
+| Origin visibility | Viewers can see origin hostnames in network traffic. Acceptable (**Owner decision (2026-10-04)**). | [ADR-0003](../adr/0003-direct-to-origin-playback.md) |
 
 Residential NAT, dynamic DNS and certificate management are the operator's responsibility (A-2, A-3). The setup guide, delivered with M1, should list tested reverse-proxy and DNS patterns.
 
@@ -207,7 +204,11 @@ Residential NAT, dynamic DNS and certificate management are the operator's respo
 | IDOR across libraries | TB-2, TB-5 | Server-side checks on every ID-addressed request (NFR-SEC-002); BR-1 filter in one place in C-CAT (FR-CAT-006); sources the user cannot see are not disclosed, even as counts | Query-layer bugs; covered by authorization tests in [TDD](TDD.md). |
 | SSRF via server URL | TB-3 | HTTPS-only (FR-SRV-007); outbound requests only to the registered host, redirects to other hosts refused (NFR-SEC-005); operator-only registration (BR-8); registration validates server identity (FR-SRV-002) | An operator can still point at an internal-looking public host; Workers cannot reach private networks, which limits impact. Whether to block IP literals and reserved ranges is a design item for LLD-PROV. |
 | Malicious origin returns hostile metadata or XSS payloads | TB-3 | Metadata treated as untrusted data; UI renders text only (no raw HTML); CSP `script-src 'self'` (NFR-SEC-003); bounded field sizes on normalization (FR-SYNC-003); artwork served from Cinewren with content-type checks | A compromised origin can still show misleading titles; operator removes the server (FR-SRV-004). |
-| Access misconfiguration (policy too open, `workers.dev` route enabled, wrong audience) | TB-1, TB-2 | Worker verifies JWT audience and issuer itself, not only Access policy (FR-USR-001); unknown identities get 403 (FR-USR-002); setup guide and `secrets.required` checklist; staging uses a separate Access app | A deployment that never configures Access: the Worker rejects every request with 401 rather than running open. |
+| Invite link leaked or forwarded | TB-1 | Single use, 7-day expiry, revocation, and the operator sees redemption (FR-USR-002, FR-USR-004); token stored hashed (NFR-SEC-007) | Whoever redeems first gets the account; the operator can disable it. |
+| Session cookie theft | TB-2 | `HttpOnly; Secure; SameSite=Lax`, hashed storage, idle and absolute expiry, revocation on sign-out, disable or delete, `Origin` check (NFR-SEC-007, FR-USR-006) | A stolen live cookie works until expiry or revocation. |
+| Brute force or enumeration on public auth endpoints | TB-1 | Per-IP rate limits on setup, redeem and login (NFR-SEC-004); single-use challenges and tokens; uniform error responses for invalid tokens | Distributed attempts; passkeys have no guessable secret, and tokens are random. |
+| `SETUP_TOKEN` leak before setup | TB-1 | Setup is disabled once an operator exists (FR-USR-002); rotate the secret; complete setup right after deploy | A leak between deploy and first setup lets a stranger become the first operator. |
+| Phishing | TB-1 | Passkeys are bound to the RP ID, so a look-alike site cannot obtain an assertion (IR-006) | Phishing of an invite link falls under the leaked-invite row. |
 | Abuse of play endpoint (session exhaustion, origin hammering) | TB-3 | Per-user rate limits (NFR-SEC-004, proposed); session expiry (BR-9); concurrent-session bound within NFR-SCALE-001; negotiation timeouts and bounded retries (NFR-REL-002) | Authenticated viewer can still burn origin transcode capacity within limits. |
 | D1 data loss or corruption | TB-5 | Catalog is derived and rebuildable (DR-001); primary data restorable via Time Travel with documented, rehearsed restore (NFR-REL-003); JSON export (FR-OPS-006, Could); expand-migrate-contract migrations (DR-004) | Time Travel retention window to verify in M0; RPO/RTO are proposed targets. |
 | Cache poisoning or cross-user artwork leak | TB-3 | Permission check before cache lookup; cache key excludes user identity; origin responses restricted to image content types | Cached artwork may outlive a grant revocation for the TTL; acceptable for posters, to confirm in [ADR-0012](../adr/0012-artwork-proxy-with-edge-cache.md). |
@@ -250,10 +251,11 @@ Concurrent playback load on the Worker is low: a play request is one D1 read set
 | One origin down | Browse unaffected. Sources on that server are excluded at play time once marked `unreachable`, and failover to the next source is offered (FR-OPS-002, FR-PLAY-004). Title is hidden only if no source remains (BR-1). | FR-SYNC-007, CAP-10 |
 | All origins down | Browse, search and detail work from last-synced data; play returns a clear "no playable source" error. | NFR-REL-001 |
 | Sync failing | Existing catalog stays; failures isolated per server and visible to the operator. | FR-SYNC-007, FR-OPS-003 |
-| Cloudflare outage (Workers, D1, Access or Queues) | The entire control plane is unavailable. Already-started streams continue because they are browser-to-origin, but no new playback starts. There is no second provider. | Accepted single-provider risk (Owner direction on Cloudflare, C-1); mitigation limited to export (FR-OPS-006) and restore (NFR-REL-003). No availability target is set for v1. |
-| Access outage | Sign-in blocked; Worker rejects unauthenticated requests. | Accepted, same single-provider risk. |
+| Cloudflare outage (Workers, D1 or Queues) | The entire control plane is unavailable. Already-started streams continue because they are browser-to-origin, but no new playback starts. There is no second provider. | Accepted single-provider risk (Owner direction on Cloudflare, C-1); mitigation limited to export (FR-OPS-006) and restore (NFR-REL-003). No availability target is set for v1. |
 | D1 unavailable | API returns errors; health endpoint reports database status (FR-OPS-007). | NFR-REL-003 for restore. |
 
 ## 13. Related documents
 
-[SRS](../requirements/SRS.md) (requirements) · [SDD](SDD.md) (integrated design, requirement-to-design table) · [TDD](TDD.md) · [LLD](LLD.md) · [ROADMAP](../ROADMAP.md) (milestones M0 to M5) · [ADR-0002](../adr/0002-cloudflare-control-plane-origins-deliver-media.md) · [ADR-0003](../adr/0003-direct-to-origin-playback.md) · [ADR-0004](../adr/0004-provider-adapter-abstraction.md) · [ADR-0006](../adr/0006-d1-system-of-record.md) · [ADR-0007](../adr/0007-cloudflare-access-identity.md) · [ADR-0009](../adr/0009-pull-based-sync-cron-and-queues.md) · [ADR-0011](../adr/0011-single-operator-deployment-model.md)
+[SRS](../requirements/SRS.md) (requirements) · [SDD](SDD.md) (integrated design, requirement-to-design table) · [TDD](TDD.md) · [LLD](LLD.md) · [ROADMAP](../ROADMAP.md) (milestones M0 to M5) · [ADR-0002](../adr/0002-cloudflare-control-plane-origins-deliver-media.md) · [ADR-0003](../adr/0003-direct-to-origin-playback.md) · [ADR-0004](../adr/0004-provider-adapter-abstraction.md) · [ADR-0006](../adr/0006-d1-system-of-record.md) · [ADR-0009](../adr/0009-pull-based-sync-cron-and-queues.md) · [ADR-0011](../adr/0011-single-operator-deployment-model.md) · [ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)
+
+History: [ADR-0007](../adr/0007-cloudflare-access-identity.md) (Cloudflare Access) was superseded by ADR-0014 on 2026-10-04.

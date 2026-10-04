@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. **Owner decision (2026-10-04):** each deployment has one operator, and Cinewren is packaged so that other operators can self-host their own instance (Q-1). Hosted multi-tenancy remains out of scope. Self-host packaging is planned in [ROADMAP](../ROADMAP.md) M5.
 
 ## Date
 

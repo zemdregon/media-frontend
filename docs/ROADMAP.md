@@ -20,7 +20,7 @@
 |---|---|---|
 | Code | None. The repository had no commits, source, tests or configuration before this documentation commit. | A single Cloudflare Worker serving the SPA and API, with D1, Queues and cron handlers, and Jellyfin, Emby and Plex adapters. |
 | Docs | Only the owner-provided concept ([sources](sources/2026-10-04-initial-architecture-concept.md)) existed, outside the repo. | This document set, kept in sync with the code. |
-| Infra | None provisioned by this work. No production infrastructure was touched. | Staging and production Workers, each with its own D1 database and Access application. |
+| Infra | None provisioned by this work. No production infrastructure was touched. | Staging and production Workers, each with its own D1 database and secrets. Other operators self-host their own instances from tagged releases. |
 
 **Audit finding:** no roadmap or plan existed in the repository, authoritative or fragmented. The only planning input was a single concept document. This roadmap is therefore newly derived from that document, the owner's instructions and the 2026-10-04 product name. It does not replace any earlier plan.
 
@@ -41,9 +41,9 @@
 ### Assumptions (agent decisions; revisit if wrong)
 | ID | Assumption | If wrong |
 |---|---|---|
-| A-1 | Single-operator deployment for a small invited group (envelope NFR-SCALE-001) | Multi-tenancy redesign. [ADR-0011](adr/0011-single-operator-deployment-model.md) would be superseded. |
+| A-1 | Single operator per deployment, for a small invited group (envelope NFR-SCALE-001). **Owner decision 2026-10-04:** confirmed, and other operators may self-host their own instances. | Multi-tenancy redesign. [ADR-0011](adr/0011-single-operator-deployment-model.md) would be superseded. |
 | A-2 | The operator can create a non-admin service account on each origin | [ADR-0008](adr/0008-origin-service-accounts-and-credential-encryption.md) needs revisiting. |
-| A-3 | Browsers reach origins over HTTPS on non-Cloudflare-proxied hostnames | Media gateway (DEF-1) or Cloudflare Stream would be needed. Major change. |
+| A-3 | Browsers reach origins over HTTPS on non-Cloudflare-proxied hostnames. **Owner confirmed 2026-10-04:** origins are on public HTTPS. | Media gateway (DEF-1) or Cloudflare Stream would be needed. Major change. |
 | A-4 | Workers reach origin APIs over public HTTPS | Private connectivity (Q-5) is needed. |
 | A-5 | Workers Paid plan | Free-plan limits (10 ms CPU, 50 subrequests) make sync infeasible. |
 | A-6 | Web browser is the only v1 client | — |
@@ -52,13 +52,22 @@
 | A-9 | Origins expose TMDB, IMDb or TVDB IDs for most items | Matching quality drops. TMDB enrichment (DEF-9) would be reconsidered. |
 
 ### Material decisions
-13 ADRs are indexed in [adr/README.md](adr/README.md). ADR-0002 records owner direction. The others are agent decisions. **ADR-0013 (session-scoped stream credentials) is `Proposed`** until the M1 spike confirms it.
+14 ADRs are indexed in [adr/README.md](adr/README.md). ADR-0002 records owner direction. **ADR-0014 (passkeys and invite-only signup) is an owner decision**, and it supersedes ADR-0007 (Cloudflare Access). ADR-0003 and ADR-0011 are owner-confirmed. The rest are agent decisions. **ADR-0013 (session-scoped stream credentials) is `Proposed`** until the M1 spike confirms it.
+
+**Owner decisions taken on 2026-10-04 through multiple-choice blocker questions (see AGENTS.md §4):**
+
+| Ref | Question | Owner decision | Effect |
+|---|---|---|---|
+| B-1 | Cloudflare account and identity layer | Owner has Workers Paid. Asked why Access was planned, then chose **passkeys only, with operator invite links as the only way to create an account**. | ADR-0014 supersedes ADR-0007. FR-USR-* rewritten. T0.5 reworked. No Zero Trust team needed. |
+| B-2 | Test servers for the T1.1 spike | **Containers (Jellyfin, Emby) plus the owner's Plex** | T1.1 can proceed. The Plex checks use the owner's account or server. |
+| Q-2 | Hide origin hostnames? | **Public HTTPS is fine** | ADR-0003 confirmed. DEF-1 stays deferred. |
+| Q-1 | Audience | **Others may self-host** (one operator per deployment) | ADR-0011 confirmed and extended. CAP-14, FR-OPS-008 and NFR-MAINT-003 added. M5 packaging tasks added. |
 
 ### Open questions (none block M0)
 | ID | Question | Blocks | Default until answered |
 |---|---|---|---|
-| Q-1 | Will Cinewren ever be hosted for multiple operators? | Nothing in v1 | No ([ADR-0011](adr/0011-single-operator-deployment-model.md)) |
-| Q-2 | Must origin hostnames be hidden from viewers? | Nothing in v1 | No ([ADR-0003](adr/0003-direct-to-origin-playback.md)) |
+| ~~Q-1~~ | Will Cinewren ever be hosted for multiple operators? | — | **Resolved 2026-10-04 by the owner:** no hosted multi-tenancy, but others may self-host |
+| ~~Q-2~~ | Must origin hostnames be hidden from viewers? | — | **Resolved 2026-10-04 by the owner:** no, public HTTPS is fine |
 | Q-3 | Plex API terms and the token model for third-party clients | M4 Plex task | Resolved by the T1.1 spike |
 | Q-5 | Should private-network-only origins be supported? | Nothing in v1 | Unsupported (DEF-10) |
 | Q-6 | Minimum provider versions | M1 / M4 adapters | Fixed by the T1.1 spike |
@@ -71,6 +80,7 @@
 | The concept suggests "Cloudflare Tunnel" as a way to expose origins. | Tunnel *public hostnames* fall under the same video restriction, so they are rejected for media. Private Tunnel routes are deferred (Q-5). See [HLD](design/HLD.md). |
 | The concept lists Option A (direct) and Option B (gateway). | Option A was selected and Option B deferred ([ADR-0003](adr/0003-direct-to-origin-playback.md)). |
 | The concept puts the server token in the playback URL (`?token=...`). Passing the long-lived server token to browsers would violate BR-6. | Session-scoped credentials ([ADR-0013](adr/0013-session-scoped-origin-stream-credentials.md), Proposed). |
+| ADR-0007 chose Cloudflare Access. The owner then chose passkeys with invite links and asked why Access was used. | Owner decision wins. ADR-0014 supersedes ADR-0007, which is kept for history. |
 | The owner's routing text said `agents.md`. The task brief defaults to `AGENTS.md` when neither exists. | Neither file existed, so `AGENTS.md` was created, which is the conventional casing. No case-variant duplicate exists. |
 
 ## 4. Documentation map
@@ -88,7 +98,7 @@
 | [design/SDD.md](design/SDD.md) | Software Design Document | Subsystem collaboration, module layout, shared patterns, requirement→design satisfaction | Draft v0.1 |
 | [design/TDD.md](design/TDD.md) | Technical Design Document | Stack, tooling, config, testing, CI/CD, release, rollback, backup, cross-cutting technical choices | Draft v0.1 |
 | [design/LLD.md](design/LLD.md) | Low-Level Design | Schema, API contracts, provider interface, algorithms, credential lifecycle, error handling (sections LLD-*) | Draft v0.1 |
-| [adr/](adr/README.md) | Architecture Decision Records | Individual architectural decisions and their supersession | ADR-0001 to ADR-0012 Accepted, ADR-0013 Proposed |
+| [adr/](adr/README.md) | Architecture Decision Records | Individual architectural decisions and their supersession | ADR-0001 to ADR-0012 and ADR-0014 Accepted (ADR-0007 superseded by ADR-0014). ADR-0013 Proposed. |
 | [sources/2026-10-04-initial-architecture-concept.md](sources/2026-10-04-initial-architecture-concept.md) | Archived owner-provided concept | Nothing. Historical input only. | Historical |
 
 **Traceability chain:** BO (BRD) → CAP / J (PRD) → WF / BR (FRD) → FR / NFR (SRS: its `Design` and `MS` columns) → C / LLD / ADR (design) → milestone task (this file) → verification (the SRS `Verify` column plus each milestone's exit checks below). The SDD holds the requirement→design satisfaction table.
@@ -135,9 +145,9 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 | T0.2 | CI workflow: install, typecheck, lint, unit and Workers integration tests (Vitest pool-workers), docs check, dependency audit, secret scanning | NFR-TEST-001, NFR-SEC-006, [TDD](design/TDD.md) | T0.1 | A PR shows all jobs. A deliberately broken link or type error fails CI. |
 | T0.3 | Docs check script (`scripts/check-docs.mjs`): relative links resolve, IDs referenced are defined, LLD section IDs exist | NFR-MAINT-002 | — | **Done** in this commit. It runs locally (see §9). CI wiring is part of T0.2. |
 | T0.4 | D1 schema v1 migration covering the M0 to M2 tables, with the migration runner in local and CI | DR-001, DR-004, [LLD-SCHEMA](design/LLD.md) | T0.1 | Migrations apply to an empty local D1. An integration test asserts the tables, indexes and FK cascades. |
-| T0.5 | Access JWT middleware, user bootstrap from `BOOTSTRAP_OPERATOR_EMAILS`, role guard | FR-USR-001 to FR-USR-003, IR-006, NFR-SEC-002, ADR-0007 | T0.4 | Tests: missing or invalid or expired JWT → 401; valid non-invited user → 403; bootstrap operator created; viewer → 403 on an operator route. |
+| T0.5 | Passkey auth: `/setup` bootstrap with `SETUP_TOKEN`, invite create/redeem with passkey registration, passkey login and logout, own-passkey management, sessions, Origin check, auth rate limits, role guard | FR-USR-001 to FR-USR-003, FR-USR-006, IR-006, NFR-SEC-002, NFR-SEC-004, NFR-SEC-007, ADR-0014 | T0.4 | Tests (with a virtual WebAuthn authenticator): no session → 401. Setup works once, and only with the token. Account creation without a valid invite is refused. Expired, used or revoked invites are refused. Login with a registered passkey yields a session. A cross-origin mutation is refused. A viewer gets 403 on an operator route. Removing the last passkey is refused. The WebAuthn library runs in the Workers runtime. |
 | T0.6 | API conventions: request ID, error envelope, structured logger, security headers baseline, health endpoint | IR-001, NFR-OBS-001, NFR-PRIV-001, FR-OPS-007 | T0.1 | Tests assert the envelope shape, the `x-request-id` header, that no email appears in log lines, and that health returns DB status. |
-| T0.7 | Staging environment: Worker, D1 and Access application. Documented in an operator setup guide (`docs/operations/setup.md`, to be created in this task). | A-5, [HLD](design/HLD.md) deployment | T0.5, T0.6 | **Demonstration:** an invited identity loads the staging SPA through Access, and an uninvited one gets 403. *Prerequisite (owner action): a Cloudflare account on Workers Paid with an Access team.* |
+| T0.7 | Staging environment: Worker, D1 and secrets (`SETUP_TOKEN`, credential key). Documented in an operator setup guide (`docs/operations/setup.md`, created in this task). | A-5, [HLD](design/HLD.md) deployment | T0.5, T0.6 | **Demonstration:** on staging, `/setup` creates the operator's passkey. An invite link creates a viewer. A signed-out visitor sees only the login page. *Prerequisite: Workers Paid (owner confirmed 2026-10-04).* |
 
 **M0 exit:** T0.1 to T0.7 done. M0 Must IDs verified. ADR-0006's FTS5 assumption confirmed or replaced on D1 (spike within T0.4).
 
@@ -208,7 +218,7 @@ Every milestone exit requires three things: CI green on `main`, docs and this fi
 
 ### M5 — Hardening and v1.0 · Planned (high level)
 
-Scope: health probing and failover (FR-OPS-001, FR-OPS-002, FR-OPS-004, FR-PLAY-004); curation merge/split and the conflict list (FR-CAT-007, FR-CAT-010); credential rotation (FR-SRV-005); audit log (FR-OPS-005); export (FR-OPS-006); rate limits (NFR-SEC-004); operational retention (DR-003); metrics (NFR-OBS-002); accessibility audit (NFR-A11Y-001); performance and cost analysis at the envelope (NFR-PERF-001, NFR-PERF-002, NFR-SCALE-001, NFR-COST-001); restore rehearsal (NFR-REL-003); a security review against the [HLD](design/HLD.md) threat model.
+Scope: health probing and failover (FR-OPS-001, FR-OPS-002, FR-OPS-004, FR-PLAY-004); curation merge/split and the conflict list (FR-CAT-007, FR-CAT-010); credential rotation (FR-SRV-005); audit log (FR-OPS-005); export (FR-OPS-006); per-user rate limits beyond the auth endpoints (NFR-SEC-004 itself is delivered in M0); re-enrollment and last-operator recovery are verified on staging (FR-USR-007); **self-host packaging (owner decision 2026-10-04):** a self-host guide, a Deploy to Cloudflare button or `wrangler` install path, SemVer releases with notes, and a tested upgrade path that applies migrations (FR-OPS-008, NFR-MAINT-003, CAP-14); operational retention (DR-003); metrics (NFR-OBS-002); accessibility audit (NFR-A11Y-001); performance and cost analysis at the envelope (NFR-PERF-001, NFR-PERF-002, NFR-SCALE-001, NFR-COST-001); restore rehearsal (NFR-REL-003); a security review against the [HLD](design/HLD.md) threat model.
 
 **v1.0 exit:** every `Must` in the SRS is verified with evidence. Any `Should` not done has a recorded decision here. The security review has no open high findings. A production deploy and rollback have been rehearsed.
 
@@ -226,17 +236,18 @@ DEF-1 to DEF-11 per [PRD §6](requirements/PRD.md#6-non-goals-and-deferred-capab
 | R-5 | Cloudflare terms or limit changes | Architecture assumptions break | Facts re-checked at each milestone exit, with dates noted in ADR-0002. |
 | R-6 | Poor external-ID coverage on origins | Duplicate items | Manual curation (FR-CAT-007). DEF-9 enrichment can be reconsidered. |
 | R-7 | D1 FTS5 is unavailable or limited | Search design changes | Checked in T0.4. The fallback is in ADR-0006. |
-| B-1 | **Owner action:** a Cloudflare account on Workers Paid with an Access team, needed for staging deploys | Blocks T0.7 and every later *demonstration*. Local development is not blocked. | Owner provides it before T0.7. |
-| B-2 | **Owner action:** access to at least one Jellyfin test server (or approval to use containerized test servers) | Blocks the T1.1 real-server checks | Containerized Jellyfin and Emby are acceptable. Plex may need a Plex account. |
+| ~~B-1~~ | Cloudflare account for staging | — | **Resolved 2026-10-04:** owner has Workers Paid. No Access needed (ADR-0014). |
+| ~~B-2~~ | Test servers | — | **Resolved 2026-10-04:** containers for Jellyfin and Emby, plus the owner's Plex. Hand-over of Plex access is needed when T1.1 starts. |
 
 ## 8. Next actionable milestone
 
 **M0 — Foundations.** Start with T0.1, then T0.2 and T0.4 in parallel.
-- **Prerequisites:** none for local work. B-1 is needed only for T0.7.
+- **Prerequisites:** none. All earlier blockers are resolved. For T0.7 the owner sets the staging secrets, including `SETUP_TOKEN`, or delegates that.
 - **Verification:** the M0 exit criteria above. Every M0 Must ID in [SRS §8](requirements/SRS.md#8-must-requirement-coverage-by-milestone) passes its Verify method, CI is green on `main`, and the staging demonstration (T0.7) is recorded in this file with a link.
 
 ## 9. Change log
 
 | Date | Change | By |
 |---|---|---|
+| 2026-10-04 | Owner answered the blocker questions (B-1, B-2, Q-1, Q-2): passkeys plus invite links replace Cloudflare Access (ADR-0014), origins on public HTTPS confirmed, self-hosting added to M5. | Agent, recording owner decisions |
 | 2026-10-04 | Initial roadmap and document set derived from the owner-provided concept. Product named Cinewren (owner). T0.3 docs check script added and run. | Agent under delegation |

@@ -40,6 +40,12 @@ Reference requirements and rules **by ID**. Never paraphrase them into a second 
 - **Provenance:** don't describe agent decisions as owner-approved. Use the labels "Owner direction" and "Agent decision (delegated)" as the docs do.
 - **Superseded documents** are marked superseded and linked to their replacement. Never delete them. `docs/sources/` is historical input and is never authoritative.
 - **Ask the owner only** when a missing answer blocks the work, changes the product's purpose, or carries significant security, legal, financial or irreversible risk. Otherwise decide, document the decision and continue.
+- **Ask blocking questions as multiple choice.** Owner direction (2026-10-04). Use the agent's built-in structured-question tool (for example `AskUserQuestion` in Claude Code). Don't ask open-ended questions in prose.
+  - Batch related blockers into one prompt: up to four questions, each with 2–4 concrete options.
+  - Put the recommended option first, labelled "(Recommended)". Each option's description says what that choice changes: which ADR, requirement or milestone.
+  - Reference the blocker's ID (B-*, Q-*, A-*) in the question.
+  - Record every answer in [ROADMAP §3](docs/ROADMAP.md#3-constraints-assumptions-decisions-and-open-questions) as "Owner decision (date)" and update the affected documents in the same change.
+  - If no structured-question tool is available, present the same numbered options in text and ask for the option number.
 
 ## 5. Engineering guardrails (summary; details in the linked docs)
 
@@ -48,6 +54,8 @@ Reference requirements and rules **by ID**. Never paraphrase them into a second 
 - Provider-specific code lives only in provider adapters ([ADR-0004](docs/adr/0004-provider-adapter-abstraction.md)).
 - Permission filtering (BR-1) is enforced server-side in the catalog query layer.
 - Don't change production infrastructure or secrets unless a task explicitly calls for it.
+- Authentication is passkeys only, and accounts are created only through operator invite links ([ADR-0014](docs/adr/0014-passkey-auth-with-invite-links.md)). Never add another sign-up path.
+- Authentication is passkeys only, and accounts are created only through operator invite links ([ADR-0014](docs/adr/0014-passkey-auth-with-invite-links.md)). Never add another sign-up path.
 
 ## 6. Subagent routing and orchestration
 
@@ -91,5 +99,5 @@ These are agent additions that put the policy above into practice.
 ## 7. Repository conventions
 
 - Layout: `docs/` holds specifications, `scripts/` holds repository tooling, and the application layout is defined in [SDD](docs/design/SDD.md). No application code exists yet; the next milestone is M0 in the ROADMAP.
-- Commits: small and focused, with an imperative subject line. Reference task and requirement IDs in the body, for example `T0.5: Access JWT middleware (FR-USR-001)`.
+- Commits: small and focused, with an imperative subject line. Reference task and requirement IDs in the body, for example `T0.5: passkey login and sessions (FR-USR-001)`.
 - Tooling commands (build, test, lint) will be listed here once T0.1 creates them. Until then, the only check is `node scripts/check-docs.mjs`.

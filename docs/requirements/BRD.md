@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1 (2026-10-04). Agent-authored under delegation; not owner-reviewed. Nothing described here is implemented. |
+| **Status** | Draft v0.1 (2026-10-04). Agent-authored under delegation; not owner-reviewed. Nothing described here is implemented. Updated 2026-10-04 for owner decisions (ADR-0014, self-hosting). |
 | **Owns** | Business problem, desired outcomes (BO-n) and proposed success measures, stakeholders, business constraints (C-n), cost and legal context, value proposition, business-level risks, outcome-to-capability trace. |
 | **Does not own** | Capabilities, personas and journeys ([PRD](PRD.md)); workflows and business rules ([FRD](FRD.md)); verifiable requirements ([SRS](SRS.md)); architecture ([HLD](../design/HLD.md)); sequencing ([ROADMAP](../ROADMAP.md)). |
 
@@ -11,6 +11,7 @@
 | Label | Meaning in this document |
 |---|---|
 | **Owner direction (2026-10-04)** | The product name Cinewren; the [concept document](../sources/2026-10-04-initial-architecture-concept.md) (Cloudflare as UI, catalog and control plane; Plex, Jellyfin and Emby as media origins; a federated deduplicated library; a provider interface; a recommendation of direct streaming); the agent-routing policy in [AGENTS.md](../../AGENTS.md). The owner supplied the concept and asked for a plan. That is not approval of every detail below. |
+| **Owner decision (2026-10-04)** | Passkey-only sign-in with operator invite links and no Cloudflare Access ([ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)); other operators may self-host while each deployment keeps one operator; viewers seeing origin hostnames is acceptable ([ADR-0003](../adr/0003-direct-to-origin-playback.md)), with origins on public HTTPS. |
 | **Agent decision (delegated, 2026-10-04; not yet owner-reviewed)** | Everything else, including all outcome measures and targets. |
 | **Assumption (A-n)** / **Open question (Q-n)** / *(proposed)* | Recorded in the [ROADMAP](../ROADMAP.md#3-constraints-assumptions-decisions-and-open-questions); the ones this document relies on are repeated in sections 5 and 7. |
 
@@ -39,6 +40,7 @@ Measures are **Proposed targets** chosen by the agent. They have no owner sign-o
 | Stakeholder | Interest | Influence in v1 |
 |---|---|---|
 | **Operator** (persona P-1) | Deploys Cinewren to their own Cloudflare account, registers servers, invites viewers, bears cost and content responsibility. | Decides what is registered and who gets access. |
+| **Self-hosting operators** | Other people who deploy their own Cinewren from a release, each as the single operator of their own deployment (CAP-14). They want setup with no extra services beyond Cloudflare, and safe upgrades. | Not part of this deployment. They shape packaging and upgrade requirements and are the reason for BO-4 (backend-agnostic, reusable) and BO-5 (safe operation, including credential protection and a passkey-only sign-in). Owner decision (2026-10-04). |
 | **Viewers** (persona P-2) | Find and play titles with minimal friction. Not technical. | Invited by the operator; no administrative rights. |
 | **Origin server owners** | Their servers receive Cinewren's sync and playback traffic and their service account. | In v1 the origin owner is the operator (assumption A-2). A third-party owner would need consent and clear terms, which v1 does not provide for. |
 | **Project owner** | Supplied the concept and the product name; accepts or changes the plan. | Has not yet reviewed this documentation set. |
@@ -50,12 +52,14 @@ Cloudflare and the media-server vendors are external parties whose terms and API
 
 | ID | Constraint | Provenance |
 |---|---|---|
-| C-1 | Cloudflare hosts the web app, API, catalog index and authentication (Workers with Static Assets, D1). | Owner direction (2026-10-04) |
+| C-1 | Cloudflare hosts the web app, API, catalog index and authentication (Workers with Static Assets, D1). Sign-in is passkey-only, with accounts created only from operator invite links (C-7). | Owner direction (2026-10-04) |
 | C-2 | Media bytes never transit Cloudflare (Workers, CDN, or Tunnel public hostnames). | Owner direction (2026-10-04), supported by the Cloudflare video-delivery terms (see below) |
 | C-3 | Media files stay on the origin servers. Nothing is stored in R2. | Owner direction (2026-10-04) |
 | C-4 | Supported origin types are Jellyfin, Emby and Plex. | Owner direction (2026-10-04) |
 | C-5 | The client talks only to the Cinewren API. Provider types are an implementation detail. | Owner direction (2026-10-04) |
 | C-6 | The agent workflow is governed by [AGENTS.md](../../AGENTS.md). | Owner direction (2026-10-04) |
+| C-7 | Authentication is WebAuthn passkeys only. Accounts exist only through operator invite links, and the first operator comes from `/setup`. No external identity provider or edge access product is required ([ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)). | Owner decision (2026-10-04) |
+| C-8 | Each deployment has exactly one operator organization, and Cinewren is packaged so that other operators can self-host their own deployment ([ADR-0011](../adr/0011-single-operator-deployment-model.md)). It is not a hosted multi-tenant service. | Owner decision (2026-10-04) |
 
 **Cost context (A-5).** Agent decision: the operator is assumed to be on the Workers Paid plan. Cloudflare's published Free-plan limits (checked 2026-10-04) are 10 ms CPU and 50 external subrequests per invocation, which are too small for catalog sync ([limits](https://developers.cloudflare.com/workers/platform/limits/)). The Paid plan raises these substantially, and the proposed ceiling for Cloudflare spend is in NFR-COST-001. Per-database size limits for D1 are documented at [D1 limits](https://developers.cloudflare.com/d1/platform/limits/) and are not restated here. The operator also bears the cost of the origin servers and their network egress, which Cinewren does not change.
 
@@ -77,10 +81,11 @@ Cloudflare and the media-server vendors are external parties whose terms and API
 | BR-RISK-2 | Plex, Jellyfin or Emby API or token behaviour does not allow the session-scoped credential model, or changes between versions. | Medium / High | M1 provider spike before commitment; fallback documented in [ADR-0013](../adr/0013-session-scoped-origin-stream-credentials.md); version minimums set by the spike (Q-6). |
 | BR-RISK-3 | Viewer browsers cannot reach origins (private networks, mixed content, untrusted certificates). | Medium / High | Operator responsibility (A-3), documented in setup guide; private-only origins deferred (DEF-10, Q-5). Gateway option kept as a revisit path in [ADR-0003](../adr/0003-direct-to-origin-playback.md). |
 | BR-RISK-4 | Wrong merges show the wrong title or hide a good copy. | Medium / Medium | Strong-ID-only matching (BR-2); manual merge and split (CAP-12); conflicting IDs flagged, not merged. |
-| BR-RISK-5 | The origin's own hostname is visible to viewers, and some operators may object. | Medium / Low | Accepted for v1 (Q-2); gateway deferred (DEF-1). |
+| BR-RISK-5 | The origin's own hostname is visible to viewers, and some operators may object. | Medium / Low | Accepted: owner confirmed ADR-0003 (Owner decision, 2026-10-04), with origins on public HTTPS. Gateway deferred (DEF-1). |
 | BR-RISK-6 | Origin credential exposure through Cinewren. | Low / High | Dedicated non-admin service accounts (A-2), encrypted storage (DR-002), no browser exposure (NFR-SEC-001, BR-6). |
 | BR-RISK-7 | Scope creep toward a hosted service or a Cinewren-side transcoder. | Medium / Medium | Explicit non-goals: DEF-3 and DEF-8; Q-1 asked, with the answer assumed to be no. |
 | BR-RISK-8 | Single-owner, single-agent authorship leaves requirements unreviewed and the assumptions untested. | High / Medium | Every document is marked unreviewed; the owner is asked to review the A-n and Q-n lists first. |
+| BR-RISK-9 | Passkey recovery burden falls on the operator. A viewer who loses every passkey needs an operator re-enrollment link, and an operator who loses theirs depends on another operator or, for the last one, on the CLI recovery procedure, which needs Cloudflare account access (FR-USR-007). Recovery load may grow with the number of viewers, and self-hosting operators must carry it unaided. | Medium / Medium | Several passkeys per user are allowed (FR-USR-006). The last passkey cannot be removed. Re-enrollment links are single-use and expire quickly. The recovery procedure is documented in the self-host guide. Revisit if viewers often lack passkey-capable devices ([ADR-0014](../adr/0014-passkey-auth-with-invite-links.md)). |
 
 (The prefix `BR-RISK` avoids a clash with business rules BR-1 to BR-9, which live in the [FRD](FRD.md#business-rules).)
 
@@ -93,9 +98,9 @@ Capabilities are defined in [PRD §2](PRD.md#2-capabilities). Requirement-level 
 | BO-1 Unified library | CAP-2, CAP-3, CAP-4, CAP-5 | CAP-1, CAP-9, CAP-12 |
 | BO-2 Low cost, lightweight operations | CAP-6 (direct-to-origin playback) | CAP-2 (pull-based sync), CAP-13 |
 | BO-3 Best available playback | CAP-6, CAP-11 | CAP-7, CAP-8, CAP-10 |
-| BO-4 Backend-agnostic | CAP-1, CAP-2 | CAP-6 |
-| BO-5 Safe operation | CAP-1, CAP-9 | CAP-6, CAP-13 |
+| BO-4 Backend-agnostic | CAP-1, CAP-2 | CAP-6, CAP-14 |
+| BO-5 Safe operation | CAP-1, CAP-9 | CAP-6, CAP-13, CAP-14 |
 
 ## 9. Scope boundary
 
-In scope for v1.0: a web client for invited users; Jellyfin, Emby and Plex origins; movies and TV only; one operator deployment. The full deferred list is in [PRD §6](PRD.md#6-non-goals-and-deferred-capabilities). Delivery order is in the [ROADMAP](../ROADMAP.md).
+In scope for v1.0: a web client for invited users; Jellyfin, Emby and Plex origins; movies and TV only; one operator per deployment, packaged so that other operators can self-host (CAP-14). The full deferred list is in [PRD §6](PRD.md#6-non-goals-and-deferred-capabilities). Delivery order is in the [ROADMAP](../ROADMAP.md).

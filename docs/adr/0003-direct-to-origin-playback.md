@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. **Owner confirmed (2026-10-04):** viewers seeing origin hostnames is acceptable, and origins are reachable on public HTTPS (Q-2, A-3).
 
 ## Date
 

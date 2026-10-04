@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-0014](0014-passkey-auth-with-invite-links.md) on 2026-10-04 (owner decision: passkeys and invite links, no Cloudflare Access). The record below is kept unchanged for history.
 
 ## Date
 
