@@ -52,7 +52,7 @@ export async function registrationOptions(
     rpID: config.rpId,
     userName: subject.displayName,
     userDisplayName: subject.displayName,
-    userID: new TextEncoder().encode(subject.userId),
+    userID: new Uint8Array(new TextEncoder().encode(subject.userId)),
     attestationType: 'none',
     authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
     excludeCredentials: subject.excludeCredentialIds.map((id) => ({ id })),
