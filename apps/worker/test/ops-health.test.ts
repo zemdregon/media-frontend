@@ -174,11 +174,11 @@ describe('probeAll (FR-OPS-001, WF-8)', () => {
     expect(await rows('SELECT id FROM health_probes')).toHaveLength(1); // one probe row per round
   });
 
-  it('does not probe disabled, removing or pending servers, nor providers without an adapter', async () => {
+  it('does not probe disabled, removing or pending servers', async () => {
     await seedServer({ id: 'D', status: 'disabled' });
     await seedServer({ id: 'R', status: 'removing' });
     await seedServer({ id: 'P', status: 'pending_validation' });
-    await seedServer({ id: 'X', type: 'plex' });
+    // Every provider type (jellyfin, emby, plex) now has an adapter, so none is skipped by type.
     await round(ok());
     const probed = await rows<{ server_id: string }>(
       'SELECT DISTINCT server_id FROM health_probes',
