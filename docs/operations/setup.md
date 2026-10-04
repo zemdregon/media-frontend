@@ -80,6 +80,21 @@ Smoke checks:
 - `GET /api/v1/me` without a session returns 401.
 - `/setup` loads.
 
+
+### Automatic deploys with Workers Builds (recommended)
+
+Connect each environment's Worker to the GitHub repository in the Cloudflare dashboard (**Workers & Pages → the Worker → Settings → Build → Connect repository**):
+
+| Setting | Value |
+|---|---|
+| Production branch | `main` |
+| Root directory | `/` |
+| Build command | `pnpm install --frozen-lockfile && pnpm build` |
+| Deploy command | `pnpm --filter @cinewren/worker exec wrangler d1 migrations apply <db-name> --env <env> --remote && pnpm --filter @cinewren/worker exec wrangler deploy --env <env>` |
+| Non-production branch builds | Off |
+
+Its build token must be allowed to edit D1 so that migrations can run. Cinewren's own staging uses `<db-name>` = `cinewren-staging` and `<env>` = `staging`.
+
 ## 7. First run: create the operator
 
 1. Open `https://<host>/setup`.

@@ -221,8 +221,8 @@ flowchart LR
 ```
 
 - These are the project's own pipelines. Self-hosters do not need GitHub Actions (§9.2).
-- GitHub Actions. The Cloudflare API token is stored as a GitHub environment secret, scoped to Workers and D1 edits on the one account. Production uses a separate token behind a protected environment with required reviewers (the operator).
-- Production deploys are manual (`workflow_dispatch`, or promotion from the staging run) and need approval. Staging deploys automatically on every merge to `main`.
+- **Deploys use Cloudflare Workers Builds** (owner decision 2026-10-04): each environment's Worker is connected to the GitHub repo, with root `/`, build `pnpm install --frozen-lockfile && pnpm build`, and a deploy command that applies D1 migrations, then runs `wrangler deploy --env <env>`. The build token is managed by Cloudflare, so no GitHub secret is needed. GitHub Actions runs CI checks only. Production is connected the same way with its own branch or tag rule; a manual-approval gate is configured when production is created (M5).
+- Production deploys are manual (`workflow_dispatch`, or promotion from the staging run) and need approval. Staging deploys automatically on every merge to `main` via Workers Builds.
 - Each pipeline step's commands live in `package.json` scripts, so a developer can run CI locally.
 
 ## 9. Releases, self-hosting, upgrades and rollback
