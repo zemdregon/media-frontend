@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { registerServerRequest, updateLibraryRequest, updateServerRequest } from '@cinewren/shared';
+import { startServerRemoval } from '../../servers/purge';
 import * as servers from '../../servers/service';
 import type { AppEnv } from '../context';
 import { parseJson } from '../validation';
@@ -17,6 +18,7 @@ export const adminServers = new Hono<AppEnv>()
   .patch('/servers/:id', async (c) =>
     c.json(await servers.update(c, c.req.param('id'), await parseJson(c, updateServerRequest))),
   )
+  .delete('/servers/:id', async (c) => c.json(await startServerRemoval(c, c.req.param('id')), 202))
   .post('/servers/:id/validate', async (c) => c.json(await servers.validate(c, c.req.param('id'))))
   .get('/servers/:id/libraries', async (c) => c.json(await servers.libraries(c, c.req.param('id'))))
   .patch('/libraries/:id', async (c) => {
