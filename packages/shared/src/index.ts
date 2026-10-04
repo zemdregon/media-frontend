@@ -6,3 +6,4 @@ export * from './catalog';
 export * from './users';
 export * from './catalog-views';
 export * from './playback';
+export * from './ops';

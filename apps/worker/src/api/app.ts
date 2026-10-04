@@ -3,10 +3,12 @@ import { originCheck, requireOperator, requireSession } from '../auth/sessions';
 import type { AppEnv } from './context';
 import { errorHandler, notFoundHandler } from './errors';
 import { loadConfig } from './middleware/config';
+import { userRateLimit } from './middleware/rate-limit';
 import { requestId } from './middleware/request-id';
 import { requestLog } from './middleware/request-log';
 import { securityHeaders } from './middleware/security-headers';
 import { adminInvites } from './routes/admin-invites';
+import { adminOps } from './routes/admin-ops';
 import { adminServers } from './routes/admin-servers';
 import { adminUsers } from './routes/admin-users';
 import { artwork } from './routes/artwork';
@@ -65,6 +67,7 @@ export function createApp(options: AppOptions = {}) {
 
   // Everything below requires a session.
   app.use('/api/*', requireSession);
+  app.use('/api/*', userRateLimit); // NFR-SEC-008: per user, after the session is known
   app.route('/api/v1/auth/logout', logout);
   app.route('/api/v1/me', me);
   app.route('/api/v1/artwork', artwork);
@@ -75,6 +78,7 @@ export function createApp(options: AppOptions = {}) {
   app.route('/api/v1/admin/invites', adminInvites);
   app.route('/api/v1/admin/users', adminUsers);
   app.route('/api/v1/admin', adminServers);
+  app.route('/api/v1/admin', adminOps);
 
   // Anything else under /api is an unknown API route; everything else is the SPA.
   app.all('/api/*', notFoundHandler);

@@ -5,7 +5,8 @@
 // Secrets (TDD §4): `SETUP_TOKEN` is deliberately NOT in `secrets.required` so it can be deleted
 // after setup (ADR-0014 §3); `CREDENTIAL_KEYS` is required. Locally, put both in `.dev.vars`.
 // Rate limiting: `RL_AUTH` is the per-IP limit on setup, invite redemption and login
-// (NFR-SEC-004, TDD §6.3). `namespace_id` must be unique per account; change it if it collides.
+// (NFR-SEC-004, TDD §6.3); `RL_PLAY` (60/min) and `RL_MUTATION` (600/min) are per user
+// (NFR-SEC-008, TDD-D5). `namespace_id` must be unique per account; change it if it collides.
 //
 // PLACEHOLDERS: every `database_id` below is a placeholder. Replace with the real D1 ids
 // (T0.7 staging setup) before deploying. Nothing here is a real resource.
@@ -35,6 +36,8 @@
   },
   "ratelimits": [
     { "name": "RL_AUTH", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
+    { "name": "RL_PLAY", "namespace_id": "1011", "simple": { "limit": 60, "period": 60 } },
+    { "name": "RL_MUTATION", "namespace_id": "1021", "simple": { "limit": 600, "period": 60 } },
   ],
   "secrets": { "required": ["CREDENTIAL_KEYS"] },
   "d1_databases": [
@@ -71,6 +74,8 @@
       },
       "ratelimits": [
         { "name": "RL_AUTH", "namespace_id": "1002", "simple": { "limit": 10, "period": 60 } },
+        { "name": "RL_PLAY", "namespace_id": "1012", "simple": { "limit": 60, "period": 60 } },
+        { "name": "RL_MUTATION", "namespace_id": "1022", "simple": { "limit": 600, "period": 60 } },
       ],
       "secrets": { "required": ["CREDENTIAL_KEYS"] },
       "assets": {
@@ -111,6 +116,8 @@
       },
       "ratelimits": [
         { "name": "RL_AUTH", "namespace_id": "1003", "simple": { "limit": 10, "period": 60 } },
+        { "name": "RL_PLAY", "namespace_id": "1013", "simple": { "limit": 60, "period": 60 } },
+        { "name": "RL_MUTATION", "namespace_id": "1023", "simple": { "limit": 600, "period": 60 } },
       ],
       "secrets": { "required": ["CREDENTIAL_KEYS"] },
       "assets": {

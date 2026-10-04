@@ -37,6 +37,7 @@ const CollectionsPage = lazy(() =>
 const CollectionPage = lazy(() => import('./People').then((m) => ({ default: m.CollectionPage })));
 const Settings = lazy(() => import('./Settings').then((m) => ({ default: m.Settings })));
 const Servers = lazy(() => import('./Servers').then((m) => ({ default: m.Servers })));
+const AuditLog = lazy(() => import('./AuditLog').then((m) => ({ default: m.AuditLog })));
 const SyncStatus = lazy(() => import('./SyncStatus').then((m) => ({ default: m.SyncStatus })));
 
 interface NavItem {
@@ -231,6 +232,7 @@ function Routes({
   }
   if (operator && path === '/servers') return <Servers />;
   if (operator && path === '/servers/sync') return <SyncStatus />;
+  if (operator && path === '/servers/audit') return <AuditLog />;
   const item = matchPath('/items/:id', path);
   if (item?.id) return <ItemDetail key={item.id} id={item.id} />;
   const watch = matchPath('/watch/:id', path);

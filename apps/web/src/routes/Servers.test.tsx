@@ -169,6 +169,9 @@ it('shows server cards with status and library counts, and disables a server', a
   const fetchMock = mockApi((method, url) => {
     if (url.endsWith('/me')) return [200, operator];
     if (method === 'PATCH') return [200, { ...server, status: 'disabled' }];
+    if (url.includes('/health')) {
+      return [200, { status: 'active', lastLatencyMs: null, consecutiveFailures: 0, probes: [] }];
+    }
     return [200, [server]];
   });
   render(<App />);

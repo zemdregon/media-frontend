@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import {
   pageQuery,
   registerServerRequest,
+  replaceCredentialsRequest,
   startSyncRequest,
   updateLibraryRequest,
   updateServerRequest,
@@ -27,6 +28,14 @@ export const adminServers = new Hono<AppEnv>()
     c.json(await servers.update(c, c.req.param('id'), await parseJson(c, updateServerRequest))),
   )
   .delete('/servers/:id', async (c) => c.json(await startServerRemoval(c, c.req.param('id')), 202))
+  .put('/servers/:id/credentials', async (c) => {
+    await servers.replaceCredentials(
+      c,
+      c.req.param('id'),
+      await parseJson(c, replaceCredentialsRequest),
+    );
+    return c.body(null, 204);
+  })
   .post('/servers/:id/validate', async (c) => c.json(await servers.validate(c, c.req.param('id'))))
   .get('/servers/:id/libraries', async (c) => c.json(await servers.libraries(c, c.req.param('id'))))
   .post('/servers/:id/sync', async (c) =>

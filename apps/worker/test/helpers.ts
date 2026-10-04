@@ -21,6 +21,8 @@ export function appWith(overrides: Partial<Env> = {}) {
         ),
     },
     RL_AUTH: { limit: () => Promise.resolve({ success: true }) },
+    RL_PLAY: { limit: () => Promise.resolve({ success: true }) },
+    RL_MUTATION: { limit: () => Promise.resolve({ success: true }) },
     ENVIRONMENT: 'local',
     APP_ORIGIN: 'http://localhost:8787',
     ...overrides,

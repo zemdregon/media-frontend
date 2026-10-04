@@ -105,6 +105,27 @@ export async function handleSyncMessage(
   }
 }
 
+/**
+ * The per-server sync counter event (NFR-OBS-002): duration, errors and outcome of a finished
+ * run. The same figures are queryable from D1 (`GET /admin/metrics`, TDD-D4).
+ */
+async function logRunMetric(deps: SyncDeps, runId: string, status: string): Promise<void> {
+  const row = await getRun(deps.db, runId);
+  deps.logger.info('sync.run_finished', {
+    run_id: runId,
+    server_id: row?.server_id ?? null,
+    status,
+    metric: 'sync.run',
+    duration_ms: row
+      ? Math.max(0, (row.ended_at ?? deps.now()) - (row.started_at ?? row.queued_at))
+      : null,
+    errors: row?.errors ?? 0,
+    added: row?.added ?? 0,
+    updated: row?.updated ?? 0,
+    missing: row?.missing ?? 0,
+  });
+}
+
 async function executeRun(deps: SyncDeps, run: RunRow, token: string): Promise<RunResult> {
   const { db } = deps;
 
@@ -137,6 +158,7 @@ async function executeRun(deps: SyncDeps, run: RunRow, token: string): Promise<R
       `Credentials unavailable: ${err.message}`,
       deps.now(),
     );
+    await logRunMetric(deps, run.id, 'failed');
     return 'failed';
   }
 
@@ -280,7 +302,10 @@ async function executeRun(deps: SyncDeps, run: RunRow, token: string): Promise<R
     cp = { ...cp, libraryIdx: libs.length, cursor: null };
     if (!(await persist())) return 'skipped';
     const done = await finishRun(db, run.id, token, 'failed', summary, deps.now());
-    if (done) await db.batch([bumpCatalogVersionStmt(db)]);
+    if (done) {
+      await db.batch([bumpCatalogVersionStmt(db)]);
+      await logRunMetric(deps, run.id, 'failed');
+    }
     return 'failed';
   }
   const status = failed.length === 0 ? 'succeeded' : ok.length === 0 ? 'failed' : 'partial';
@@ -288,7 +313,7 @@ async function executeRun(deps: SyncDeps, run: RunRow, token: string): Promise<R
   if (!(await persist())) return 'skipped';
   if (await finishRun(db, run.id, token, status, summary, deps.now())) {
     await db.batch([bumpCatalogVersionStmt(db)]);
-    log.info('sync.run_finished', { status });
+    await logRunMetric(deps, run.id, status);
   }
   return status;
 }

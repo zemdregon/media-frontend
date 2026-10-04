@@ -1414,3 +1414,36 @@ a.button-outline {
     animation: none;
   }
 }
+
+/* ---- Health strip and audit table (UX §8: operator health, FR-OPS-004, FR-OPS-005) ---- */
+
+.health-panel {
+  margin-top: 12px;
+}
+
+.probe-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.probe-cell {
+  width: 8px;
+  height: 22px;
+  border-radius: 2px;
+  background: var(--cw-status-ok);
+}
+
+.probe-fail {
+  background: var(--cw-status-bad);
+  /* A failed probe is also shorter, so it reads without colour. */
+  height: 12px;
+  align-self: flex-end;
+}
+
+.audit-table {
+  min-width: 720px;
+}

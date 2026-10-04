@@ -17,6 +17,7 @@ import type { z } from 'zod';
 import type {
   Library,
   registerServerRequest,
+  ReplaceCredentialsRequest,
   Server,
   ServerDetail,
   UpdateServerRequest,
@@ -36,6 +37,7 @@ import {
   listLibraries,
   listServers,
   markValidatedStmt,
+  replaceCredentialStmt,
   setLibraryEnabledStmt,
   updateServerStmt,
   upsertLibraryStmt,
@@ -532,6 +534,69 @@ export async function update(
   const fresh = await getServer(db, id);
   if (!fresh) throw notFound();
   return toServer(fresh);
+}
+
+/**
+ * Replaces a server's credentials (FR-SRV-005, WF-11). The new credential is validated against
+ * the origin first, with the stored identity pinned: it must be the same server, so catalog rows
+ * stay valid. Only after that does one batch store the re-encrypted envelope (current key
+ * version) and the audit row. A failure changes nothing; no catalog row is touched.
+ */
+export async function replaceCredentials(
+  c: Context<AppEnv>,
+  id: string,
+  body: ReplaceCredentialsRequest,
+): Promise<void> {
+  const db = c.env.DB;
+  const row = await getServer(db, id);
+  if (!row || row.status === 'removing') throw notFound();
+  const provider = getProvider(row.type);
+  if (!provider)
+    throw new AppError('VALIDATION_FAILED', 'Unsupported server type.', { fields: ['type'] });
+  const secret: ServerSecret =
+    'username' in body
+      ? { kind: 'password', username: body.username, password: body.password }
+      : { kind: 'token', token: body.token };
+  const keyring = await keyringOrFail(c);
+  const ctx = contextFor(
+    c,
+    { id, type: row.type, baseUrl: new URL(row.base_url), originServerId: row.origin_server_id },
+    secret,
+  );
+  let result: ValidationResult;
+  try {
+    result = await provider.validate(ctx);
+  } catch (err) {
+    throw originError(err);
+  }
+  if (!result.ok) {
+    c.get('logger').info('server.validation_failed', {
+      check: result.check,
+      reason: result.reason,
+    });
+    throw validationError(result);
+  }
+  const sealed = await encrypt(keyring, 'server_secret', id, JSON.stringify(secret));
+  const now = Date.now();
+  await db.batch([
+    replaceCredentialStmt(db, {
+      serverId: id,
+      keyVersion: sealed.keyVersion,
+      envelope: sealed.envelope,
+      now,
+    }),
+    markValidatedStmt(db, id, result.version, now, false),
+    auditStmt(db, {
+      id: ulid(),
+      now,
+      actorUserId: currentUser(c).userId,
+      action: 'server.credentials.replace',
+      targetType: 'server',
+      targetId: id,
+      details: { keyVersion: sealed.keyVersion },
+      requestId: c.get('requestId'),
+    }),
+  ]);
 }
 
 export async function setLibraryEnabled(

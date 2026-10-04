@@ -3,6 +3,7 @@ import type { Library, Server, ServerDetail } from '@cinewren/shared';
 import { api, ApiError } from '../api-client';
 import { Alert } from './AuthCard';
 import { useRouter } from '../lib/router';
+import { ServerHealthPanel } from './ServerHealth';
 
 /** Operator "Servers" page: the server list and the add-server form (UX §8a, FR-SRV-001..003). */
 
@@ -25,6 +26,10 @@ export function Servers() {
   const goSync = (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     navigate('/servers/sync');
+  };
+  const goAudit = (e: MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    navigate('/servers/audit');
   };
   const [servers, setServers] = useState<Server[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +56,9 @@ export function Servers() {
         <div className="actions">
           <a className="button button-outline" href="/servers/sync" onClick={goSync}>
             Sync status
+          </a>
+          <a className="button button-outline" href="/servers/audit" onClick={goAudit}>
+            Audit log
           </a>
           {!adding && (
             <button
@@ -338,6 +346,7 @@ function ServerCard({ server, onChanged }: { server: Server; onChanged: () => vo
           <dd>{server.priority}</dd>
         </div>
       </dl>
+      <ServerHealthPanel server={server} />
       <Alert message={error} />
       {server.enabledLibraryCount === 0 && server.status === 'active' && (
         <p className="helper">No libraries are enabled, so nothing is indexed from this server.</p>

@@ -28,8 +28,32 @@ const rateLimit: RateLimit = {
   },
 };
 
+/** The per-user limiter seam (NFR-SEC-008): `RL_PLAY` and `RL_MUTATION` record keys and obey `allow`. */
+export const userLimiter = {
+  /** Keys that may pass; `null` lets everything pass. A key not in the set is refused. */
+  allow: null as string[] | null,
+  denyAll: false,
+  keys: [] as string[],
+};
+
+const userRateLimit: RateLimit = {
+  limit: ({ key }) => {
+    userLimiter.keys.push(key);
+    const ok =
+      !userLimiter.denyAll && (userLimiter.allow === null || userLimiter.allow.includes(key));
+    return Promise.resolve({ success: ok });
+  },
+};
+
 export function testEnv(overrides: Partial<Env> = {}): Env {
-  return { ...env, SETUP_TOKEN, RL_AUTH: rateLimit, ...overrides };
+  return {
+    ...env,
+    SETUP_TOKEN,
+    RL_AUTH: rateLimit,
+    RL_PLAY: userRateLimit,
+    RL_MUTATION: userRateLimit,
+    ...overrides,
+  };
 }
 
 const app = createApp();
@@ -90,6 +114,9 @@ export async function resetDb(): Promise<void> {
   );
   limiter.allow = true;
   limiter.keys = [];
+  userLimiter.allow = null;
+  userLimiter.denyAll = false;
+  userLimiter.keys = [];
 }
 
 interface Ceremony<T> {

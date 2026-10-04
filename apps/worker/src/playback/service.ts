@@ -23,6 +23,7 @@ import type { z } from 'zod';
 import type { playRequestSchema, playbackEventSchema } from '@cinewren/shared';
 import { AppError } from '../api/errors';
 import type { Viewer } from '../db/catalog';
+import { recordOriginFailure } from '../health/probe';
 import {
   acceptEvent,
   acceptFinalEvent,
@@ -251,6 +252,19 @@ async function attempt(
   }
 }
 
+/**
+ * The play-outcome counter event (NFR-OBS-002, TDD §6.2 `play.decision`): one line per play
+ * request with its outcome and, when a source was chosen, the selected mode. Session-level
+ * outcomes are queryable from D1 (`GET /admin/metrics`).
+ */
+function countPlay(
+  deps: PlaybackDeps,
+  outcome: 'ok' | 'no_source' | 'origin_failed',
+  fields: Record<string, unknown>,
+): void {
+  deps.logger.info('play.decision', { metric: 'play.outcome', outcome, ...fields });
+}
+
 export async function play(
   deps: PlaybackDeps,
   viewer: Viewer,
@@ -282,6 +296,9 @@ export async function play(
     input.excludeSourceIds,
   );
   if (!outcome.ok) {
+    countPlay(deps, 'no_source', {
+      reason: outcome.error === 'not_found' ? 'not_found' : outcome.reason,
+    });
     if (outcome.error === 'not_found') throw notFound();
     throw new AppError('NO_PLAYABLE_SOURCE', 'No copy of this title can be played right now.', {
       reason: outcome.reason,
@@ -305,6 +322,10 @@ export async function play(
         code: err instanceof ProviderError ? err.code : 'UNAVAILABLE',
       });
       lastError = err;
+      // LLD-SYNC: a play-time origin failure counts toward the server's health at once.
+      await recordOriginFailure(deps, r.c.serverId).catch((e: unknown) => {
+        deps.logger.error('probe.record_failed', { server_id: r.c.serverId, error: e });
+      });
       continue;
     }
     // 4. The descriptor.
@@ -318,6 +339,14 @@ export async function play(
       actualMode: result.stream.mode,
     });
     const tracks = tracksOf(r, result.stream);
+    countPlay(deps, 'ok', {
+      mode: result.stream.mode,
+      predicted_mode: r.mode,
+      server_id: r.c.serverId,
+      source_id: r.c.sourceId,
+      candidates: outcome.ranked.length,
+      failover: i > 0,
+    });
     return {
       sessionId: result.sessionId,
       expiresAt: result.authExpiresAt,
@@ -338,6 +367,7 @@ export async function play(
       alternatives: outcome.ranked.length - 1,
     };
   }
+  countPlay(deps, 'origin_failed', { candidates: tries.length });
   if (lastError instanceof ProviderError) throw originError(lastError);
   throw new AppError('ORIGIN_UNAVAILABLE', 'The server could not be reached.');
 }
