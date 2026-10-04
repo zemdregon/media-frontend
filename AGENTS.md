@@ -57,7 +57,6 @@ Reference requirements and rules **by ID**. Never paraphrase them into a second 
 - Permission filtering (BR-1) is enforced server-side in the catalog query layer.
 - Don't change production infrastructure or secrets unless a task explicitly calls for it.
 - Authentication is passkeys only, and accounts are created only through operator invite links ([ADR-0014](docs/adr/0014-passkey-auth-with-invite-links.md)). Never add another sign-up path.
-- Authentication is passkeys only, and accounts are created only through operator invite links ([ADR-0014](docs/adr/0014-passkey-auth-with-invite-links.md)). Never add another sign-up path.
 
 ## 6. Subagent routing and orchestration
 

@@ -63,7 +63,8 @@
 | B-2 | Test servers for the T1.1 spike | **Containers (Jellyfin, Emby) plus the owner's Plex** | T1.1 can proceed. The Plex checks use the owner's account or server. |
 | Q-2 | Hide origin hostnames? | **Public HTTPS is fine** | ADR-0003 confirmed. DEF-1 stays deferred. |
 | Q-7 | Collections and people/collection search (shown in the design canvas) | **Add both to v1** | CAP-15, CAP-16, FR-SYNC-008, FR-CAT-011, FR-CAT-012, M2 tasks T2.9 and T2.10. Agent follow-up: merge rules in ADR-0015. |
-| Q-8 | Light theme | **Dark and light at v1** | NFR-UX-001 (M2). Light tokens are agent-proposed in UX.md, pending light artboards (T2.11). |
+| Q-8 | SR-04 | Passkey enrollment without fresh authentication (security review) | **Require a fresh login to register a new passkey** | FR-USR-006 amended; re-auth ceremony and `REAUTH_REQUIRED`; ADR-0014 note. |
+| Light theme | **Dark and light at v1** | NFR-UX-001 (M2). Light tokens are agent-proposed in UX.md, pending light artboards (T2.11). |
 | Light theme | Sign-off on the agent-proposed light palette and stronger control borders | **Accepted** ("looks good", after reviewing the light artboards) | T2.11 done. UX.md light values marked owner-accepted. |
 | Design | Visual reference | **The owner's design canvas** (https://claude.ai/artifact/LUvVfjGfMr3J4cEmRL44z8) | It is specified in [design/UX.md](design/UX.md). Divergences from the spec are listed there (UX §8). Agent follow-ups: FR-CAT-013 (copy table) and FR-PLAY-010 (why-this-copy reasons). |
 | ADR-0013 (Plex) | The spike found that Plex delegation tokens carry owner rights and cannot be revoked individually | **Use a restricted managed user created for Cinewren** | ADR-0013 stays Proposed for Plex until a follow-up check (T4.2, B-3). Owner tokens are never sent to browsers. |
