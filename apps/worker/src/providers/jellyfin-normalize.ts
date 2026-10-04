@@ -9,6 +9,7 @@ import type {
   AudioTrack,
   HdrFormat,
   ItemType,
+  NormalizedCollection,
   NormalizedCredit,
   NormalizedItem,
   NormalizedVersion,
@@ -245,5 +246,51 @@ export function normalizeItem(value: unknown): NormalizedItem | null {
     ...(providerUpdatedAt === undefined ? {} : { providerUpdatedAt }),
     versions,
     credits: type === 'movie' || type === 'series' ? normalizeCredits(raw.People) : [],
+  };
+}
+
+/**
+ * A box set with its member items (FR-SYNC-008). The TMDB collection ID is the box set's own
+ * `ProviderIds.Tmdb` when it has one (Emby, and Jellyfin sets the origin identified). An
+ * API-created Jellyfin box set has none, so the fallback is the `TmdbCollection` ID its movies
+ * carry, used only when every member that has one agrees (spike 4b: "a fallback merge key").
+ * Only movies and series are members (LLD-PROV).
+ */
+export function normalizeCollection(
+  value: unknown,
+  members: unknown[],
+): NormalizedCollection | null {
+  const raw = asRec(value);
+  const id = asStr(raw?.Id);
+  const name = asStr(raw?.Name);
+  if (!raw || !id || !name) return null;
+  const memberIds: string[] = [];
+  const memberCollectionIds = new Set<string>();
+  for (const m of members) {
+    const member = asRec(m);
+    const memberId = asStr(member?.Id);
+    const type = asStr(member?.Type);
+    if (!member || !memberId || (type !== 'Movie' && type !== 'Series')) continue;
+    if (!memberIds.includes(memberId)) memberIds.push(memberId);
+    for (const [key, v] of Object.entries(asRec(member.ProviderIds) ?? {})) {
+      const tmdbCollection = asStr(v);
+      if (key.toLowerCase() === 'tmdbcollection' && tmdbCollection) {
+        memberCollectionIds.add(tmdbCollection);
+      }
+    }
+  }
+  const own = externalIds(raw.ProviderIds).tmdb;
+  const [onlyMemberValue] = memberCollectionIds.size === 1 ? [...memberCollectionIds] : [];
+  const tmdb = own ?? onlyMemberValue;
+  const overview = asStr(raw.Overview);
+  const providerUpdatedAt = asTime(raw.DateLastSaved);
+  return {
+    providerCollectionId: id,
+    name,
+    ...(overview ? { overview } : {}),
+    externalIds: tmdb ? { tmdb } : {},
+    artwork: normalizeArtwork(raw, id),
+    memberProviderItemIds: memberIds,
+    ...(providerUpdatedAt === undefined ? {} : { providerUpdatedAt }),
   };
 }

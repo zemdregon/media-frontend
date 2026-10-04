@@ -11,18 +11,31 @@ export const PAGING = ['StartIndex', 'Limit', 'EnableTotalRecordCount'];
 export const publicInfo: FixtureRoute = { fixture: 'system_info_public.json' };
 export const auth: FixtureRoute = { fixture: 'auth_svc.json' };
 export const views: FixtureRoute = { fixture: 'views.json' };
-export const page0: FixtureRoute = { fixture: 'items_page_movies_0_2.json' };
-export const page2: FixtureRoute = { fixture: 'items_page_movies_2_2.json' };
+// The adapter now also asks for `People` (T2.9, inline credits; recorded in
+// items_page_with_people_field.json). The listing recordings pre-date that field, so the recorded
+// `Fields` value is replaced by the one the adapter sends.
+export const ITEM_FIELDS_WITH_PEOPLE =
+  'ProviderIds,MediaSources,MediaStreams,Overview,Genres,DateCreated,DateLastSaved,Path,SortName,OriginalTitle,ProductionYear,RunTimeTicks,ParentId,Etag,People';
+const withPeople = { Fields: ITEM_FIELDS_WITH_PEOPLE };
+export const page0: FixtureRoute = {
+  fixture: 'items_page_movies_0_2.json',
+  overrideParams: withPeople,
+};
+export const page2: FixtureRoute = {
+  fixture: 'items_page_movies_2_2.json',
+  overrideParams: withPeople,
+};
 export const detail: FixtureRoute = { fixture: 'item_detail_with_people.json' };
 export const sinceRoute: FixtureRoute = {
   fixture: 'items_changed_since_MinDateLastSaved.json',
   ignoreParams: PAGING,
+  overrideParams: withPeople,
 };
 // The recording of the TV library used a different IncludeItemTypes list, no sort and no paging.
 export const tvAll: FixtureRoute = {
   fixture: 'items_tv_all.json',
   ignoreParams: [...PAGING, 'SortBy', 'SortOrder'],
-  overrideParams: { IncludeItemTypes: 'Movie,Series,Season,Episode' },
+  overrideParams: { IncludeItemTypes: 'Movie,Series,Season,Episode', ...withPeople },
 };
 
 export const happy: Route[] = [publicInfo, auth, views, page0, page2, sinceRoute, tvAll, detail];
