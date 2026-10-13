@@ -11,10 +11,15 @@
  * reflow at 200 % and 400 % zoom. What is not: manual screen-reader listening, voice control and
  * real devices (see docs/reports/2026-a11y-audit.md).
  */
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { addAuthenticator, type VirtualCredential } from '../support/authenticator';
+import {
+  addAuthenticator,
+  exportCredentials,
+  type VirtualCredential,
+} from '../support/authenticator';
 import { BASE_URL, HANDOFF_FILE, OPERATOR_NAME } from '../support/env';
 
 test.describe.configure({ mode: 'serial' });
@@ -236,6 +241,14 @@ test('keyboard: sign in with the passkey button, in a sensible focus order', asy
   expect(visited.at(-1)).toBe('Use your passkey');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  // This sign-in advanced the passkey's signature counter, so hand the current credential on to
+  // users.spec.ts (the server refuses a counter that went backwards). Read it now: a later axe
+  // scan opens a second CDP session, which drops the virtual authenticator.
+  if (authenticator) {
+    const fresh = await exportCredentials(authenticator.cdp, authenticator.authenticatorId);
+    mkdirSync(dirname(HANDOFF_FILE), { recursive: true });
+    writeFileSync(HANDOFF_FILE, JSON.stringify({ credentials: fresh }));
+  }
   cat = await ids();
 });
 
